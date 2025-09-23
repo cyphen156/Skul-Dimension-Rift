@@ -3,13 +3,6 @@
 # Get latest from https://github.com/github/gitignore/blob/main/Unity.gitignore
 #
 .utmp/
-/[Ll]ibrary/
-/[Tt]emp/
-/[Oo]bj/
-/[Bb]uild/
-/[Bb]uilds/
-/[Ll]ogs/
-/[Uu]ser[Ss]ettings/
 *.log
 
 # By default unity supports Blender asset imports, *.blend1 blender files do not need to be commited to version control.
@@ -97,3 +90,24 @@ InitTestScene*.unity*
 
 # Auto-generated scenes by play mode tests
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
+
+# 모든 하위 디렉토리의 Resource 폴더 무시
+**/Resource/
+**/[Dd]ownload[Aa]ssets/
+
+# Client 무시
+/Client/[Ll]ibrary/
+/Client/[Tt]emp/
+/Client/[Oo]bj/
+/Client/[Bb]uild/
+/Client/[Bb]uilds/
+/Client/[Ll]ogs/
+/Client/[Uu]ser[Ss]ettings/
+
+# DatabaseServer 무시
+/DatabaseServer/[Bb]in/
+/DatabaseServer/[Oo]bj/
+
+# GameServer 무시
+/GameServer/[Bb]in/
+/GameServer/[Oo]bj/
