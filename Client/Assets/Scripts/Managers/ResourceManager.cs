@@ -12,7 +12,7 @@ public class ResourceManager : MonoBehaviour
         }
         else
         {
-            Destroy(this);
+            Destroy(gameObject);
         }
     }
 }

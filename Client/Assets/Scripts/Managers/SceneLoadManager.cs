@@ -12,7 +12,7 @@ public class SceneLoadManager : MonoBehaviour
         }
         else
         {
-            Destroy(this);
+            Destroy(gameObject);
         }
     }
 }
