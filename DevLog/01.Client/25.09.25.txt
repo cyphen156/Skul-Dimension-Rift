@@ -1,0 +1,42 @@
+1. TitleScene.unity
+    게임 시작시 진입 씬 구성
+    어드레서블 리소스 로드
+    키 입력 제어 로직
+
+    1_ BootStrap.cs
+        기능: 초기화 순서 오케스트레이션
+        필요시 기능확장
+        초기화 순서
+        2번 항목 생성 순서에 따라 초기화
+
+    2_Managers 생성
+        1. NetworkManager.cs
+            Unity Netcode for GameObject를 
+            지원하기 위한 기본 네트워크 매니저 클래스
+
+        2. ResourceManager
+            Addressable애셋을 로드/해제 하기 위한 매니저 클래스
+
+        3. SceneLoadManager.cs
+            게임 매니저에서 씬 전환시 필요한 로직을 담당할 래퍼 클래스
+            ResourceManager와 연계하여 씬을 Addressable 로드 지원
+
+        4. GameManager.cs
+            게임 시스템 매니저
+            플레이어의 행동에 의한 게임 시스템 제어
+
+        5. UIManager.cs
+            게임 로직 처리에 따른 게임 상태 변화 UI에 반영
+
+        6. SoundManager.cs
+            유저 사운드 제어를 위한 클래스
+
+        7. InputManager.cs
+            전역 플레이어 입력 처리
+            크로스 플레이 지원을 위한 
+            Custom Input System에서 Unity New InputSystem으로 변경
+
+    3_UI
+        1. FadeInOut.cs 
+            UI 페이드 인/아웃 처리를 위한 컴포넌트
+            필요시 UI 요소에 달아서 제어
