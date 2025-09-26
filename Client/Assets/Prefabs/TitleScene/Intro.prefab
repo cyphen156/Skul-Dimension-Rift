@@ -100,6 +100,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2451499403744376114}
+  - component: {fileID: 5632546546350466960}
   m_Layer: 0
   m_Name: HardModeBackground
   m_TagString: Untagged
@@ -124,6 +125,23 @@ Transform:
   - {fileID: 5826187872845458445}
   m_Father: {fileID: 5131632965496081177}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5632546546350466960
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1419970621848916015}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a4f1c56d521cc644abf9fa02f1795da7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FadeInOut
+  fadeInTime: 2
+  fadeOutTime: 0
+  delayTime: 0
+  isLoop: 0
+  delayPassed: 0
 --- !u!1 &2702388094096528598
 GameObject:
   m_ObjectHideFlags: 0
@@ -480,7 +498,7 @@ SpriteRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_Sprite: {fileID: 2290823347844063912, guid: 2c88ff7cd65504045a4e14e9d24a3f79, type: 3}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 0}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -589,7 +607,7 @@ SpriteRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_Sprite: {fileID: 5545338554251597701, guid: 8f3209f466d068744affa3389266e0ff, type: 3}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 0}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -663,10 +681,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 35985e10781f8014d90d9bd7e3da531c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TitleSequence
-  DefaultBackground: {fileID: 7849260889137684847}
-  HardModeBackground: {fileID: 1419970621848916015}
-  NeoWize: {fileID: 6005565367079880474}
-  SouthPaw: {fileID: 6754247344448225043}
+  defaultBackground: {fileID: 0}
+  hardModeBackground: {fileID: 0}
+  bgm: 
+  neoWiz: {fileID: 0}
+  southPaw: {fileID: 0}
 --- !u!1 &7849260889137684847
 GameObject:
   m_ObjectHideFlags: 0
@@ -676,6 +695,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4509140201686230386}
+  - component: {fileID: 7192195024675567909}
   m_Layer: 0
   m_Name: DefaultBackground
   m_TagString: Untagged
@@ -700,3 +720,20 @@ Transform:
   - {fileID: 3254518253140237089}
   m_Father: {fileID: 5131632965496081177}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7192195024675567909
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7849260889137684847}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a4f1c56d521cc644abf9fa02f1795da7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FadeInOut
+  fadeInTime: 2
+  fadeOutTime: 0
+  delayTime: 0
+  isLoop: 0
+  delayPassed: 0

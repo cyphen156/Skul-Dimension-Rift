@@ -1,5 +1,3 @@
-using Assets.Scripts.Interface;
-using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>

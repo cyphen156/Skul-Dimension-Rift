@@ -1,10 +1,13 @@
 using Assets.Scripts.Interface;
+using System.Collections;
 using UnityEngine;
-using static GameManager;
+using static Types;
 
 public class Intro : MonoBehaviour, IPlayable
 {
     // select background according to game Difficulty
+    [SerializeField]
+    private GameObject selectedBackground;
     [SerializeField]
     private GameObject defaultBackground;
     [SerializeField]
@@ -28,7 +31,7 @@ public class Intro : MonoBehaviour, IPlayable
         southPaw = transform.Find("SouthPaw").gameObject;
     }
 
-    private void OnEnable()
+    private void Reset()
     {
         defaultBackground.SetActive(false);
         hardModeBackground.SetActive(false);
@@ -39,22 +42,37 @@ public class Intro : MonoBehaviour, IPlayable
     #endregion Unity Methods
 
     #region Custom Methods
-    public void Play()
+    IEnumerator IPlayable.C_Play()
     {
-        GameDifficulty gm = GameManager.instance.GetGameMode();
-        if (gm == GameDifficulty.Hard)
-        {
-            hardModeBackground.SetActive(true);
-            defaultBackground.SetActive(false);
-            bgm = "HardModeIntroBGM";
+        Reset();
+        // show background according to game mode
+        GameDifficulty difficulty = GameManager.instance.GetGameMode();
+        if (difficulty == GameDifficulty.Hard)
+        {   bgm = "HardModeIntroBGM";
+            selectedBackground = hardModeBackground;
         }
         else
         {
-            defaultBackground.SetActive(true);
-            hardModeBackground.SetActive(false);
             bgm = "DefaultIntroBGM";
+            selectedBackground = defaultBackground;
         }
+
         SoundManager.instance.PlayBGM(bgm);
+
+        neoWiz.SetActive(true);
+        yield return new WaitForSeconds(4.0f);
+        neoWiz.SetActive(false);
+        yield return new WaitForSeconds(0.2f);
+
+        southPaw.SetActive(true);
+        yield return new WaitForSeconds(4.0f);
+        southPaw.SetActive(false);
+        yield return new WaitForSeconds(0.2f);
+
+        selectedBackground.SetActive(true);
+        yield return new WaitForSeconds(4.0f);
+
+        GameManager.instance.ChangeGameState(GameState.Ready);
     }
     #endregion Custom Methods
 }

@@ -1,22 +1,19 @@
 using Unity.Netcode;
 using UnityEngine;
-using UnityEngine.Android;
+using UnityEngine.SceneManagement;
+using static Types;
 
 /// <summary>
 /// 게임 매니저 싱글톤 클래스
 /// </summary>
 public class GameManager : NetworkBehaviour
 {
-    public enum GameDifficulty
-    {
-        Normal,
-        Hard
-    }
-
     public static GameManager instance;
 
     [SerializeField]
     private GameDifficulty difficulty;
+    private GameState currentState; 
+    private string currentSceneName;
 
     #region Unity Methods
     private void Awake()
@@ -30,23 +27,84 @@ public class GameManager : NetworkBehaviour
         {
             Destroy(gameObject);
         }
+    }
+
+    private void Start()
+    {
+        InitializeGame();
+    }
+
+    private void InitializeGame()
+    {
+        Scene scene = SceneManager.GetActiveScene();
+        currentSceneName = scene.name;
+        if (currentSceneName != "TitleScene")
+        {
+            SceneLoadManager.LoadScene("TitleScene");
+        }
+
+        ResetGame();
+    }
+    #endregion Unity Methods
+
+    #region Custom Methods
+
+    public GameDifficulty GetGameMode()
+    {
+        return difficulty;
+    }
+
+    private bool ResetGame()
+    {
+        ChangeGameState(GameState.None);
+        // 난이도 설정 (임시로 랜덤)
         int randomValue = Random.Range(0, 2);
 
         if (randomValue == 0)
         {
-            difficulty = GameDifficulty.Normal;
+            difficulty = GameDifficulty.Default;
         }
         else
         {
             difficulty = GameDifficulty.Hard;
         }
-    }
-    #endregion Unity Methods
 
-    #region Custom Methods
-    public GameDifficulty GetGameMode()
-    {
-        return difficulty;
+        return true;
     }
+
+    public void ChangeGameState(GameState state)
+    {
+        if (currentState == state)
+        {
+            return;
+        }
+
+        switch(state)
+        {
+            case GameState.Ready:
+                if (currentSceneName == "TitleScene")
+                {
+                    UIManager.instance.Show("Press Any Key");
+                    //InputManager.instance.EnablePlayerInput();
+                }
+                break;
+            case GameState.Playing:
+                UIManager.instance.Show("InGameUI");
+                break;
+            case GameState.Paused:
+                UIManager.instance.Show("PauseUI");
+                break;
+            case GameState.GameOver:
+                UIManager.instance.Show("GameOverUI");
+                break;
+            case GameState.Victory:
+                UIManager.instance.Show("VictoryUI");
+                break;
+            default:
+                break;
+        }
+    }
+
+
     #endregion
 }

@@ -2,6 +2,8 @@ using UnityEngine;
 
 public class UIManager : MonoBehaviour
 {
+    [SerializeField] 
+    
     public static UIManager instance;
     private void Awake()
     {
@@ -14,5 +16,10 @@ public class UIManager : MonoBehaviour
         {
             Destroy(gameObject);
         }
+    }
+
+    public void Show(string UIName)
+    {
+        Debug.Log(UIName);
     }
 }

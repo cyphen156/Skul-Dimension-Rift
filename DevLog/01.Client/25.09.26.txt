@@ -1,0 +1,79 @@
+Commit 156b2fa
+[Feat] Title Secne #4 타이틀씬 진입 시퀀스 추가
+    1. GameManager
+        MonoBehavior -> NetworkBehavior
+        enum GameDifficulty 추가
+
+    2. 인터페이스
+    IPlayable.cs 추가
+
+    3. Intro.cs
+        IPlayable 인터페이스 상속
+        Public) Play()함수 추가
+        GameManager의 GameDifficulty를 참조하여 
+        내부적으론 게임오브젝트를 주기마다 변경하고, 
+        SoundManager에게 BGM 재생 요청
+
+Commit
+[Feat] Title Scene #5 
+    GameManager.cs
+        1. enum GameDifficulty -> Types.cs 로 이관
+
+        2. GameState 변수 생성
+            게임 상태 머신, Network Variable로 승격 가능성 존재
+
+        3. Public) ChangeGameState(string state) 함수 생성
+            게임 상태 변경 요청
+            -> 네트워크 행동을 통한 호스트 권위 함수로 변경 요망
+            ==> 내부적으론 private처리하고 외부 RequestChangeState로 래핑 할 가능성 있음
+
+        4. InitializeGame() 함수 생성
+            게임 초기화 && 타이틀 씬 진입 보장을
+            이후 Reset() 함수 호출을 통한 게임 초기화 진행
+
+        5. Reset() 함수 생성
+            게임 진행 상황과 플레이어 인벤토리 등 
+            전반적인 게임 로직 초기화를 담당할 함수
+            이 함수가 호출되었을 때는 네트워크가 끊긴 이후이기 때문에 서버권위 필요 없음
+            ==> 로컬 클라이언트로만 동작
+
+    FadeInOut.cs
+        디렉토리 변경
+            UI -> Common
+
+        기능 추가
+            자기 자신에게 spriteRenderer 또는 TMP Text가 없는 경우
+            자식 오브젝트를 탐지 & 컬러 알파값 일괄 적용
+
+    IPlayable
+        함수 시그니쳐 변경
+            void Play() -> IEnumrator C_Play()
+
+    UIManager 
+        함수 추가
+            Public) Show(string UIName) 
+
+    Intro.cs    
+        인터페이스 변경 반영
+            Play() -> C_Play
+
+        Intro Sequence 완성
+            순서대로 게임 오브젝트 On/Off
+            NeoWiz 
+            -> SouthPaw
+             -> Background
+              -> PressAnyKey
+
+    SceneLoadManager.cs
+        Public) LoadScene(string SceneName)
+            씬 로드 전 어드레서블 애셋 로드 보장을 위한
+            SceneManager.LoadScene(sceneName)의 래퍼 함수
+
+        private) OnSceneLoaded()
+            씬이 로드 되었을 때 해야하는 로직은 여기에 작성
+
+    Types.cs
+        static enum 클래스
+        전자료형 확인할 때 사용
+
+

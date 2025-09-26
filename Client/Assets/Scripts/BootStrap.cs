@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
 using UnityEngine;
@@ -64,7 +63,7 @@ public class BootStrap : MonoBehaviour
         }
 
         ngo.NetworkConfig.NetworkTransport = utp;
-            ngo.NetworkConfig.TickRate = 60;
+        ngo.NetworkConfig.TickRate = 60;
         ngo.NetworkConfig.PlayerPrefab = null; // 나중에 플레이어 프리팹 할당
 
         // ResourceManager 초기화
