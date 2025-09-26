@@ -53,9 +53,7 @@ public class FadeInOut : MonoBehaviour
         if (!delayPassed)
         {
             if (currentTime < delayTime)
-            {
                 return;
-            }
 
             // delay 끝나자마자 초기화
             delayPassed = true;
@@ -70,18 +68,19 @@ public class FadeInOut : MonoBehaviour
         c.a = alpha;
 
         if (spriteRenderer != null)
-        {
             spriteRenderer.color = c;
-        }
         else if (tmpText != null)
-        {
             tmpText.color = c;
-        }
 
         if (currentTime >= duration)
         {
             currentTime = 0f;
             isFadeIn = !isFadeIn;
+
+            //if (!isLoop && !isFadeIn)
+            //{
+            //    enabled = false; 
+            //}
         }
     }
 }

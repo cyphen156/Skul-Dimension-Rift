@@ -1,60 +1,16 @@
-using Assets.Scripts.Interface;
 using UnityEngine;
-using static GameManager;
 
-public class Intro : MonoBehaviour, IPlayable
+public class TitleSequence : MonoBehaviour
 {
-    // select background according to game Difficulty
-    [SerializeField]
-    private GameObject defaultBackground;
-    [SerializeField]
-    private GameObject hardModeBackground;
-    [SerializeField]
-    private string bgm;
-
-    // 난이도와 상관 없이 재생되는 배경
-    [SerializeField]
-    private GameObject neoWiz;
-    [SerializeField]
-    private GameObject southPaw;
-
-    #region Unity Methods
-
-    private void Awake()
+    // Start is called once before the first execution of Update after the MonoBehaviour is created
+    void Start()
     {
-        defaultBackground = transform.Find("DefaultBackground").gameObject;
-        hardModeBackground = transform.Find("HardModeBackground").gameObject;
-        neoWiz = transform.Find("NeoWiz").gameObject;
-        southPaw = transform.Find("SouthPaw").gameObject;
+        
     }
 
-    private void OnEnable()
+    // Update is called once per frame
+    void Update()
     {
-        defaultBackground.SetActive(false);
-        hardModeBackground.SetActive(false);
-        neoWiz.SetActive(false);
-        southPaw.SetActive(false);
+        
     }
-
-    #endregion Unity Methods
-
-    #region Custom Methods
-    public void Play()
-    {
-        GameDifficulty gm = GameManager.instance.GetGameMode();
-        if (gm == GameDifficulty.Hard)
-        {
-            hardModeBackground.SetActive(true);
-            defaultBackground.SetActive(false);
-            bgm = "HardModeIntroBGM";
-        }
-        else
-        {
-            defaultBackground.SetActive(true);
-            hardModeBackground.SetActive(false);
-            bgm = "DefaultIntroBGM";
-        }
-        SoundManager.instance.PlayBGM(bgm);
-    }
-    #endregion Custom Methods
 }
