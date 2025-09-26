@@ -414,7 +414,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &5455575876493074871
 Transform:
   m_ObjectHideFlags: 0
@@ -663,6 +663,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 35985e10781f8014d90d9bd7e3da531c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TitleSequence
+  DefaultBackground: {fileID: 7849260889137684847}
+  HardModeBackground: {fileID: 1419970621848916015}
+  NeoWize: {fileID: 6005565367079880474}
+  SouthPaw: {fileID: 6754247344448225043}
 --- !u!1 &7849260889137684847
 GameObject:
   m_ObjectHideFlags: 0

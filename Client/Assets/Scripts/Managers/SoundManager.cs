@@ -3,6 +3,8 @@ using UnityEngine;
 public class SoundManager : MonoBehaviour
 {
     public static SoundManager instance;
+
+    #region Unity Methods
     private void Awake()
     {
         if (instance == null)
@@ -15,4 +17,12 @@ public class SoundManager : MonoBehaviour
             Destroy(gameObject);
         }
     }
+    #endregion Unity Methods    
+
+    #region Custom Methods
+    public void PlayBGM(string bgmName)
+    {
+        Debug.Log($"Playing BGM: {bgmName}");
+    }
+    #endregion Custom Methods
 }
