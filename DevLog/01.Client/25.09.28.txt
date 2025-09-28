@@ -1,0 +1,32 @@
+Commit 
+[Feat] Title Scene #6 사운드 매니저 작업
+    1. SoundManager.cs
+        Resource Manageer를 항상 참조하고 있어야함
+        Player_Transform을 listenerTransform으로 지정
+
+        master, BGM, SFX 볼륨 개별 적용
+        private) ApplyVolume(VolumeType type)
+            볼륨 변화 요청시 사용할 내부 함수 
+
+        Public) Set~Volume(float volume)
+            유저 인터페이스를 통한 볼륨 조절을 위한 외부 공개 API
+            내부적으로 ApplyVolume()을 통해 재생중인 오디오에 변경사항 적용
+
+        Public) PlayBGM() 함수 수정
+            BGM을 재생함
+            만약 이미 재생중인 BGM이 있다면 즉시 재생 정지 후 다른 BGM 재생
+                -> 페이드 효과는 적용하지 않음
+
+        Public) StopBGM() 함수 생성
+            BGM 재생을 정지
+
+        Public) PlaySFX(string sfxName, Transform target)
+            임시 함수 
+            => 추후 오브젝트 풀링구조 적용 예정
+
+            받아온 위치에 오브젝트 풀을 이용해 SFX 재생
+            재생중에는 재생 위치가 target에 종속됨
+            도플러 효과 적용예정
+
+    2. Types.cs
+        enum VolumeType 신설

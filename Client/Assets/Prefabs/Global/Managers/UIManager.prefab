@@ -123,9 +123,17 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 5387213070168793646}
     m_Modifications:
+    - target: {fileID: 685134202552786231, guid: c15180813b454044b8921e1c9be9dc19, type: 3}
+      propertyPath: m_text
+      value: '- Press Any key -'
+      objectReference: {fileID: 0}
     - target: {fileID: 4074964608364116273, guid: c15180813b454044b8921e1c9be9dc19, type: 3}
       propertyPath: m_Name
       value: Press Any Key
+      objectReference: {fileID: 0}
+    - target: {fileID: 4074964608364116273, guid: c15180813b454044b8921e1c9be9dc19, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6718419997476393118, guid: c15180813b454044b8921e1c9be9dc19, type: 3}
       propertyPath: m_Pivot.x

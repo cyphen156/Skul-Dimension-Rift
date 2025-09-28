@@ -32,5 +32,17 @@ public class ResourceManager : MonoBehaviour
     {
 
     }
+
+    public AudioClip GetBGMClip(string bgmClipName)
+    {
+        // 내부 
+        return null;
+    }
+
+    public AudioClip GetSFXClip(string sfxClipName)
+    {
+        // 내부 
+        return null;
+    }
     #endregion
 }

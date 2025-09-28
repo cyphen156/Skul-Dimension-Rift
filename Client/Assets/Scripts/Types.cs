@@ -16,4 +16,11 @@
 
         None
     }
+
+    public enum VolumeType
+    {
+        Master,
+        BGM,
+        SFX
+    }
 }
