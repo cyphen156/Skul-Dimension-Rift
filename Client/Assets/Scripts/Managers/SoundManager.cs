@@ -54,7 +54,7 @@ public class SoundManager : MonoBehaviour
         bgmSource.playOnAwake = false;
         bgmSource.loop = true;
         bgmSource.spatialBlend = 0.0f;
-        bgmSource.dopplerLevel = 0.0f;  
+        bgmSource.dopplerLevel = 0.0f;
         bgmSource.clip = null;
     }
 
@@ -62,7 +62,8 @@ public class SoundManager : MonoBehaviour
     {
         if (listenerTransform == null)
         {
-            AudioListener listener = FindObjectOfType<AudioListener>();
+            GameObject go = Camera.main != null ? Camera.main.gameObject : null;
+            AudioListener listener = go.GetComponent<AudioListener>();
             if (listener != null)
             {
                 listenerTransform = listener.transform;
@@ -86,12 +87,25 @@ public class SoundManager : MonoBehaviour
                 AudioListener.volume = masterVolume;
                 break;
             case VolumeType.BGM:
-                bgmSource.volume = masterVolume * bgmVolume;
+                if (bgmSource != null && bgmSource.isPlaying)
+                {
+                    bgmSource.volume = masterVolume * bgmVolume;
+                }
                 break;
             case VolumeType.SFX:
+                if (sfxPool == null)
+                {
+                    return;
+                }
+
+                float v = masterVolume * sfxVolume;
+
                 foreach (var sfx in sfxPool)
                 {
-                    sfx.volume = masterVolume * sfxVolume;
+                    if (sfx != null)
+                    {
+                        sfx.volume = v;
+                    }
                 }
                 break;
             default:
@@ -155,10 +169,6 @@ public class SoundManager : MonoBehaviour
             Debug.LogError($"SoundManager: SFX '{sfxName}' not found in ResourceManager.");
             return;
         }
-
-
     }
-
-    
     #endregion Custom Methods
 }
