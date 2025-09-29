@@ -2,6 +2,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using static Types;
 
+/// <summary>
+/// 게임 사운드를 관리하는 싱글톤 매니저 클래스입니다.
+/// </summary>
 public class SoundManager : MonoBehaviour
 {
     public static SoundManager instance;

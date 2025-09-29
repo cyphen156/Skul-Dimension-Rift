@@ -1,4 +1,7 @@
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Android;
+using static Types;
 
 /// <summary>
 /// 어드레서블 리소스 관리를 위한 매니저 클래스
@@ -8,6 +11,16 @@ using UnityEngine;
 public class ResourceManager : MonoBehaviour
 {
     public static ResourceManager instance;
+
+
+    private Dictionary<string, AudioClip> bgmClips = new Dictionary<string, AudioClip>();
+    private Dictionary<string, AudioClip> sfxClips = new Dictionary<string, AudioClip>();
+
+#if UNITY_EDITOR
+    [Header("DEBUG")]
+    [SerializeField] private List<string> bgmKeys = new();
+    [SerializeField] private List<string> sfxKeys = new();
+#endif
 
     #region Unity Methods
     private void Awake()
@@ -30,19 +43,41 @@ public class ResourceManager : MonoBehaviour
     #region Custom Methods
     private void Initialize()
     {
+        bgmClips.Clear();
+        sfxClips.Clear();
 
+        var AudioClips = Resources.LoadAll<AudioClip>("Audio");
+
+        foreach (var clip in AudioClips)
+        {
+            if (clip.name.EndsWith("BGM"))
+            {
+                bgmClips[clip.name] = clip;
+            }
+            else if (clip.name.StartsWith("SFX"))
+            {
+                sfxClips[clip.name] = clip;
+            }
+        }
+
+#if UNITY_EDITOR
+        bgmKeys.Clear(); 
+        sfxKeys.Clear();
+        bgmKeys.AddRange(bgmClips.Keys);
+        sfxKeys.AddRange(sfxClips.Keys);
+#endif
     }
 
     public AudioClip GetBGMClip(string bgmClipName)
     {
         // 내부 
-        return null;
+        return bgmClips.ContainsKey(bgmClipName) ? bgmClips[bgmClipName] : null;
     }
 
     public AudioClip GetSFXClip(string sfxClipName)
     {
         // 내부 
-        return null;
+        return sfxClips.ContainsKey(sfxClipName) ? sfxClips[sfxClipName] : null;
     }
     #endregion
 }

@@ -681,6 +681,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 35985e10781f8014d90d9bd7e3da531c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TitleSequence
+  selectedBackground: {fileID: 0}
   defaultBackground: {fileID: 0}
   hardModeBackground: {fileID: 0}
   bgm: 

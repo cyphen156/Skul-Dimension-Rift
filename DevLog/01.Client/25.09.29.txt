@@ -1,0 +1,25 @@
+Commit 
+1. Types.cs
+enum InputMode 신설
+    입력 모드에 따라 라우팅 될 입력 이벤트 처리 유효 대상 제어
+
+2. InputManager.cs
+    private) Update() 함수 생성
+        플레이어의 입력은 항상 이벤트로 들어온다는 가정 
+        switch과 currentInputMode를 통해 입력 이벤트 처리 후 라우팅 제어
+
+    Public) ChangeInputMode() 함수 생성
+        GameManager가 플레이어 입력 처리 후 내부 기준에 따라 
+        InputManager의 currentInputMode를 변경 요청 할 수 있도록 API 제공
+
+3. ResourceManager.cs
+    private) Initialize() 함수 추가
+        bgmClip과 sfx클립을 Resources폴더에서 모두 로드 & 캐싱
+        // 유니티 에디터 한정 List를 통해 캐싱된 데이터 외부 노출
+
+    Public) GetBgmClip(string ClipName) 함수 추가, 
+    Public) GetSFXClip(string ClipName) 함수 추가
+        각각 클립 딕셔너리에서 ClipName을 찾아 리턴
+
+4. Loading 프리펩 & 리소스 추가 
+    UI Manager가 관리하는 Loading 시 재생할 전용 UI 프리펩

@@ -1,4 +1,9 @@
-﻿public static class Types
+﻿
+/// <summary>
+/// 정적 타입들을 정의하는 클래스
+/// 게임 전반에 걸쳐 사용되는 열거형 타입들을 포함
+/// </summary>
+public static class Types
 {
     public enum GameDifficulty
     {
@@ -8,13 +13,13 @@
 
     public enum GameState
     {
+        None,
         Ready,
         Playing,
         Paused,
         GameOver,
         Victory,
-
-        None
+        Loading 
     }
 
     public enum VolumeType
@@ -22,5 +27,21 @@
         Master,
         BGM,
         SFX
+    }
+
+    /// <summary>
+    /// 입력 제어 열거형
+    /// UI 및 플레이어 입력을 구분하여 처리
+    /// 만약 둘다 허용한다면, UI가 우선순위를 가짐
+    /// ==> 따로 정책 필요하지만 
+    ///     스컬은 UI창이 오픈되면 
+    ///     게임 플레이 로직이 멈추는 게임이라서
+    ///     InputMode를 UIOnly로 바꾸는 것으로 해결
+    /// </summary>
+    public enum InputMode
+    {
+        Locked,
+        UIOnly,
+        PlayerOnly
     }
 }

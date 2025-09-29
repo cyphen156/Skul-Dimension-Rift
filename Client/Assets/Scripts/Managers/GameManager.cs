@@ -10,10 +10,9 @@ public class GameManager : NetworkBehaviour
 {
     public static GameManager instance;
 
-    [SerializeField]
-    private GameDifficulty difficulty;
-    private GameState currentState; 
-    private string currentSceneName;
+    [SerializeField] private GameDifficulty difficulty;
+    [SerializeField] private GameState currentState;
+    [SerializeField] private string currentSceneName;
 
     #region Unity Methods
     private void Awake()
@@ -79,28 +78,37 @@ public class GameManager : NetworkBehaviour
             return;
         }
 
-        switch(state)
+        currentState = state;
+
+        switch (state)
         {
             case GameState.Ready:
                 if (currentSceneName == "TitleScene")
                 {
                     UIManager.instance.Show("Press Any Key");
-                    //InputManager.instance.EnablePlayerInput();
+                    InputManager.instance.ChangeInputMode(InputMode.UIOnly);
                 }
                 break;
             case GameState.Playing:
-                UIManager.instance.Show("InGameUI");
                 break;
             case GameState.Paused:
-                UIManager.instance.Show("PauseUI");
                 break;
             case GameState.GameOver:
-                UIManager.instance.Show("GameOverUI");
                 break;
             case GameState.Victory:
-                UIManager.instance.Show("VictoryUI");
+                break;
+            case GameState.Loading:
+                // 로딩중일 땐 입력을 막아주고 로딩 패널 재생
+                InputManager.instance.ChangeInputMode(InputMode.Locked);
+                UIManager.instance.HideAll();
+                UIManager.instance.Show("Loading");
+                break;
+            case GameState.None:
+                UIManager.instance.HideAll();
                 break;
             default:
+                // 정의되지 않은 상태
+                // 이 상태는 들어와선 안됨
                 break;
         }
     }

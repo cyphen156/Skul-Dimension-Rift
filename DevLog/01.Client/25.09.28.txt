@@ -1,4 +1,4 @@
-Commit 
+Commit 6ecc07f
 [Feat] Title Scene #6 사운드 매니저 작업
     1. SoundManager.cs
         Resource Manageer를 항상 참조하고 있어야함
@@ -30,3 +30,10 @@ Commit
 
     2. Types.cs
         enum VolumeType 신설
+
+
+Commit fb4eaa9
+[fix] 사운드 매니저 bgm NRE 수정
+    1. SoundManager.cs
+        재생중인 audio clip이 없을 때
+        소리 관련 설정시 사운드를 적용하려는 오류 수정
