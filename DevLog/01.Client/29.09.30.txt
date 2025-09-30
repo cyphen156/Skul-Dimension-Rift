@@ -1,0 +1,48 @@
+Commit 
+1. Player 프리펩 추가
+    Components
+        NetworkObject
+        PlayerController
+        PlayerManager
+        rigidbody2D
+
+2. PlayerController.cs (제어 & 입력 처리)
+    플레이어 입력과 외부 소통을 처리하는 NetworkBehaviour 클래스
+    주로 하위 컴포넌트들을 제어하고,
+    InputMamager을 통해 들어온 입력 이벤트를 처리한다.
+
+3. InputManager.cs
+    3_1 로컬 플레이어 이동 제어
+    3_2 PlayerInput의 InputMap을 제어
+        입력 차단 & PlayerController & UI로 입력 라우팅 제어기능 추가
+
+4. InputActions (현재 Player & PC만 지원)
+    Unity Input System에 따른 사용자 입력 정의 및 실행
+        InputMaps
+            Player
+            UI
+    지원 대상 기기
+    PC 
+        KeyBoard & Mouse
+        GamePad
+    Console
+        GamePad
+    Android
+        Touchscreen
+
+5. PlayerManager.cs (관리 & 처리된 결과 반영)
+    플레이어의 상태와 속성을 관리하는 MonoBehaviour
+        헤드 교체에 따른 스킬 리소스 & 데미지 등을 제어할 예정
+
+6. InputManager.cs 
+    private) Update()함수 삭제
+
+    Public) ChangeInputMode()로 제어기능 이관
+        PlayerInputMap의 currentInputMode를 
+        currentInputMode에 따라서 변경하거나,
+        Input자체를 활성/비활성 시켜서 사용자 입력 제거
+        ==> Uinty EventSystem을 사용하여 Invoke하기 때문에 기능 변경을 수용함
+        기대되는 효과
+            Player와 UI의 실행 함수 특수화 설계
+
+    

@@ -1,4 +1,4 @@
-Commit 
+Commit 9cf5946
 1. Types.cs
 enum InputMode 신설
     입력 모드에 따라 라우팅 될 입력 이벤트 처리 유효 대상 제어
