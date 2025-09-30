@@ -35,6 +35,8 @@ Commit
         헤드 교체에 따른 스킬 리소스 & 데미지 등을 제어할 예정
 
 6. InputManager.cs 
+    MonoBehaviuor -> NetworkBehaviuor로 클래스 상속 변경
+
     private) Update()함수 삭제
 
     Public) ChangeInputMode()로 제어기능 이관
@@ -44,5 +46,21 @@ Commit
         ==> Uinty EventSystem을 사용하여 Invoke하기 때문에 기능 변경을 수용함
         기대되는 효과
             Player와 UI의 실행 함수 특수화 설계
+            개별 같은 InputActionMap에서 개별적 Action 제어 가능
 
-    
+    private) ChangeActionMap() 함수 생성
+        InputMode 변경에 따라 InputSystem의 ActionMap을 다시 바운딩하는 작업을 수행하는 함수
+
+7. PressAnyKey.cs 
+    Title Scene에서 Intro 재생 후 플레이어의 입력을 받을 때 
+    플랫폼 분기에 따라 특수화 된 UI Text를 노출시키는 스크립트
+    현재 연결된 입력장치를 기준으로 Text를 변경합니다.
+    KeyBoard & Mouse
+        - 아무키나 누르세요 -
+    GamePad
+        duelShock || duelSence || Playstaion
+            - X 버튼을 누르세요 -
+        xBox controller
+            - A키를 누르세요 -  
+        Android (Touchscreen)
+            - 아무곳이나 터치하세요 -

@@ -1,4 +1,3 @@
-using System;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -14,9 +13,9 @@ public class InputManager : NetworkBehaviour
 {
     public static InputManager instance;
 
-    private InputMode currentInputMode;
-    private PlayerInput playerInput;
-
+    [SerializeField] private InputMode currentInputMode;
+    [SerializeField] private PlayerInput playerInput;
+    [SerializeField] private InputActionMap currentActionMap;
     #region Unity Methods
     private void Awake()
     {
@@ -37,6 +36,20 @@ public class InputManager : NetworkBehaviour
 
     #region Custom Methods
     /// <summary>
+    /// Input ActionMap을 전환합니다.
+    /// </summary>
+    /// <param name="mapName"></param>
+    private void ChangeActionMap(string mapName)
+    {
+        // 모든 액션맵을 비활성화 한 뒤 특정 액션맵만 활성화
+        playerInput.actions.Disable();
+        playerInput.SwitchCurrentActionMap(mapName);
+        playerInput.currentActionMap.Enable();
+        playerInput.ActivateInput();
+        currentActionMap = playerInput.currentActionMap;
+    }
+
+    /// <summary>
     /// InputMode를 ActionMap을 전환하여 입력 모드를 변경합니다.
     /// 상태 제어는 딱히 필요하지 않지만, 
     /// 필요시 여기에 추가할 수 있습니다.
@@ -55,20 +68,48 @@ public class InputManager : NetworkBehaviour
             case InputMode.UIOnly:
                 // UI 전용 입력 처리
                 {
-                    playerInput.SwitchCurrentActionMap("UI");
-                    playerInput.ActivateInput();
+                    ChangeActionMap("UI");
                 }
                 break;
             case InputMode.PlayerOnly:
                 // 플레이어 전용 입력 처리
                 {
-                    playerInput.SwitchCurrentActionMap("Player");
+                    ChangeActionMap("Player");
+                }
+                break;
+            case InputMode.Ready:
+                // 준비 상태에서의 처리
+                {
+                    ChangeActionMap("Title");
+                }
+                break;
+            case InputMode.Restricted:
+                // 제한된 플레이어 입력 처리
+                // (예: 대화 중, 컷신 등)
+                {
+                    ChangeActionMap("Player");
+                    // 상호작용과 시스템 메뉴 호출만 활성화
+                    playerInput.actions.Disable();
+                    playerInput.currentActionMap["Interaction"].Enable();
+                    playerInput.currentActionMap["Menu"].Enable();
                     playerInput.ActivateInput();
                 }
                 break;
             default:
                 break;
         }
+#if UNITY_EDITOR
+        Debug.LogWarning("Current InputMode: " + currentInputMode);
+        Debug.LogWarning("Current ActionMap: " + playerInput.currentActionMap.name);
+#endif
     }
-    #endregion Custom Methods
+    public void OnPressed(InputAction.CallbackContext ctx)
+    {
+        if (ctx.performed)
+        {
+            Debug.Log("Pressed: " + ctx.action.name);
+            GameManager.instance.ChangeGameState(GameState.Playing);
+        }
+    }
+#endregion Custom Methods
 }

@@ -86,16 +86,24 @@ public class GameManager : NetworkBehaviour
                 if (currentSceneName == "TitleScene")
                 {
                     UIManager.instance.Show("Press Any Key");
-                    InputManager.instance.ChangeInputMode(InputMode.UIOnly);
+                    InputManager.instance.ChangeInputMode(InputMode.Ready);
                 }
                 break;
             case GameState.Playing:
+                if (currentSceneName == "TitleScene")
+                {
+                    //SceneLoadManager.LoadScene("MainScene");
+                }
+                InputManager.instance.ChangeInputMode(InputMode.PlayerOnly);
                 break;
             case GameState.Paused:
+                InputManager.instance.ChangeInputMode(InputMode.UIOnly);
                 break;
             case GameState.GameOver:
+                InputManager.instance.ChangeInputMode(InputMode.Restricted);
                 break;
             case GameState.Victory:
+                InputManager.instance.ChangeInputMode(InputMode.Restricted);
                 break;
             case GameState.Loading:
                 // 로딩중일 땐 입력을 막아주고 로딩 패널 재생

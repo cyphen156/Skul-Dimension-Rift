@@ -1058,6 +1058,67 @@
                     "isPartOfComposite": false
                 }
             ]
+        },
+        {
+            "name": "Title",
+            "id": "1f2e7314-187e-49d6-8cf6-526078001630",
+            "actions": [
+                {
+                    "name": "PressAnyKey",
+                    "type": "Button",
+                    "id": "a2090c79-4576-494c-8bbf-ba308f3c3e09",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "0e457413-7505-4b5c-967d-d05e5d2afdf2",
+                    "path": "<Keyboard>/anyKey",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "PressAnyKey",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "260f20f2-01cd-4a93-8483-da90b8b0f325",
+                    "path": "<Mouse>/leftButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "PressAnyKey",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "0c8694a5-65ff-4c75-82ae-18f3f88994fe",
+                    "path": "<Mouse>/rightButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "PressAnyKey",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "b520123e-5818-4d9f-a67d-3f05afc658d9",
+                    "path": "<Gamepad>/buttonEast",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";GamePad",
+                    "action": "PressAnyKey",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
         }
     ],
     "controlSchemes": [

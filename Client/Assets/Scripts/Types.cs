@@ -41,7 +41,9 @@ public static class Types
     public enum InputMode
     {
         Locked,
+        Ready,      // 준비 상태 (예: 타이틀 화면)
         UIOnly,
-        PlayerOnly
+        PlayerOnly,
+        Restricted, // 제한된 플레이어 입력 (예: 대화 중)
     }
 }
