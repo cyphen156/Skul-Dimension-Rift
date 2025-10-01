@@ -112,6 +112,7 @@ public class GameManager : NetworkBehaviour
                 UIManager.instance.Show("Loading");
                 break;
             case GameState.None:
+                InputManager.instance.ChangeInputMode(InputMode.Locked);
                 UIManager.instance.HideAll();
                 break;
             default:

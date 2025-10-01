@@ -63,7 +63,10 @@ public class InputManager : NetworkBehaviour
         {
             case InputMode.Locked:
                 // 입력 잠금 상태에서의 처리
-                playerInput.DeactivateInput();
+                {
+                    ChangeActionMap("UI");
+                    playerInput.DeactivateInput();
+                }
                 break;
             case InputMode.UIOnly:
                 // UI 전용 입력 처리

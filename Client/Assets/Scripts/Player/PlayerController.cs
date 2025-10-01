@@ -23,7 +23,6 @@ public class PlayerController : NetworkBehaviour
     public void OnMove(InputAction.CallbackContext ctx)
     {
         velocity = ctx.ReadValue<Vector2>();
-        Debug.Log("23213213");
     }
     #endregion Input Methods
 }
