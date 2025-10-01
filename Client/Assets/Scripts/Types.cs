@@ -5,6 +5,13 @@
 /// </summary>
 public static class Types
 {
+    public enum GameMode
+    {
+        Single,
+        MultiplayerCoop,
+        MultiplayerVersus
+    }
+
     public enum GameDifficulty
     {
         Default,

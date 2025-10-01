@@ -6,4 +6,5 @@ using UnityEngine;
 /// </summary>
 public class PlayerManager : MonoBehaviour
 {
+
 }

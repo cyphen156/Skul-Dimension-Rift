@@ -1,0 +1,34 @@
+Commit 2abe2a4
+[fix] 플레이어 프리펩 네트워크 미스폰 오류 해결
+    1. 부트스트랩에서 네트워크 매니저에 할당된 Default PlayerPrefab을 null로 만들고 있던 문제를 해결
+
+    2. 네트워크 씬 로드 동기화 문제 발생중
+    -> 세션 오너 권한으로 일임해야 함
+    ==> 서버는 클라이언트에게 씬 변경시 브로드캐스팅 및 동기화 필수 작업 진행하도록 해야함
+
+    3.  인풋 매니저의 ActionMap이 게임 진입시 모두 풀려있어 플레이어 입력이 방지되어야 하는 상황에서도 입력이 처리되는 문제를 해결함
+    --> InputMode.Locked일 때 ChangeActionMap을 통해 특정 액션맵을 제외한 다른 액션맵 비활성화
+
+Commit 
+[Feature] 게임 모드 신설 - 
+1. Types.cs
+    Public) enum GameMode 추가
+        싱글 플레이와 멀티 플레이모드 (Co-Op, PvP)를 지원하기 위한 네트워킹용 트리거
+        게임 매니저에서 제어
+
+    Public) enum InputMode 확장
+        Ready,
+        Restricted
+
+2. GameManager.cs
+    Public) OnNetworkSpawn/Despawn() 함수 추가
+        플레이어의 선택에 따라 gameMode를 변경
+
+3. Menu Prefab 추가
+    UI - Menu
+    추후 UI 요소 연계 예정
+        - 키 리바인드 먼저 추가
+
+4. Scroll Prefab 추가
+    인벤토리 추가시 확장 예정
+    기본 프레임만 제공

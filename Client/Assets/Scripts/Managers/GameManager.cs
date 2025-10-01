@@ -1,4 +1,5 @@
 using Unity.Netcode;
+using Unity.Services.Matchmaker.Models;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using static Types;
@@ -10,9 +11,15 @@ public class GameManager : NetworkBehaviour
 {
     public static GameManager instance;
 
+    [Header("NetworkSettings")]
+    [SerializeField] private GameMode gameMode;
+    [SerializeField] private bool isCoopMode;
+
+    [Header("GameState")]
+    [SerializeField] private string currentSceneName;
     [SerializeField] private GameDifficulty difficulty;
     [SerializeField] private GameState currentState;
-    [SerializeField] private string currentSceneName;
+
 
     #region Unity Methods
     private void Awake()
@@ -35,14 +42,32 @@ public class GameManager : NetworkBehaviour
 
     private void InitializeGame()
     {
+        ResetGame();
         Scene scene = SceneManager.GetActiveScene();
         currentSceneName = scene.name;
         if (currentSceneName != "TitleScene")
         {
             SceneLoadManager.LoadScene("TitleScene");
         }
+    }
 
-        ResetGame();
+    public override void OnNetworkSpawn()
+    {
+        if (isCoopMode)
+        {
+            ChangeGameMode(GameMode.MultiplayerCoop);
+        }
+        else
+        {
+            ChangeGameMode(GameMode.MultiplayerVersus);
+        }
+        base.OnNetworkSpawn();
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        ChangeGameMode(GameMode.Single);
+        base.OnNetworkDespawn();
     }
     #endregion Unity Methods
 
@@ -56,6 +81,7 @@ public class GameManager : NetworkBehaviour
     private bool ResetGame()
     {
         ChangeGameState(GameState.None);
+        ChangeGameMode(GameMode.Single);
         // 난이도 설정 (임시로 랜덤)
         int randomValue = Random.Range(0, 2);
 
@@ -71,6 +97,36 @@ public class GameManager : NetworkBehaviour
         return true;
     }
 
+    private void ChangeGameMode(GameMode mode)
+    {
+        gameMode = mode;
+        switch (mode)
+        {
+            case GameMode.Single:
+                if (IsServer)
+                {
+                    NetworkManager.Singleton.Shutdown();
+                }
+                break;
+            case GameMode.MultiplayerCoop:
+                // 멀티플레이어 모드 진입
+                if (!IsServer)
+                {
+                    NetworkManager.Singleton.StartClient();
+                }
+                break;
+            case GameMode.MultiplayerVersus:
+                // 추후 구현 예정
+                // 멀티플레이어 모드 진입
+                if (!IsServer)
+                {
+                    NetworkManager.Singleton.StartClient();
+                }
+                break;
+            default:
+                break;
+        }
+    }
     public void ChangeGameState(GameState state)
     {
         if (currentState == state)
@@ -94,7 +150,8 @@ public class GameManager : NetworkBehaviour
                 {
                     //SceneLoadManager.LoadScene("MainScene");
                 }
-                InputManager.instance.ChangeInputMode(InputMode.PlayerOnly);
+                //InputManager.instance.ChangeInputMode(InputMode.PlayerOnly);
+                InputManager.instance.ChangeInputMode(InputMode.UIOnly);
                 break;
             case GameState.Paused:
                 InputManager.instance.ChangeInputMode(InputMode.UIOnly);
