@@ -71,6 +71,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameManager
   ShowTopMostFoldoutHeaderGroup: 1
+  gameMode: 0
+  isCoopMode: 0
+  currentSceneName: 
   difficulty: 0
   currentState: 0
-  currentSceneName: 
