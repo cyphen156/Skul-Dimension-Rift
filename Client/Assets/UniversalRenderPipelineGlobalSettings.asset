@@ -64,7 +64,7 @@ MonoBehaviour:
       - rid: 3105594208877281284
       - rid: 3105594208877281285
       - rid: 3105594208877281286
-      - rid: 5317764979623723008
+      - rid: 8674289205286797312
     m_RuntimeSettings:
       m_List: []
   m_AssetVersion: 9
@@ -378,3 +378,8 @@ MonoBehaviour:
         m_ExportShaderVariants: 1
         m_ShaderVariantLogLevel: 0
         m_StripRuntimeDebugShaders: 1
+    - rid: 8674289205286797312
+      type: {class: OnTilePostProcessResource, ns: UnityEngine.Rendering.Universal, asm: Unity.RenderPipelines.Universal.Runtime}
+      data:
+        m_Version: 0
+        m_UberPostShader: {fileID: 4800000, guid: fe4f13c1004a07d4ea1e30bfd0326d9e, type: 3}
