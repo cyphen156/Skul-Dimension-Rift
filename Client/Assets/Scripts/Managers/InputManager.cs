@@ -28,10 +28,14 @@ public class InputManager : NetworkBehaviour
         {
             Destroy(gameObject);
         }
+    }
 
+    private void Start()
+    {
         playerInput = GetComponent<PlayerInput>();
         ChangeInputMode(InputMode.Locked);
     }
+
     #endregion Unity Methods
 
     #region Custom Methods
@@ -65,7 +69,7 @@ public class InputManager : NetworkBehaviour
                 // 입력 잠금 상태에서의 처리
                 {
                     ChangeActionMap("UI");
-                    playerInput.DeactivateInput();
+                    UIManager.instance.HideAll();
                 }
                 break;
             case InputMode.UIOnly:
@@ -105,14 +109,6 @@ public class InputManager : NetworkBehaviour
         Debug.LogWarning("Current InputMode: " + currentInputMode);
         Debug.LogWarning("Current ActionMap: " + playerInput.currentActionMap.name);
 #endif
-    }
-    public void OnPressed(InputAction.CallbackContext ctx)
-    {
-        if (ctx.performed)
-        {
-            Debug.Log("Pressed: " + ctx.action.name);
-            GameManager.instance.ChangeGameState(GameState.Playing);
-        }
     }
 #endregion Custom Methods
 }

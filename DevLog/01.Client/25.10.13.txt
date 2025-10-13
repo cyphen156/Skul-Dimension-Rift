@@ -1,0 +1,48 @@
+Commit
+[Feature] UI 상호작용 기능 연결
+    1. UIMananger.cs
+        개발중 연결된 UI 요소를 확인 할 수 있도록 변수 수정 및 추가시 리스트로 시각화
+    
+        1_1 변수명 변경
+        private) uiDictionary -> uiObjectes
+
+        private) currentUI -> focusUI
+            의미변경 
+            현재 활성 UI -> 입력을 처리하기 위해 선택된 UI
+
+        1_2 변수 타입 변경
+        focusUI
+            private) string -> [SerializeField] GameObject
+
+        1_3 변수 추가 
+        [SerializeField] List<string> uiObjectNames
+
+        1_4 Public) void Execute(InputAction.CallbackContext ctx) 함수 추가시
+            InputAction 컨텍스트에 따른 상호작용 라우터
+            A)  인터페이스를 통해 현재 활성 UI 인스턴스에게 
+                Execute(InputAction.CallbackContext ctx)를 위임 실행
+            
+            B)  UIManager는 현재 활성화된 요소가 없을 때 플레이어의 입력을 무시함
+
+        1_5 유니티 에디터 한정 Update()함수 추가
+            인터페이스는 에디터에서 직렬화 확인이 안되서
+            인스펙터에서 디버그 확인용으로 추가 
+
+    2. Interface IUIInputHandler.cs 추가
+        UIManager가 관리하는 UI의 기능의 다형성을 제공하기 위한
+        UI의 상호작용을 제공할 Execute 래퍼
+        InputManager는 이 기능에 따른 버튼 이벤트를 이용하기만 하면 됨
+
+    3. InputManager.cs
+        3_1 Public) ChangeInputMode() 함수 일부 수정
+            case InputMode.Locked일때 UI Map 입력이 활성화 되는 것을 확인
+            -> UIManager에게 모든 UI 요소를 꺼달라고 요청
+
+        3_2 함수 이관
+            private) OnPressed(InputAction.CallbackContext ctx)함수
+            PressAnyKey.cs로 기능 이관
+
+    4. PressAnyKey.cs
+        이제 인터페이스 IUIInputHandler 상속받아 명령을 실행 
+        private) OnPressed(InputAction.CallbackContext ctx)함수 생성
+        InputManager로부터 이관받음
