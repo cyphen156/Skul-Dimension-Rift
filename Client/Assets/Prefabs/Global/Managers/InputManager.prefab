@@ -206,7 +206,19 @@ MonoBehaviour:
     m_ActionId: 34e48928-2d89-4f56-8c8f-efecdf11d014
     m_ActionName: 'UI/Submit[/Keyboard/enter]'
   - m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 0}
+        m_TargetAssemblyTypeName: UIManager, Assembly-CSharp
+        m_MethodName: Cancle
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
     m_ActionId: fc299920-b030-40e2-a43b-f8a307df5ddb
     m_ActionName: 'UI/Cancel[/Keyboard/escape]'
   - m_PersistentCalls:
@@ -253,6 +265,10 @@ MonoBehaviour:
         m_CallState: 2
     m_ActionId: a2090c79-4576-494c-8bbf-ba308f3c3e09
     m_ActionName: 'Title/PressAnyKey[/Keyboard/anyKey,/Mouse/leftButton,/Mouse/rightButton]'
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: feac1a66-c3cf-4436-a018-85f3cc69b01a
+    m_ActionName: Locked/New action
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: 
   m_DefaultActionMap: Player

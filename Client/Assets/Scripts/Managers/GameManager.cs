@@ -80,6 +80,11 @@ public class GameManager : NetworkBehaviour
         return difficulty;
     }
 
+    public GameState GetGameState()
+    {
+        return currentState;
+    }
+
     private bool ResetGame()
     {
         ChangeGameState(GameState.None);

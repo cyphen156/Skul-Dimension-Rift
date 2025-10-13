@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 3935053856562694243}
   - component: {fileID: 9170228239519876989}
   - component: {fileID: 2587861606469700133}
+  - component: {fileID: 6100313189803823281}
   m_Layer: 5
   m_Name: Press Any Key
   m_TagString: Untagged
@@ -77,6 +78,19 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
+--- !u!114 &6100313189803823281
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2079525168076375628}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0ef33cc448dc0f04e9e9ed9e3fdd0e39, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TitleText
+  originalText: 
 --- !u!1 &7193831610183647700
 GameObject:
   m_ObjectHideFlags: 0
@@ -89,7 +103,6 @@ GameObject:
   - component: {fileID: 8664922627495863370}
   - component: {fileID: 2688766356171156055}
   - component: {fileID: 5821900468377117958}
-  - component: {fileID: 1997742464947548414}
   m_Layer: 5
   m_Name: Text
   m_TagString: PressKey
@@ -232,19 +245,6 @@ MonoBehaviour:
   delayTime: 0
   isLoop: 1
   delayPassed: 0
---- !u!114 &1997742464947548414
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7193831610183647700}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0ef33cc448dc0f04e9e9ed9e3fdd0e39, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TitleText
-  originalText: 
 --- !u!1 &8172919848928550884
 GameObject:
   m_ObjectHideFlags: 0

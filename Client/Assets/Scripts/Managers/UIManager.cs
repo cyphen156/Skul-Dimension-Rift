@@ -103,6 +103,10 @@ public class UIManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// UI를 활성화하는 메서드
+    /// </summary>
+    /// <param name="UIName"></param>
     public void Show(string UIName)
     {
         GameObject uiObject = uiObjects.ContainsKey(UIName) ? uiObjects[UIName] : null;
@@ -123,6 +127,10 @@ public class UIManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// UI를 비활성화하는 메서드
+    /// </summary>
+    /// <param name="UIName"></param>
     public void Hide(string UIName)
     {
         GameObject uiObject = uiObjects.ContainsKey(UIName) ? uiObjects[UIName] : null;
@@ -156,16 +164,38 @@ public class UIManager : MonoBehaviour
     #region Input Methods
     public void Execute(InputAction.CallbackContext ctx)
     {
+        // 현재 입력 처리를 위한 UI가 없으면 입력 무시
+        if (focusedUI == null)
+        {
+            Debug.Log("There is No Activated UI\nPlayer Input has been Locked");
+            return;
+        }
         if (ctx.performed)  
         {
-            // 현재 입력 처리를 위한 UI가 없으면 입력 무시
-            if (focusedUI == null)
-            {
-                Debug.Log("There is No Activated UI\nPlayer Input has been Locked");
-                return;
-            }
             Debug.Log("Pressed: " + ctx.action.name);
             focusedUI.Execute(ctx);
+        }
+    }
+
+    /// <summary>
+    /// ESC 키 입력 처리
+    /// </summary>
+    /// <param name="ctx"></param>
+    public void Cancle(InputAction.CallbackContext ctx)
+    {
+        if (ctx.performed)
+        {
+            // 현재 입력 처리를 위한 UI가 없으면 메뉴 열기
+            if (focusedUI == null)
+            {
+                Show("Menu");  
+            }
+            // 현재 입력 처리를 위한 UI가 있으면 해당 UI 닫기
+            else
+            {
+                string target = ((MonoBehaviour)focusedUI).gameObject.name;
+                Hide(target);
+            }
         }
     }
     #endregion Input Methods

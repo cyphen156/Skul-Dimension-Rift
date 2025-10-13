@@ -68,7 +68,7 @@ public class InputManager : NetworkBehaviour
             case InputMode.Locked:
                 // 입력 잠금 상태에서의 처리
                 {
-                    ChangeActionMap("UI");
+                    ChangeActionMap("Locked");
                     UIManager.instance.HideAll();
                 }
                 break;
