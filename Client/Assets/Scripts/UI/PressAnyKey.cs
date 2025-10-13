@@ -1,14 +1,17 @@
+using Assets.Scripts.Interface;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using static Types;
 
-public class PressAnyKey : MonoBehaviour
+public class PressAnyKey : MonoBehaviour, IUIInputHandler
 {
     private TextMeshProUGUI text;
     [SerializeField] private string originalText;
+
     private void Awake()
     {
-        text = GetComponent<TextMeshProUGUI>();
+        text = transform.GetComponentInChildren<TextMeshProUGUI>();
         originalText = text.text;
     }
 
@@ -36,5 +39,19 @@ public class PressAnyKey : MonoBehaviour
             originalText = "- 아무키나 누르세요 -";
         }
         text.text = originalText;
+    }
+
+    public void Execute(InputAction.CallbackContext ctx)
+    {
+        OnPressed(ctx);
+    }
+
+    private void OnPressed(InputAction.CallbackContext ctx)
+    {
+        if (ctx.performed)
+        {
+            Debug.Log("Pressed: " + ctx.action.name);
+            GameManager.instance.ChangeGameState(GameState.Playing);
+        }
     }
 }

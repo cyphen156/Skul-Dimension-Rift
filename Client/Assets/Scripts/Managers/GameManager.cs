@@ -1,6 +1,8 @@
 using Unity.Netcode;
 using Unity.Services.Matchmaker.Models;
+using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using static Types;
 
@@ -148,6 +150,7 @@ public class GameManager : NetworkBehaviour
             case GameState.Playing:
                 if (currentSceneName == "TitleScene")
                 {
+                    UIManager.instance.Hide("Press Any Key");
                     //SceneLoadManager.LoadScene("MainScene");
                 }
                 //InputManager.instance.ChangeInputMode(InputMode.PlayerOnly);

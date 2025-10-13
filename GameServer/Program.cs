@@ -21,8 +21,9 @@ namespace GameServer
     internal class Program
     {
         static bool _isRunning = true;
-        // Unity Default example Port
-        const int PORT = 7777;
+        // Using HTTP Protocol Connection Default example Port
+        // TCP-based
+        const int PORT = 8080;
         const int BACKLOG = 16;
 
         static void Main(string[] args)
@@ -78,10 +79,6 @@ namespace GameServer
         //
         static private async void AcceptClient()
         {
-            if (matchMaker.ClientIPs[0] != null)
-            {
-
-            }
         }
     }
 }
