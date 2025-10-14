@@ -75,9 +75,14 @@ public class GameManager : NetworkBehaviour
 
     #region Custom Methods
 
-    public GameDifficulty GetGameMode()
+    public GameDifficulty GetGameDifficulty()
     {
         return difficulty;
+    }
+
+    public GameMode GetGameMode()
+    {
+        return gameMode;
     }
 
     public GameState GetGameState()
@@ -158,8 +163,7 @@ public class GameManager : NetworkBehaviour
                     UIManager.instance.Hide("Press Any Key");
                     //SceneLoadManager.LoadScene("MainScene");
                 }
-                //InputManager.instance.ChangeInputMode(InputMode.PlayerOnly);
-                InputManager.instance.ChangeInputMode(InputMode.UIOnly);
+                InputManager.instance.ChangeInputMode(InputMode.PlayerOnly);
                 break;
             case GameState.Paused:
                 InputManager.instance.ChangeInputMode(InputMode.UIOnly);

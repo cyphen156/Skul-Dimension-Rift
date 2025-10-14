@@ -33,12 +33,93 @@ public class InputManager : NetworkBehaviour
     private void Start()
     {
         playerInput = GetComponent<PlayerInput>();
+        AllocateInputActions();
         ChangeInputMode(InputMode.Locked);
     }
 
     #endregion Unity Methods
 
     #region Custom Methods
+    /// <summary>
+    /// 인풋 액션을 각 맵에 할당합니다.
+    /// </summary>
+    private void AllocateInputActions()
+    {
+        foreach (var map in playerInput.actions.actionMaps)
+        {
+            switch(map.name)
+            {
+                case "Player":
+                    {
+                        PlayerController playerController = FindObjectOfType<PlayerController>();
+
+                        // 플레이어 컨트롤러가 존재하는 경우에만 액션을 할당
+                        // 액션에 해당하는 행위를 리플렉션으로 연결
+                        if (playerController != null)
+                        {
+                            foreach (var action in map.actions)
+                            {
+                                string actionName = action.name;
+                                // Menu와 Scroll은 UIManager에 연결
+                                if (actionName == "Menu" || actionName == "Scroll")
+                                {
+                                    action.performed += UIManager.instance.Execute_Internal;
+                                }
+                                else
+                                {
+                                    var method = playerController.GetType().GetMethod("On" + actionName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+                                    if (method != null)
+                                    {
+                                        action.performed += (InputAction.CallbackContext ctx) => method.Invoke(playerController, new object[] { ctx });
+                                    }
+                                    else
+                                    {
+                                        Debug.LogWarning($"InputManager: Method 'On{actionName}' not found in PlayerController.");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    break;
+                case "UI":
+                    {
+                        foreach (var action in map.actions)
+                        {
+                            string actionName = action.name;
+                            if (actionName == "Menu" || actionName == "Scroll")
+                            {
+                                action.performed += UIManager.instance.Execute_Internal;
+                            }
+                            else
+                            {
+                                action.performed += UIManager.instance.Execute;
+                            }
+                        }
+                    }
+                    break;
+                case "Title":
+                    {
+                        PressAnyKey pressAnyKey = FindObjectOfType<PressAnyKey>();
+                        if (pressAnyKey != null)
+                        {
+                            map["PressAnyKey"].performed += pressAnyKey.Execute;
+                        }
+                    }
+                    break;
+                case "Locked":
+                    {
+                        // Locked 맵에는 특별한 액션이 없으므로 아무 것도 하지 않음
+                    }
+                    break;
+                default:
+                    {
+                        Debug.LogWarning($"InputManager: Unhandled ActionMap '{map.name}'");
+                    }
+                    break;
+            }
+        }
+    }
+
     /// <summary>
     /// Input ActionMap을 전환합니다.
     /// </summary>

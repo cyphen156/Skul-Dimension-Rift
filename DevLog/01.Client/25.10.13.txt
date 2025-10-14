@@ -1,5 +1,5 @@
 Commit d2b7c02
-[Feature] UI 상호작용 기능 연결
+[Feat] TitleScene #10 UI 상호작용 기능 연결(1)
     1. UIMananger.cs
         개발중 연결된 UI 요소를 확인 할 수 있도록 변수 수정 및 추가시 리스트로 시각화
     
@@ -46,28 +46,3 @@ Commit d2b7c02
         이제 인터페이스 IUIInputHandler 상속받아 명령을 실행 
         private) OnPressed(InputAction.CallbackContext ctx)함수 생성
         InputManager로부터 이관받음
-
-Commit 
-UI/IUIInputHandler 상속 오브젝트
-    1. Menu.cs 추가
-        버튼 그룹 제어 기능 추가
-
-    2. Control.cs 추가
-        버튼 그룹 제어 기능 추가
-
-    3. Scroll.cs 추가
-        버튼 그룹 제어 기능 추가
-
-    4. PopUp.cs 추가
-        키 리매핑 기능 지원 예정
-
-Common
-    1. ComponentRegistrar.cs 추가
-        자식 요소중 타입에 해당하는 요소 N개 가져오는 유틸리티 스크립트
-        if N is 0 || None 
-            모든 요소
-
-InputActions
-    InputActionMap Locked 추가
-        아무것도 등록되지 않은 텅 빈 ActionMap
-        잠금상태 일경우

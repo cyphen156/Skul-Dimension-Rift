@@ -439,11 +439,11 @@
                 },
                 {
                     "name": "",
-                    "id": "b16770f1-0675-4964-9c71-3ef75d0e6634",
-                    "path": "<Gamepad>/start",
+                    "id": "3ae0306d-d08c-4340-a038-09cfb674749b",
+                    "path": "*/{Menu}",
                     "interactions": "",
                     "processors": "",
-                    "groups": ";GamePad",
+                    "groups": ";Mobile;GamePad",
                     "action": "Menu",
                     "isComposite": false,
                     "isPartOfComposite": false
@@ -459,33 +459,6 @@
                     "type": "PassThrough",
                     "id": "ed75aa5a-a299-4e09-b79c-6948611c42fe",
                     "expectedControlType": "Vector2",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
-                },
-                {
-                    "name": "Interaction",
-                    "type": "Button",
-                    "id": "46fcded7-f034-4a60-b4a5-c11b1b3c1208",
-                    "expectedControlType": "",
-                    "processors": "",
-                    "interactions": "Hold,Press",
-                    "initialStateCheck": true
-                },
-                {
-                    "name": "ScrollOff",
-                    "type": "Button",
-                    "id": "39f439df-d9aa-47df-b770-af663ce24a9f",
-                    "expectedControlType": "",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
-                },
-                {
-                    "name": "MenuOff",
-                    "type": "Button",
-                    "id": "7cac0321-7189-44df-9374-9a7cf2f84135",
-                    "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
@@ -567,6 +540,33 @@
                     "type": "PassThrough",
                     "id": "f12d8d17-73e2-477e-91fe-1586c1747d23",
                     "expectedControlType": "Quaternion",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Interaction",
+                    "type": "Button",
+                    "id": "46fcded7-f034-4a60-b4a5-c11b1b3c1208",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "Hold,Press",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "Scroll",
+                    "type": "Button",
+                    "id": "39f439df-d9aa-47df-b770-af663ce24a9f",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Menu",
+                    "type": "Button",
+                    "id": "ac4f1b85-8606-4316-91ee-86c378a07f05",
+                    "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
@@ -866,7 +866,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": ";Keyboard&Mouse",
-                    "action": "ScrollOff",
+                    "action": "Scroll",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -877,29 +877,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": ";GamePad",
-                    "action": "ScrollOff",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "475bb4b5-2997-4027-a9b3-2da800b690b8",
-                    "path": "<Keyboard>/escape",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": ";Keyboard&Mouse",
-                    "action": "MenuOff",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "0a123896-ef5c-4bb3-bd38-c0c4c29a23a5",
-                    "path": "<Gamepad>/start",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "MenuOff",
+                    "action": "Scroll",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -1054,6 +1032,28 @@
                     "processors": "",
                     "groups": "XR",
                     "action": "TrackedDeviceOrientation",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "ea7f23d7-6cc2-4670-abb0-4ac5458d40dd",
+                    "path": "<Keyboard>/escape",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "Menu",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "99dc107d-604d-4ed1-9015-ea33f3b19ed2",
+                    "path": "*/{Menu}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Mobile;GamePad",
+                    "action": "Menu",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

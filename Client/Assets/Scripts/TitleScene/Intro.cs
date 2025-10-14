@@ -46,7 +46,7 @@ public class Intro : MonoBehaviour, IPlayable
     {
         Reset();
         // show background according to game mode
-        GameDifficulty difficulty = GameManager.instance.GetGameMode();
+        GameDifficulty difficulty = GameManager.instance.GetGameDifficulty();
         if (difficulty == GameDifficulty.Hard)
         {   bgm = "HardModeIntroBGM";
             selectedBackground = hardModeBackground;

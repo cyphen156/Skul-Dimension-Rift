@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 9100545369159514518}
   - component: {fileID: 1527249819008688045}
   - component: {fileID: 4804337732190086908}
+  - component: {fileID: 8425068086009435388}
   m_Layer: 5
   m_Name: LoadingText
   m_TagString: Untagged
@@ -149,6 +150,25 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c8f132d43e3cb5744934f1f6e1b2e986, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &8425068086009435388
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4695966962588346709}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a4f1c56d521cc644abf9fa02f1795da7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FadeInOut
+  fadeInTime: 1.5
+  fadeOutTime: 1.5
+  delayTime: 0
+  minAlpha: 0.05
+  maxAlpha: 1
+  isLoop: 1
+  delayPassed: 0
 --- !u!1 &7636939819561875283
 GameObject:
   m_ObjectHideFlags: 0

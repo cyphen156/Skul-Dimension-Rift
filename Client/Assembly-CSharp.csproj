@@ -82,6 +82,7 @@
     <Compile Include="Assets\Scripts\TitleScene\Intro.cs" />
     <Compile Include="Assets\Scripts\UI\PopUp.cs" />
     <Compile Include="Assets\Scripts\UI\Loading\LoadingText.cs" />
+    <Compile Include="Assets\Scripts\UI\Options.cs" />
     <Compile Include="Assets\Scripts\Managers\ResourceManager.cs" />
     <Compile Include="Assets\TextMesh Pro\Examples &amp; Extras\Scripts\ObjectSpin.cs" />
     <Compile Include="Assets\Scripts\UI\Scroll.cs" />

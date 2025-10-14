@@ -181,21 +181,29 @@ public class UIManager : MonoBehaviour
     /// ESC 키 입력 처리
     /// </summary>
     /// <param name="ctx"></param>
-    public void Cancle(InputAction.CallbackContext ctx)
+    public void Execute_Internal(InputAction.CallbackContext ctx)
     {
         if (ctx.performed)
         {
+            string name = ctx.action.name;
+
+            GameState gameState;
+
             // 현재 입력 처리를 위한 UI가 없으면 메뉴 열기
             if (focusedUI == null)
             {
-                Show("Menu");  
+                gameState = GameState.Paused;
+                Show(name);  
             }
             // 현재 입력 처리를 위한 UI가 있으면 해당 UI 닫기
             else
             {
+                gameState = GameState.Playing;
                 string target = ((MonoBehaviour)focusedUI).gameObject.name;
                 Hide(target);
             }
+
+            GameManager.instance.ChangeGameState(gameState);
         }
     }
     #endregion Input Methods

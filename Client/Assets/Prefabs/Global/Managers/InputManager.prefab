@@ -154,34 +154,50 @@ MonoBehaviour:
     m_ActionId: bfe99d51-a1fb-4df3-9f50-ca54f173592e
     m_ActionName: 'Player/Interaction[/Keyboard/f]'
   - m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 3279499540733367719, guid: ec6698e08937707478caa58471391cdc, type: 3}
+        m_TargetAssemblyTypeName: UIManager, Assembly-CSharp
+        m_MethodName: Execute_Internal
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
     m_ActionId: 41c5e96a-5717-46b4-ae25-880799e70e40
     m_ActionName: 'Player/Scroll[/Keyboard/tab]'
   - m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 0}
+        m_TargetAssemblyTypeName: UIManager, Assembly-CSharp
+        m_MethodName: Execute_Internal
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
     m_ActionId: 5ebd58bf-f003-4759-915b-a11c0a8258b0
     m_ActionName: 'Player/Menu[/Keyboard/escape]'
   - m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: UIManager, Assembly-CSharp
-        m_MethodName: Execute
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
     m_ActionId: ed75aa5a-a299-4e09-b79c-6948611c42fe
     m_ActionName: 'UI/Navigate[/Keyboard/w,/Keyboard/upArrow,/Keyboard/s,/Keyboard/downArrow,/Keyboard/a,/Keyboard/leftArrow,/Keyboard/d,/Keyboard/rightArrow]'
   - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: 46fcded7-f034-4a60-b4a5-c11b1b3c1208
+    m_ActionName: 'UI/Interaction[/Keyboard/f]'
+  - m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
+      - m_Target: {fileID: 3279499540733367719, guid: ec6698e08937707478caa58471391cdc, type: 3}
         m_TargetAssemblyTypeName: UIManager, Assembly-CSharp
-        m_MethodName: Execute
+        m_MethodName: Execute_Internal
         m_Mode: 0
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -191,34 +207,14 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
-    m_ActionId: 46fcded7-f034-4a60-b4a5-c11b1b3c1208
-    m_ActionName: 'UI/Interaction[/Keyboard/f]'
-  - m_PersistentCalls:
-      m_Calls: []
     m_ActionId: 39f439df-d9aa-47df-b770-af663ce24a9f
     m_ActionName: 'UI/ScrollOff[/Keyboard/tab]'
-  - m_PersistentCalls:
-      m_Calls: []
-    m_ActionId: 7cac0321-7189-44df-9374-9a7cf2f84135
-    m_ActionName: 'UI/MenuOff[/Keyboard/escape]'
   - m_PersistentCalls:
       m_Calls: []
     m_ActionId: 34e48928-2d89-4f56-8c8f-efecdf11d014
     m_ActionName: 'UI/Submit[/Keyboard/enter]'
   - m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: UIManager, Assembly-CSharp
-        m_MethodName: Cancle
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
     m_ActionId: fc299920-b030-40e2-a43b-f8a307df5ddb
     m_ActionName: 'UI/Cancel[/Keyboard/escape]'
   - m_PersistentCalls:
@@ -251,8 +247,8 @@ MonoBehaviour:
     m_ActionName: UI/TrackedDeviceOrientation
   - m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: UIManager, Assembly-CSharp
+      - m_Target: {fileID: 6100313189803823281, guid: c15180813b454044b8921e1c9be9dc19, type: 3}
+        m_TargetAssemblyTypeName: PressAnyKey, Assembly-CSharp
         m_MethodName: Execute
         m_Mode: 0
         m_Arguments:
@@ -269,6 +265,22 @@ MonoBehaviour:
       m_Calls: []
     m_ActionId: feac1a66-c3cf-4436-a018-85f3cc69b01a
     m_ActionName: Locked/New action
+  - m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 3279499540733367719, guid: ec6698e08937707478caa58471391cdc, type: 3}
+        m_TargetAssemblyTypeName: UIManager, Assembly-CSharp
+        m_MethodName: Execute_Internal
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+    m_ActionId: ac4f1b85-8606-4316-91ee-86c378a07f05
+    m_ActionName: 'UI/Menu[/Keyboard/escape]'
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: 
   m_DefaultActionMap: Player

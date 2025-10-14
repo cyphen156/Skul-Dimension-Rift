@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 2974319867122339708}
   - component: {fileID: 1221432748727775943}
   m_Layer: 5
-  m_Name: Pause_Frame
+  m_Name: Scroll_Frame
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -257,6 +257,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 645b9755c00894c4480070a4d04de3dc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Scroll
+  buttons: []
 --- !u!1 &1038949771949663438
 GameObject:
   m_ObjectHideFlags: 0

@@ -10,12 +10,14 @@ public class FadeInOut : MonoBehaviour
     public float fadeInTime = 2f;
     public float fadeOutTime = 2f;
     public float delayTime = 0f;
+    public float minAlpha = 0f;
+    public float maxAlpha = 1f;
     private float currentTime;
     private bool isFadeIn = true;
-
     private SpriteRenderer spriteRenderer;
     private TMP_Text tmpText;
     private Color originalColor;
+
 
     public bool isLoop = true;
     public bool delayPassed = false;
@@ -113,7 +115,8 @@ public class FadeInOut : MonoBehaviour
 
         float duration = isFadeIn ? fadeInTime : fadeOutTime;
         float t = duration > 0f ? Mathf.Clamp01(currentTime / duration) : 1f;
-        float alpha = isFadeIn ? t : (1f - t);
+        float alpha = isFadeIn ? Mathf.Lerp(minAlpha, maxAlpha, t) : Mathf.Lerp(maxAlpha, minAlpha, t);
+
 
         Color c = originalColor;
         c.a = alpha;
