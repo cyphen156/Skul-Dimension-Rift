@@ -16,6 +16,7 @@ public class InputManager : NetworkBehaviour
     [SerializeField] private InputMode currentInputMode;
     [SerializeField] private PlayerInput playerInput;
     [SerializeField] private InputActionMap currentActionMap;
+
     #region Unity Methods
     private void Awake()
     {
@@ -30,9 +31,20 @@ public class InputManager : NetworkBehaviour
         }
     }
 
+    private void OnDisable()
+    {
+        // 모든 액션맵 비활성화
+        if (playerInput != null && playerInput.actions != null)
+        {
+            playerInput.actions.Disable();
+        }
+    }
     private void Start()
     {
-        playerInput = GetComponent<PlayerInput>();
+        if (playerInput == null)
+        {
+            playerInput = GetComponent<PlayerInput>();
+        }
         AllocateInputActions();
         ChangeInputMode(InputMode.Locked);
     }
@@ -42,6 +54,8 @@ public class InputManager : NetworkBehaviour
     #region Custom Methods
     /// <summary>
     /// 인풋 액션을 각 맵에 할당합니다.
+    /// 중복할당 문제를 해결하기 전까지 사용하지 마세요 (2025-10-14)
+    /// 인스펙터로 할당하는 방식을 권장합니다.
     /// </summary>
     private void AllocateInputActions()
     {
@@ -51,7 +65,7 @@ public class InputManager : NetworkBehaviour
             {
                 case "Player":
                     {
-                        PlayerController playerController = FindObjectOfType<PlayerController>();
+                        PlayerController playerController = GetComponent<PlayerController>();
 
                         // 플레이어 컨트롤러가 존재하는 경우에만 액션을 할당
                         // 액션에 해당하는 행위를 리플렉션으로 연결
@@ -63,6 +77,7 @@ public class InputManager : NetworkBehaviour
                                 // Menu와 Scroll은 UIManager에 연결
                                 if (actionName == "Menu" || actionName == "Scroll")
                                 {
+                                    action.performed -= UIManager.instance.Execute_Internal;
                                     action.performed += UIManager.instance.Execute_Internal;
                                 }
                                 else
@@ -70,6 +85,7 @@ public class InputManager : NetworkBehaviour
                                     var method = playerController.GetType().GetMethod("On" + actionName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
                                     if (method != null)
                                     {
+                                        action.performed -= (InputAction.CallbackContext ctx) => method.Invoke(playerController, new object[] { ctx });
                                         action.performed += (InputAction.CallbackContext ctx) => method.Invoke(playerController, new object[] { ctx });
                                     }
                                     else
@@ -88,10 +104,12 @@ public class InputManager : NetworkBehaviour
                             string actionName = action.name;
                             if (actionName == "Menu" || actionName == "Scroll")
                             {
+                                action.performed -= UIManager.instance.Execute_Internal;
                                 action.performed += UIManager.instance.Execute_Internal;
                             }
                             else
                             {
+                                action.performed -= UIManager.instance.Execute;
                                 action.performed += UIManager.instance.Execute;
                             }
                         }
@@ -99,9 +117,10 @@ public class InputManager : NetworkBehaviour
                     break;
                 case "Title":
                     {
-                        PressAnyKey pressAnyKey = FindObjectOfType<PressAnyKey>();
+                        PressAnyKey pressAnyKey = GetComponent<PressAnyKey>();
                         if (pressAnyKey != null)
                         {
+                            map["PressAnyKey"].performed -= pressAnyKey.Execute;
                             map["PressAnyKey"].performed += pressAnyKey.Execute;
                         }
                     }
@@ -117,6 +136,7 @@ public class InputManager : NetworkBehaviour
                     }
                     break;
             }
+            Debug.Log($"[ActionMap] {map.name} has been allocated.");
         }
     }
 

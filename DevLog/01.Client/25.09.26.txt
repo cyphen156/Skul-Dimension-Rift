@@ -14,7 +14,7 @@ Commit 156b2fa
         내부적으론 게임오브젝트를 주기마다 변경하고, 
         SoundManager에게 BGM 재생 요청
 
-Commit 6baae35
+Commit 6baae35ㅡ
 [Feat] Title Scene #5 
     GameManager.cs
         1. enum GameDifficulty -> Types.cs 로 이관

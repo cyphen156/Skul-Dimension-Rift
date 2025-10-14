@@ -1,5 +1,6 @@
 using Assets.Scripts.Interface;
 using System.Collections.Generic;
+using System.Text;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using static Types;
@@ -90,9 +91,9 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    private void RemoveUIFocus()
+    private void RemoveUIFocus(IUIInputHandler targetUIHandler)
     {
-        if (uiInputStack.Count > 0)
+        if (focusedUI != null && focusedUI == targetUIHandler)
         {
             uiInputStack.Pop();
             focusedUI = uiInputStack.Count > 0 ? uiInputStack.Peek() : null;
@@ -137,12 +138,12 @@ public class UIManager : MonoBehaviour
         
         if (uiObject != null)
         {
-            uiObject.SetActive(false);
-
             if (uiObject.TryGetComponent<IUIInputHandler>(out IUIInputHandler uiInputHandler))
             {
-                RemoveUIFocus();
+                RemoveUIFocus(uiObject.GetComponent<IUIInputHandler>());
             }
+
+            uiObject.SetActive(false);
         }
         else
         {
@@ -172,7 +173,6 @@ public class UIManager : MonoBehaviour
         }
         if (ctx.performed)  
         {
-            Debug.Log("Pressed: " + ctx.action.name);
             focusedUI.Execute(ctx);
         }
     }

@@ -25,27 +25,24 @@ public class Menu : MonoBehaviour, IUIInputHandler
 
     public void Execute(InputAction.CallbackContext ctx)
     {
-        if (ctx.started)
+        if (ctx.canceled)
         {
             string actionName = ctx.action.name;
             switch (actionName)
             {
                 case "Navigate":
                     Vector2 navigation = ctx.ReadValue<Vector2>();
+                    int currentIndex = buttons.IndexOf(selectedButton);
                     if (navigation.y > 0) // 위로 이동
                     {
-                        int currentIndex = buttons.IndexOf(selectedButton);
-                        int previousIndex = (currentIndex - 1 + buttons.Count) % buttons.Count;
-                        selectedButton.Select();
-                        selectedButton = buttons[previousIndex];
+                        currentIndex = (currentIndex - 1 + buttons.Count) % buttons.Count;
                     }
                     else if (navigation.y < 0) // 아래로 이동
                     {
-                        int currentIndex = buttons.IndexOf(selectedButton);
-                        int nextIndex = (currentIndex + 1) % buttons.Count;
-                        selectedButton = buttons[nextIndex];
-                        selectedButton.Select();
+                        currentIndex = (currentIndex + 1) % buttons.Count;
                     }
+                    selectedButton = buttons[currentIndex];
+                    selectedButton.Select();
                     break;
                 case "Submit":
                     if (selectedButton != null)

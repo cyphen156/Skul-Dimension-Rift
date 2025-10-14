@@ -93,7 +93,7 @@
                     "id": "41c5e96a-5717-46b4-ae25-880799e70e40",
                     "expectedControlType": "",
                     "processors": "",
-                    "interactions": "",
+                    "interactions": "Press",
                     "initialStateCheck": false
                 },
                 {
@@ -102,7 +102,7 @@
                     "id": "5ebd58bf-f003-4759-915b-a11c0a8258b0",
                     "expectedControlType": "",
                     "processors": "",
-                    "interactions": "",
+                    "interactions": "Press",
                     "initialStateCheck": false
                 }
             ],
@@ -473,15 +473,6 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "Cancel",
-                    "type": "Button",
-                    "id": "fc299920-b030-40e2-a43b-f8a307df5ddb",
-                    "expectedControlType": "",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
-                },
-                {
                     "name": "Point",
                     "type": "PassThrough",
                     "id": "199347f1-0a47-4779-84f0-93d8fea147df",
@@ -559,7 +550,7 @@
                     "id": "39f439df-d9aa-47df-b770-af663ce24a9f",
                     "expectedControlType": "",
                     "processors": "",
-                    "interactions": "",
+                    "interactions": "Press",
                     "initialStateCheck": false
                 },
                 {
@@ -568,7 +559,7 @@
                     "id": "ac4f1b85-8606-4316-91ee-86c378a07f05",
                     "expectedControlType": "",
                     "processors": "",
-                    "interactions": "",
+                    "interactions": "Press",
                     "initialStateCheck": false
                 }
             ],
@@ -816,8 +807,8 @@
                     "isPartOfComposite": true
                 },
                 {
-                    "name": "right",
-                    "id": "5d747b0e-dc76-4d8b-9e36-c7c303a0c37f",
+                    "name": "Right",
+                    "id": "fc198b91-b5f2-4431-a6da-1cef3ce3d90a",
                     "path": "<Keyboard>/d",
                     "interactions": "",
                     "processors": "",
@@ -827,8 +818,8 @@
                     "isPartOfComposite": true
                 },
                 {
-                    "name": "right",
-                    "id": "247835d2-46d1-40f7-99a5-1f5567d43685",
+                    "name": "Right",
+                    "id": "24ced986-1ebc-49d2-85a5-1119c2236956",
                     "path": "<Keyboard>/rightArrow",
                     "interactions": "",
                     "processors": "",
@@ -876,7 +867,7 @@
                     "path": "<Gamepad>/select",
                     "interactions": "",
                     "processors": "",
-                    "groups": ";GamePad",
+                    "groups": ";GamePad;Mobile",
                     "action": "Scroll",
                     "isComposite": false,
                     "isPartOfComposite": false
@@ -889,17 +880,6 @@
                     "processors": "",
                     "groups": "Keyboard&Mouse;Gamepad;Touch;Joystick;XR",
                     "action": "Submit",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "71650198-b385-4f24-91ea-2db86177715a",
-                    "path": "*/{Cancel}",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "Keyboard&Mouse;Gamepad;Touch;Joystick;XR",
-                    "action": "Cancel",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -1049,7 +1029,7 @@
                 {
                     "name": "",
                     "id": "99dc107d-604d-4ed1-9015-ea33f3b19ed2",
-                    "path": "*/{Menu}",
+                    "path": "*/{Back}",
                     "interactions": "",
                     "processors": "",
                     "groups": ";Mobile;GamePad",
