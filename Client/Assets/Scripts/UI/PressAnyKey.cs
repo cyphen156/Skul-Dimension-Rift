@@ -50,7 +50,6 @@ public class PressAnyKey : MonoBehaviour, IUIInputHandler
     {
         if (ctx.performed)
         {
-            Debug.Log("Pressed: " + ctx.action.name);
             GameManager.instance.ChangeGameState(GameState.Playing);
         }
     }

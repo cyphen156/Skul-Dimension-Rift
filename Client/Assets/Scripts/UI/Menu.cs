@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
+using static Types;
 
 public class Menu : MonoBehaviour, IUIInputHandler
 {
@@ -25,7 +26,7 @@ public class Menu : MonoBehaviour, IUIInputHandler
 
     public void Execute(InputAction.CallbackContext ctx)
     {
-        if (ctx.canceled)
+        if (ctx.performed)
         {
             string actionName = ctx.action.name;
             switch (actionName)
@@ -47,13 +48,38 @@ public class Menu : MonoBehaviour, IUIInputHandler
                 case "Submit":
                     if (selectedButton != null)
                     {
-                        selectedButton.onClick.Invoke();
+                        OnSubmit();
                     }
                     break;
                 default:
                     Debug.LogWarning($"Menu: Unhandled action '{actionName}'");
                     break;
             }
+        }
+    }
+
+    private void OnSubmit()
+    {
+        switch (selectedButton.gameObject.name)
+        {
+            case "ReturnButton":
+                GameManager.instance.ChangeGameState(GameState.Playing);
+                break;
+            case "NewGameButton":
+                GameManager.instance.ChangeGameState(GameState.Reset);
+                break;
+            case "ControlButton":
+                UIManager.instance.Show("Control");
+                break;
+            case "OptionsButton":
+                UIManager.instance.Show("Options");
+                break;
+            case "ExitButton":
+                GameManager.instance.Exit();
+                break;
+            default:
+                Debug.LogWarning($"Menu: Unhandled button '{selectedButton.gameObject.name}'");
+                break;
         }
     }
 }

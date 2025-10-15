@@ -12,7 +12,7 @@
                     "id": "9e772c40-8c0e-4fdc-a7a1-fe4cdec03c14",
                     "expectedControlType": "Vector2",
                     "processors": "",
-                    "interactions": "Press",
+                    "interactions": "",
                     "initialStateCheck": true
                 },
                 {
@@ -469,7 +469,7 @@
                     "id": "34e48928-2d89-4f56-8c8f-efecdf11d014",
                     "expectedControlType": "",
                     "processors": "",
-                    "interactions": "",
+                    "interactions": "Press",
                     "initialStateCheck": false
                 },
                 {
@@ -479,7 +479,7 @@
                     "expectedControlType": "Vector2",
                     "processors": "",
                     "interactions": "",
-                    "initialStateCheck": true
+                    "initialStateCheck": false
                 },
                 {
                     "name": "Click",
@@ -488,7 +488,7 @@
                     "expectedControlType": "Button",
                     "processors": "",
                     "interactions": "",
-                    "initialStateCheck": true
+                    "initialStateCheck": false
                 },
                 {
                     "name": "RightClick",
@@ -542,7 +542,7 @@
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "Hold,Press",
-                    "initialStateCheck": true
+                    "initialStateCheck": false
                 },
                 {
                     "name": "Scroll",
@@ -568,7 +568,7 @@
                     "name": "Gamepad",
                     "id": "74b74d3b-6dc2-4a82-a782-3d28e688c65e",
                     "path": "2DVector",
-                    "interactions": "",
+                    "interactions": "Press",
                     "processors": "",
                     "groups": "",
                     "action": "Navigate",

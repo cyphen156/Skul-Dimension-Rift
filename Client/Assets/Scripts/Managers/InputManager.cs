@@ -1,3 +1,4 @@
+using System;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -137,6 +138,7 @@ public class InputManager : NetworkBehaviour
                     break;
             }
             Debug.Log($"[ActionMap] {map.name} has been allocated.");
+            ChangeActionMap("Locked"); // 초기 상태는 Locked
         }
     }
 
@@ -147,8 +149,13 @@ public class InputManager : NetworkBehaviour
     private void ChangeActionMap(string mapName)
     {
         // 모든 액션맵을 비활성화 한 뒤 특정 액션맵만 활성화
+        playerInput.DeactivateInput();
         playerInput.actions.Disable();
         playerInput.SwitchCurrentActionMap(mapName);
+        foreach (var action in playerInput.currentActionMap.actions)
+        {
+            action.Reset();
+        }
         playerInput.currentActionMap.Enable();
         playerInput.ActivateInput();
         currentActionMap = playerInput.currentActionMap;
@@ -156,12 +163,15 @@ public class InputManager : NetworkBehaviour
 
     /// <summary>
     /// InputMode를 ActionMap을 전환하여 입력 모드를 변경합니다.
-    /// 상태 제어는 딱히 필요하지 않지만, 
-    /// 필요시 여기에 추가할 수 있습니다.
     /// </summary>
     /// <param name="mode">변경할 모드</param>
     public void ChangeInputMode(InputMode mode)
     {
+        if (currentInputMode == mode)
+        {
+            return;
+        }
+
         currentInputMode = mode;
 
         switch (currentInputMode)
@@ -170,7 +180,6 @@ public class InputManager : NetworkBehaviour
                 // 입력 잠금 상태에서의 처리
                 {
                     ChangeActionMap("Locked");
-                    UIManager.instance.HideAll();
                 }
                 break;
             case InputMode.UIOnly:

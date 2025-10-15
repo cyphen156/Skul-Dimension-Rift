@@ -1,16 +1,10 @@
+using Assets.Scripts.Interface;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
-public class Options : MonoBehaviour
+public class Options : MonoBehaviour, IUIInputHandler
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    public void Execute(InputAction.CallbackContext ctx)
     {
-        
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
     }
 }

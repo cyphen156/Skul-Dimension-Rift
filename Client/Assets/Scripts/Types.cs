@@ -21,12 +21,13 @@ public static class Types
     public enum GameState
     {
         None,
+        Reset,
         Ready,
-        Playing,
         Paused,
-        GameOver,
+        Playing,
         Victory,
-        Loading 
+        GameOver,
+        Loading
     }
 
     public enum VolumeType

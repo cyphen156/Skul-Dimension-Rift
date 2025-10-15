@@ -92,7 +92,7 @@ public class GameManager : NetworkBehaviour
 
     private bool ResetGame()
     {
-        ChangeGameState(GameState.None);
+        ChangeGameState(GameState.Reset);
         ChangeGameMode(GameMode.Single);
         // 난이도 설정 (임시로 랜덤)
         int randomValue = Random.Range(0, 2);
@@ -158,11 +158,7 @@ public class GameManager : NetworkBehaviour
                 }
                 break;
             case GameState.Playing:
-                if (currentSceneName == "TitleScene")
-                {
-                    UIManager.instance.Hide("Press Any Key");
-                    //SceneLoadManager.LoadScene("MainScene");
-                }
+                UIManager.instance.HideAll();
                 InputManager.instance.ChangeInputMode(InputMode.PlayerOnly);
                 break;
             case GameState.Paused:
@@ -180,9 +176,11 @@ public class GameManager : NetworkBehaviour
                 UIManager.instance.HideAll();
                 UIManager.instance.Show("Loading");
                 break;
-            case GameState.None:
+            case GameState.Reset:
                 InputManager.instance.ChangeInputMode(InputMode.Locked);
                 UIManager.instance.HideAll();
+                break;
+            case GameState.None:
                 break;
             default:
                 // 정의되지 않은 상태
@@ -191,6 +189,13 @@ public class GameManager : NetworkBehaviour
         }
     }
 
-
-    #endregion
+    internal void Exit()
+    {
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#else
+        Application.Quit();
+#endif
+    }
+#endregion
 }

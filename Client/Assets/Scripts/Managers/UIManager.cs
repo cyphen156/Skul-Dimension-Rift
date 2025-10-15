@@ -1,6 +1,7 @@
 using Assets.Scripts.Interface;
 using System.Collections.Generic;
 using System.Text;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using static Types;
@@ -138,9 +139,17 @@ public class UIManager : MonoBehaviour
         
         if (uiObject != null)
         {
+            if (!uiObject.activeInHierarchy)
+            {
+                Debug.Log($"{uiObject} has been Already Disabled");
+                return;
+            }
             if (uiObject.TryGetComponent<IUIInputHandler>(out IUIInputHandler uiInputHandler))
             {
-                RemoveUIFocus(uiObject.GetComponent<IUIInputHandler>());
+                if (focusedUI == uiInputHandler)
+                {
+                    RemoveUIFocus(uiInputHandler);
+                }
             }
 
             uiObject.SetActive(false);
@@ -171,7 +180,7 @@ public class UIManager : MonoBehaviour
             Debug.Log("There is No Activated UI\nPlayer Input has been Locked");
             return;
         }
-        if (ctx.performed)  
+        if (ctx.performed)
         {
             focusedUI.Execute(ctx);
         }
@@ -187,22 +196,26 @@ public class UIManager : MonoBehaviour
         {
             string name = ctx.action.name;
 
-            GameState gameState;
+            GameState gameState = GameState.Paused;
 
             // 현재 입력 처리를 위한 UI가 없으면 메뉴 열기
             if (focusedUI == null)
             {
-                gameState = GameState.Paused;
                 Show(name);  
             }
             // 현재 입력 처리를 위한 UI가 있으면 해당 UI 닫기
             else
             {
-                gameState = GameState.Playing;
                 string target = ((MonoBehaviour)focusedUI).gameObject.name;
                 Hide(target);
-            }
 
+                // 만약 방금 닫은 UI가 마지막 상호작용 가능한 UI라면
+                // 게임 상태를 Playing으로 변경
+                if (focusedUI == null)
+                {
+                    gameState = GameState.Playing;
+                }
+            }
             GameManager.instance.ChangeGameState(gameState);
         }
     }
