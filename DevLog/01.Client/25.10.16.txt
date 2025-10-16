@@ -1,0 +1,21 @@
+Commit 
+[Feat] UI 인터랙션 구조 리팩토링 — IUIInputHandler → IInteractive 및 공통 베이스 클래스 추가
+IUIInputHandler.cs -> IInteractive.cs 로 파일명 변경
+    사유 : UI 입력 제어를 상속으로 분리해냄
+    이제 입력 라우터로서 작동 상호작용 가능한 모든 클래스가 
+    해당 인터페이스를 통해 외부에서 강제로 기능을 수행할 수 있음
+
+InteractiveUIBehaviour.cs 신설
+    Monobehaviour, IInteracitve 상속
+    Menu.cs에 있던 기능 구현 전체 이관
+    Public) Execute(InputActtion.CallbackContext ctx)
+        공통 외부 공개 함수 구현
+
+    private)함수 전체
+        Protected)로 접근한정자 변경 
+
+    Protected) virtual void OnSubmit()
+        하위 클래스에서 다형성을 지원하기 위한 순수가상함수 제공
+
+Menu.cs
+    Protected) Override OnSubmit()함수 

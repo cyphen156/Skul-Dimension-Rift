@@ -1,19 +1,9 @@
-using Assets.Scripts.Interface;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.InputSystem;
-using UnityEngine.UI;
+using static Types;
 
-public class Control : MonoBehaviour, IUIInputHandler   
+public class Control : InteractiveUIBehaviour
 {
-    [SerializeField] private List<Button> buttons;
-
-    private void Awake()
-    {
-        buttons = ComponentRegistrar.RegisterComponentsInChildren<Button>(transform, includeInactive: true);
-    }
-
-    public void Execute(InputAction.CallbackContext ctx)
+    protected override void OnSubmit()
     {
     }
 }

@@ -4,16 +4,9 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
-public class Scroll : MonoBehaviour, IUIInputHandler
+public class Scroll : InteractiveUIBehaviour
 {
-    [SerializeField] private List<Button> buttons;
-
-    private void Awake()
-    {
-        buttons = ComponentRegistrar.RegisterComponentsInChildren<Button>(transform, includeInactive: true);
-    }
-
-    public void Execute(InputAction.CallbackContext ctx)
+    protected override void OnSubmit()
     {
     }
 }

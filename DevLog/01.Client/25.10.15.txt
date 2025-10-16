@@ -1,6 +1,11 @@
-Commit 
+Commit ececdd1
 [Fix] InputSystem ActionMap 액션 매핑 수정
     InputActtionMap - Menu/Scroll
     -> PressOnly로 동작방식 변경 
     Performed로 인해 한번 입력시 너무 과도한 함수호출을 1회성으로 제한
     필요할 경우 Started/Cancel로 변경할 수 있음
+
+Commit 550edfc
+[fix] UI 요소 선택 동기화
+    EventSystem에 의해 UI 요소가 프레임당 튀는 현상을 제거하고
+    정확하게 한번 입력에 한칸씩 이동하도록 수정

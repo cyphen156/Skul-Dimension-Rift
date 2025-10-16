@@ -1,10 +1,8 @@
-using Assets.Scripts.Interface;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
-public class PopUp : MonoBehaviour, IUIInputHandler
+public class PopUp : InteractiveUIBehaviour
 {
-    public void Execute(InputAction.CallbackContext ctx)
+    protected override void OnSubmit()
     {
     }
 }

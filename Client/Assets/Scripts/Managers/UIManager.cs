@@ -13,8 +13,8 @@ public class UIManager : MonoBehaviour
 {
     public static UIManager instance;
 
-    private Stack<IUIInputHandler> uiInputStack = new Stack<IUIInputHandler>();
-    private IUIInputHandler focusedUI;
+    private Stack<IInteractive> uiInputStack = new Stack<IInteractive>();
+    private IInteractive focusedUI;
     private Dictionary<string, GameObject> uiObjects = new Dictionary<string, GameObject>();
 
 #if UNITY_EDITOR
@@ -79,7 +79,7 @@ public class UIManager : MonoBehaviour
         focusedUI = null;
     }
 
-    private void SetUIFocus(IUIInputHandler UIObject)
+    private void SetUIFocus(IInteractive UIObject)
     {
         if (UIObject != null)
         {
@@ -92,7 +92,7 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    private void RemoveUIFocus(IUIInputHandler targetUIHandler)
+    private void RemoveUIFocus(IInteractive targetUIHandler)
     {
         if (focusedUI != null && focusedUI == targetUIHandler)
         {
@@ -117,7 +117,7 @@ public class UIManager : MonoBehaviour
         {
             uiObject.SetActive(true);
 
-            IUIInputHandler inputHandler = uiObject.GetComponent<IUIInputHandler>();
+            IInteractive inputHandler = uiObject.GetComponent<IInteractive>();
             if (inputHandler != null)
             {
                 SetUIFocus(inputHandler);
@@ -144,7 +144,7 @@ public class UIManager : MonoBehaviour
                 Debug.Log($"{uiObject} has been Already Disabled");
                 return;
             }
-            if (uiObject.TryGetComponent<IUIInputHandler>(out IUIInputHandler uiInputHandler))
+            if (uiObject.TryGetComponent<IInteractive>(out IInteractive uiInputHandler))
             {
                 if (focusedUI == uiInputHandler)
                 {

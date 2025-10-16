@@ -2,7 +2,7 @@
 
 namespace Assets.Scripts.Interface
 {
-    internal interface IUIInputHandler
+    internal interface IInteractive
     {
         void Execute(InputAction.CallbackContext ctx);
     }

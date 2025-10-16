@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using static Types;
 
-public class PressAnyKey : MonoBehaviour, IUIInputHandler
+public class PressAnyKey : MonoBehaviour, IInteractive
 {
     private TextMeshProUGUI text;
     [SerializeField] private string originalText;
@@ -46,7 +46,7 @@ public class PressAnyKey : MonoBehaviour, IUIInputHandler
         OnPressed(ctx);
     }
 
-    private void OnPressed(InputAction.CallbackContext ctx)
+    public void OnPressed(InputAction.CallbackContext ctx)
     {
         if (ctx.performed)
         {
