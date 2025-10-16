@@ -220,5 +220,5 @@ public class InputManager : NetworkBehaviour
         Debug.LogWarning("Current ActionMap: " + playerInput.currentActionMap.name);
 #endif
     }
-#endregion Custom Methods
+    #endregion Custom Methods
 }

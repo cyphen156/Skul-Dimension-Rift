@@ -104,6 +104,15 @@
                     "processors": "",
                     "interactions": "Press",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "ArrowDash",
+                    "type": "Button",
+                    "id": "0d337e96-c709-4d40-aca3-aca5767b3489",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -445,6 +454,17 @@
                     "processors": "",
                     "groups": ";Mobile;GamePad",
                     "action": "Menu",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "d5f1eeff-ea5d-4edb-a23b-4fbe74f507e7",
+                    "path": "",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "ArrowDash",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

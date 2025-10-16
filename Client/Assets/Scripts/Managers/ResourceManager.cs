@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
+using UnityEngine.UI;
 
 /// <summary>
 /// 어드레서블 리소스 관리를 위한 매니저 클래스
@@ -21,7 +22,7 @@ public class ResourceManager : MonoBehaviour
 
     private Dictionary<string, AudioClip> bgmClips = new Dictionary<string, AudioClip>();
     private Dictionary<string, AudioClip> sfxClips = new Dictionary<string, AudioClip>();
-
+    private Dictionary<string, Sprite> controlSprites = new Dictionary<string, Sprite>();
 #if UNITY_EDITOR
     [Header("DEBUG")]
     [SerializeField] private List<string> bgmKeys = new();
@@ -68,6 +69,9 @@ public class ResourceManager : MonoBehaviour
                 sfxClips[clip.name] = clip;
             }
         }
+        controlSprites.Clear();
+
+        var sprites = Resources.LoadAll<Sprite>("Sprite/Controls");
 
 #if UNITY_EDITOR
         bgmKeys.Clear();
