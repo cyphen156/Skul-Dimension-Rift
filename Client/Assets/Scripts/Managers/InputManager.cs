@@ -2,6 +2,7 @@ using System;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 using static Types;
 
 /// <summary>
@@ -219,6 +220,16 @@ public class InputManager : NetworkBehaviour
         Debug.LogWarning("Current InputMode: " + currentInputMode);
         Debug.LogWarning("Current ActionMap: " + playerInput.currentActionMap.name);
 #endif
+    }
+
+    public void RebindAction()
+    {
+
+    }
+
+    public void RebindAllActionsToDefault()
+    {
+
     }
     #endregion Custom Methods
 }

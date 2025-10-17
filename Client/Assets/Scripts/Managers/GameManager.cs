@@ -1,9 +1,13 @@
+using Assets.Scripts.Interface;
+using System.Collections;
 using Unity.Netcode;
 using Unity.Services.Matchmaker.Models;
 using Unity.VisualScripting;
+using UnityEditor.Search;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 using static Types;
 
 /// <summary>
@@ -189,7 +193,7 @@ public class GameManager : NetworkBehaviour
         }
     }
 
-    internal void Exit()
+    public void Exit()
     {
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;
@@ -197,5 +201,39 @@ public class GameManager : NetworkBehaviour
         Application.Quit();
 #endif
     }
-#endregion
+
+    public void ControlReBind(string buttonName = null)
+    {
+        // 만약 buttonName이 null이면
+        // 전체 리셋
+        if (buttonName == null)
+        {
+            InputManager.instance.RebindAllActionsToDefault();
+            UIManager.instance.RefreshUI();
+            return;
+        }
+
+        // 키 변경 팝업 호출
+        UIManager.instance.Show("PopUp");
+
+        StartCoroutine(C_GetKeyInfo(buttonName));
+        
+        InputManager.instance.RebindAction();
+    }
+
+    private IEnumerator C_GetKeyInfo(string buttonName)
+    {
+        GameObject popUpUI = UIManager.instance.TryGetUI("PopUp");
+
+        if (popUpUI == null)
+        {
+            Debug.LogWarning("PopUp UI not found.");
+            yield break;
+        }
+        PopUp popUp = popUpUI.GetComponent<PopUp>();
+
+        yield return new WaitUntil(() => 
+            !popUpUI.gameObject.activeInHierarchy);
+    }
+    #endregion
 }

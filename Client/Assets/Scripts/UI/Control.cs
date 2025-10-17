@@ -11,16 +11,25 @@ public class Control : InteractiveUIBehaviour
         {
             return;
         }
-        if (selectedButton.name == "ResetButton")
+
+        string name = selectedButton.name;
+
+        switch (name)
         {
-        }
-        else if (selectedButton.name == "ReturnButton")
-        {
-            GameManager.instance.ChangeGameState(GameState.Playing);
-        }
-        else
-        {
-            UIManager.instance.Show("PopUp");
+            // 키 변경 요청
+            // UI 호출이 아닌 게임매니저 호출인 이유는
+            // ResourceManager, UIManager, GameManager, InputManager가 모두 필요하기 때문
+            // 흐름이 일괄적으로 통제되게 하기 위해
+            // 이 모두를 알 수 있는건 GameManager로 제한하고 싶음
+            case "ReturnButton":
+                GameManager.instance.ChangeGameState(GameState.Playing);
+                break;
+            case "ResetButton":
+                GameManager.instance.ControlReBind(); // 전체 리셋
+                break;
+            default:
+                GameManager.instance.ControlReBind(name); // 개별 리바인드
+                break;
         }
     }
 }

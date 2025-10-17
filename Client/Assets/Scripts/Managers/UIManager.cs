@@ -1,7 +1,5 @@
 using Assets.Scripts.Interface;
 using System.Collections.Generic;
-using System.Text;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using static Types;
@@ -218,6 +216,33 @@ public class UIManager : MonoBehaviour
             }
             GameManager.instance.ChangeGameState(gameState);
         }
+    }
+
+    /// <summary>
+    /// 외부 요인으로 인한 UI 요소의 변경이 있엇을 때 호출
+    /// UI를 갱신
+    /// </summary>
+    public void RefreshUI()
+    {
+        foreach (var ui in uiObjects.Values)
+        {
+            if (ui.activeInHierarchy && ui.TryGetComponent<IInteractive>(out IInteractive uiInputHandler))
+            {
+                if (focusedUI != uiInputHandler)
+                {
+                    SetUIFocus(uiInputHandler);
+                }
+                return;
+            }
+        }
+        // 활성화된 UI가 없다면 포커스 초기화
+        focusedUI = null;
+        uiInputStack.Clear();
+    }
+
+    public GameObject TryGetUI(string UIName)
+    {
+        return uiObjects.ContainsKey(UIName) ? uiObjects[UIName] : null;
     }
     #endregion Input Methods
 }
