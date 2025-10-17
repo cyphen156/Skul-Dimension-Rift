@@ -213,12 +213,7 @@ public class GameManager : NetworkBehaviour
             return;
         }
 
-        // 키 변경 팝업 호출
-        UIManager.instance.Show("PopUp");
-
         StartCoroutine(C_GetKeyInfo(buttonName));
-        
-        InputManager.instance.RebindAction();
     }
 
     private IEnumerator C_GetKeyInfo(string buttonName)
@@ -230,10 +225,33 @@ public class GameManager : NetworkBehaviour
             Debug.LogWarning("PopUp UI not found.");
             yield break;
         }
-        PopUp popUp = popUpUI.GetComponent<PopUp>();
 
-        yield return new WaitUntil(() => 
-            !popUpUI.gameObject.activeInHierarchy);
+        // 키 변경 팝업 호출
+        UIManager.instance.Show("PopUp");
+
+        yield return null;
+
+        while (popUpUI.activeInHierarchy)
+        {
+            // 키 하나 입력받을 때까지 대기
+            yield return new WaitUntil(()=> InputManager.instance.GetAnyKey());
+
+            var ctx = InputManager.instance.PeekLastInput();
+
+            // 입력받은 키를 팝업 UI에 전달
+            IInteractive interactive = popUpUI.GetComponent<IInteractive>();
+            interactive.Execute(ctx);
+
+            InputManager.instance.EndCapture();
+        }
+
+        // 팝업 UI에서 입력받은 키 정보 가져오기
+        PopUp popUpComponent = popUpUI.GetComponent<PopUp>();
+        string newKey = popUpComponent.GetInputKey();
+        InputManager.instance.RebindAction(buttonName, newKey);
+
+        yield return null;
+        UIManager.instance.RefreshUI();
     }
     #endregion
 }

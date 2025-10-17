@@ -1,11 +1,13 @@
+using Assets.Scripts.Interface;
 using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// 인풋 필드에 입력된 키를 해당 액션에 바인딩하는 팝업 UI
 /// </summary>
 /// 
-public class PopUp : InteractiveUIBehaviour
+public class PopUp : InteractiveUIBehaviour, IInteractive
 {
     [SerializeField] private string inputKey;
     [SerializeField] private TMP_InputField inputField;
@@ -16,24 +18,39 @@ public class PopUp : InteractiveUIBehaviour
         {
             inputField = GetComponentInChildren<TMP_InputField>(includeInactive: true);
         }
-
+        inputField.readOnly = true;
     }
 
     private new void OnEnable()
     {
         inputKey = string.Empty;
+        inputField.text = string.Empty;
+        inputField.Select();
+        inputField.ActivateInputField();
     }
 
     /// <summary>
-    /// 입력된 키를 반환
+    /// 전달받은 입력을 화면에 갱신합니다.
     /// </summary>
-    protected override void OnSubmit()
+    void IInteractive.Execute(InputAction.CallbackContext ctx)
     {
-        if (inputField == null)
+        //if (!ctx.performed)
+        //{
+        //    return;
+        //}
+
+        if (ctx.action.name == "Submit")
         {
+            OnSubmit();
             return;
         }
-        inputKey = inputField.text;
+
+        inputKey = ctx.control.displayName;
+        inputField.text = inputKey;
+    }
+
+    protected override void OnSubmit()
+    {
         UIManager.instance.Hide("PopUp");
     }
 

@@ -46,7 +46,7 @@ public class PressAnyKey : MonoBehaviour, IInteractive
         OnPressed(ctx);
     }
 
-    public void OnPressed(InputAction.CallbackContext ctx)
+    private void OnPressed(InputAction.CallbackContext ctx)
     {
         if (ctx.performed)
         {

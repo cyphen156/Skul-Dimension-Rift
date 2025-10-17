@@ -2,7 +2,8 @@ using System;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.UI;
+using UnityEngine.InputSystem.Controls;
+using UnityEngine.InputSystem.Utilities;
 using static Types;
 
 /// <summary>
@@ -18,6 +19,10 @@ public class InputManager : NetworkBehaviour
     [SerializeField] private InputMode currentInputMode;
     [SerializeField] private PlayerInput playerInput;
     [SerializeField] private InputActionMap currentActionMap;
+
+    [SerializeField] private static InputAction captureAction;
+    [SerializeField] private static InputAction.CallbackContext lastInputContext;
+    [SerializeField] private static bool isContextReady;
 
     #region Unity Methods
     private void Awake()
@@ -40,6 +45,17 @@ public class InputManager : NetworkBehaviour
         {
             playerInput.actions.Disable();
         }
+
+        if (captureAction != null)
+        {
+            captureAction.performed -= OnCapturePerformedAction;
+            if (captureAction.enabled)
+            {
+                captureAction.Disable();
+            }
+        }
+
+        isContextReady = false;
     }
     private void Start()
     {
@@ -50,10 +66,24 @@ public class InputManager : NetworkBehaviour
         AllocateInputActions();
         ChangeInputMode(InputMode.Locked);
     }
-
     #endregion Unity Methods
 
     #region Custom Methods
+    private static void InitializeCaptureAction()
+    {
+        if (captureAction == null)
+        {
+            captureAction = new InputAction("AnyKeyCapture", InputActionType.Button);
+        }
+
+        captureAction.performed -= OnCapturePerformedAction;
+        captureAction.performed += OnCapturePerformedAction;
+
+        if (!captureAction.enabled)
+        {
+            captureAction.Disable();
+        }
+    }
     /// <summary>
     /// 인풋 액션을 각 맵에 할당합니다.
     /// 중복할당 문제를 해결하기 전까지 사용하지 마세요 (2025-10-14)
@@ -91,7 +121,7 @@ public class InputManager : NetworkBehaviour
                                         action.performed += (InputAction.CallbackContext ctx) => method.Invoke(playerController, new object[] { ctx });
                                     }
                                     else
-                                    {
+                                    { 
                                         Debug.LogWarning($"InputManager: Method 'On{actionName}' not found in PlayerController.");
                                     }
                                 }
@@ -222,7 +252,7 @@ public class InputManager : NetworkBehaviour
 #endif
     }
 
-    public void RebindAction()
+    public void RebindAction(string ActionButtonName, string newBindKey)
     {
 
     }
@@ -230,6 +260,76 @@ public class InputManager : NetworkBehaviour
     public void RebindAllActionsToDefault()
     {
 
+    }
+
+    private static void GetAnyInput(InputControl control)
+    {
+        if (control == null)
+        {
+            isContextReady = true;
+            if (captureAction.enabled)
+            {
+                captureAction.Disable();
+            }
+            return;
+        }
+
+        if (captureAction.enabled)
+        {
+            captureAction.Disable();
+        }
+
+        if (captureAction.bindings.Count == 0)
+        {
+            captureAction.AddBinding(control.path);
+        }
+        else
+        {
+            captureAction.ApplyBindingOverride(0, control.path);
+        }
+
+        captureAction.Enable();
+    }
+
+    public bool GetAnyKey()
+    {
+        if (isContextReady)
+        {
+            return true;
+        }
+
+        InitializeCaptureAction();
+
+        if (!captureAction.enabled)
+        {
+            captureAction.Enable();
+            InputSystem.onAnyButtonPress.CallOnce(GetAnyInput);
+        }
+
+        return false;
+    }
+
+    public InputAction.CallbackContext PeekLastInput()
+    {
+        return lastInputContext;
+    }
+
+    public void EndCapture()
+    {
+        isContextReady = false;
+
+        if (captureAction != null && captureAction.enabled)
+        {
+            captureAction.Disable();
+        }
+
+        lastInputContext = default;
+    }
+
+    private static void OnCapturePerformedAction(InputAction.CallbackContext ctx)
+    {
+        lastInputContext = ctx;
+        isContextReady = true;
     }
     #endregion Custom Methods
 }

@@ -1,4 +1,4 @@
-Commit 
+Commit b288356
 [Feat] UI 인터랙션 구조 리팩토링 — IUIInputHandler → IInteractive 및 공통 베이스 클래스 추가
 IUIInputHandler.cs -> IInteractive.cs 로 파일명 변경
     사유 : UI 입력 제어를 상속으로 분리해냄
@@ -19,3 +19,22 @@ InteractiveUIBehaviour.cs 신설
 
 Menu.cs
     Protected) Override OnSubmit()함수 
+
+
+Commit 4192a2d
+[feat] PopUp UI Submit 기능 연결
+    1. PopUp.cs
+        OnSubmit 함수 기능 연결
+
+    2. GameManager.cs
+        public void ControlReBind(string buttonName = null)
+            PopUp UI 오픈시 키 입력을 받아 액션맵에 입력받은 키를 다시 매핑할 공개 함수
+            InputManager, UI와 상호작용
+
+    3. UIManager.cs
+        Public) RefreshUI()
+            외부 요인에 의해 화면을 강제로 갱신해야 할 때 사용
+
+            
+[BugReport]
+InputField에 입력을 못하는 버그 발견

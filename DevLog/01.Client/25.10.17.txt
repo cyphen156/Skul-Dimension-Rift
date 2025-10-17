@@ -1,0 +1,62 @@
+Commit 
+[Feat] InputSystem 키입력 제한 해제
+짧은 요약
+    이제 InputManager는 모든 키 입력을 지원합니다.
+    심지어 그것이 액션맵에 바인딩 되어 있지 않은 알수없는 입력일지라도...
+
+상세 수정 내용
+1. ComponentRegistrar.cs
+    bool continuous 인자 추가
+    → 하위 그룹까지 특정 컴포넌트를 탐사하던 기존 기능을 선택적으로 제한할 수 있도록 수정.
+
+2. GameManager.cs
+    private IEnumerator C_GetKeyInfo(string buttonName) 추가
+        → 키 리바인드 절차 전용 코루틴.
+        → WaitUntil(InputManager.GetAnyKey) 방식으로 사용자 입력을 비동기 대기.
+        → PopUp.Execute(ctx)를 호출하여 UI에 즉시 반영한 뒤, EndCapture()로 정리. 
+
+3. PressAnyKey.cs
+    OnPress() 접근제어 변경
+        → public → private
+        → 외부 직접 호출 방지를 통해 InputManager 전용 트리거로 제한.
+
+4. PopUp.cs
+    UI 표시 로직 수정
+        → ctx.control.displayName을 사용해 외부에서 전달받은 입력 컨텍스트를 직접 표시.
+        → Enter(Submit) 입력 시 OnSubmit()을 호출하도록 특수 처리 추가.
+        → ctx.performed 여부와 무관하게 항상 입력 라벨을 갱신하도록 변경.
+
+5. InputManager.cs
+    변수 추가 
+    [SerializeField] private static InputAction captureAction;
+    [SerializeField] private static InputAction.CallbackContext lastInputContext;
+    [SerializeField] private static bool isContextReady;
+        → InputSystem에서 발생한 “아무 키 입력”을 임시 캡처 후 GameManager로 전달.
+
+    함수 추가 및 변경
+    private void InitializeCaptureAction()
+        → AnyKeyCapture용 액션 초기화.
+
+    private static void GetAnyInput(InputControl control)
+        → 눌린 키 정보를 임시 액션에 바인딩.
+
+    private static void OnCapturePerformedAction(InputAction.CallbackContext ctx)
+        → 콜백 발생 시 ctx를 저장하고 isContextReady = true로 설정.
+
+    public bool GetAnyKey()
+        → onAnyButtonPress를 통해 입력 감지 여부 반환.
+
+    public InputAction.CallbackContext PeekLastInput()
+        → 마지막 입력 컨텍스트 조회.
+
+    public void EndCapture()
+        → CaptureAction 비활성화 및 내부 상태 초기화.
+
+    public void RebindAction(string ActionButtonName, string newBindKey)
+        → 임시 리바인드용 함수 시그니처 추가 (구현 예정).
+
+결과
+    ✅ 매핑되지 않은 키 입력도 실시간 감지 가능
+    ✅ Gamepad / Keyboard / Mouse 등 모든 입력 장치 통합 처리
+    ✅ PopUp은 InputManager를 직접 참조하지 않음 (Mediator 패턴 유지)
+    ✅ CallbackContext의 생명주기 문제 해결 (프레임 단위 즉시 처리 구조 확립)
