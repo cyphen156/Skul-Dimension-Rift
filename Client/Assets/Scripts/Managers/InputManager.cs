@@ -1,5 +1,6 @@
 using System;
 using Unity.Netcode;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.Controls;
@@ -79,7 +80,7 @@ public class InputManager : NetworkBehaviour
         captureAction.performed -= OnCapturePerformedAction;
         captureAction.performed += OnCapturePerformedAction;
 
-        if (!captureAction.enabled)
+        if (captureAction.enabled)
         {
             captureAction.Disable();
         }
@@ -93,11 +94,12 @@ public class InputManager : NetworkBehaviour
     {
         foreach (var map in playerInput.actions.actionMaps)
         {
-            switch(map.name)
+            bool hasAllocated = true;
+            switch (map.name)
             {
                 case "Player":
                     {
-                        PlayerController playerController = GetComponent<PlayerController>();
+                        PlayerController playerController = FindAnyObjectByType<PlayerController>(FindObjectsInactive.Include);
 
                         // 플레이어 컨트롤러가 존재하는 경우에만 액션을 할당
                         // 액션에 해당하는 행위를 리플렉션으로 연결
@@ -149,12 +151,15 @@ public class InputManager : NetworkBehaviour
                     break;
                 case "Title":
                     {
-                        PressAnyKey pressAnyKey = GetComponent<PressAnyKey>();
-                        if (pressAnyKey != null)
-                        {
-                            map["PressAnyKey"].performed -= pressAnyKey.Execute;
-                            map["PressAnyKey"].performed += pressAnyKey.Execute;
+                        PressAnyKey pressAnyKey = FindAnyObjectByType<PressAnyKey>(FindObjectsInactive.Include);
+
+                        if (pressAnyKey == null)
+                        { 
+                            break;
                         }
+
+                        map["PressAnyKey"].performed -= pressAnyKey.Execute;
+                        map["PressAnyKey"].performed += pressAnyKey.Execute;
                     }
                     break;
                 case "Locked":
@@ -162,13 +167,35 @@ public class InputManager : NetworkBehaviour
                         // Locked 맵에는 특별한 액션이 없으므로 아무 것도 하지 않음
                     }
                     break;
+                case "Restricted":
+                    {
+                        foreach (var action in map.actions)
+                        {
+                            string actionName = action.name;
+                            if (actionName == "Menu")
+                            {
+                                action.performed -= UIManager.instance.Execute_Internal;
+                                action.performed += UIManager.instance.Execute_Internal;
+                            }
+                            else
+                            {
+                                action.performed -= UIManager.instance.Execute;
+                                action.performed += UIManager.instance.Execute;
+                            }
+                        }
+                    }
+                    break;
                 default:
                     {
+                        hasAllocated = false;
                         Debug.LogWarning($"InputManager: Unhandled ActionMap '{map.name}'");
                     }
                     break;
             }
-            Debug.Log($"[ActionMap] {map.name} has been allocated.");
+            if (hasAllocated)
+            {
+                Debug.Log($"[ActionMap] {map.name} has been allocated.");
+            }
             ChangeActionMap("Locked"); // 초기 상태는 Locked
         }
     }
@@ -235,12 +262,7 @@ public class InputManager : NetworkBehaviour
                 // 제한된 플레이어 입력 처리
                 // (예: 대화 중, 컷신 등)
                 {
-                    ChangeActionMap("Player");
-                    // 상호작용과 시스템 메뉴 호출만 활성화
-                    playerInput.actions.Disable();
-                    playerInput.currentActionMap["Interaction"].Enable();
-                    playerInput.currentActionMap["Menu"].Enable();
-                    playerInput.ActivateInput();
+                    ChangeActionMap("Restricted");
                 }
                 break;
             default:
@@ -288,6 +310,7 @@ public class InputManager : NetworkBehaviour
             captureAction.ApplyBindingOverride(0, control.path);
         }
 
+        isContextReady = false;
         captureAction.Enable();
     }
 
@@ -300,10 +323,12 @@ public class InputManager : NetworkBehaviour
 
         InitializeCaptureAction();
 
+        isContextReady = false;
+
         if (!captureAction.enabled)
         {
-            captureAction.Enable();
             InputSystem.onAnyButtonPress.CallOnce(GetAnyInput);
+            captureAction.Enable();
         }
 
         return false;
@@ -318,9 +343,16 @@ public class InputManager : NetworkBehaviour
     {
         isContextReady = false;
 
-        if (captureAction != null && captureAction.enabled)
+        if (captureAction != null)
         {
-            captureAction.Disable();
+            if (captureAction.enabled)
+            {
+                captureAction.Disable();
+            }
+
+            captureAction.RemoveAllBindingOverrides();
+
+            captureAction.Reset();
         }
 
         lastInputContext = default;

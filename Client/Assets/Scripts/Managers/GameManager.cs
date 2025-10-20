@@ -228,20 +228,26 @@ public class GameManager : NetworkBehaviour
 
         // 키 변경 팝업 호출
         UIManager.instance.Show("PopUp");
-
-        yield return null;
+        InputManager.instance.ChangeInputMode(InputMode.Restricted);
 
         while (popUpUI.activeInHierarchy)
         {
+            // 동프레임 입력누적을 처리하기 위한 한프레임 대기
+            yield return null;
             // 키 하나 입력받을 때까지 대기
-            yield return new WaitUntil(()=> InputManager.instance.GetAnyKey());
+            yield return new WaitUntil(() => InputManager.instance.GetAnyKey());
+
+            if (!popUpUI.activeInHierarchy)
+            {
+                InputManager.instance.EndCapture();
+                InputManager.instance.ChangeInputMode(InputMode.UIOnly);
+                yield break;
+            }
 
             var ctx = InputManager.instance.PeekLastInput();
 
             // 입력받은 키를 팝업 UI에 전달
-            IInteractive interactive = popUpUI.GetComponent<IInteractive>();
-            interactive.Execute(ctx);
-
+            UIManager.instance.Execute(ctx);
             InputManager.instance.EndCapture();
         }
 
@@ -251,7 +257,8 @@ public class GameManager : NetworkBehaviour
         InputManager.instance.RebindAction(buttonName, newKey);
 
         yield return null;
-        UIManager.instance.RefreshUI();
+        UIManager.instance.RefreshUI(popUpUI);
+        InputManager.instance.ChangeInputMode(InputMode.UIOnly);
     }
     #endregion
 }

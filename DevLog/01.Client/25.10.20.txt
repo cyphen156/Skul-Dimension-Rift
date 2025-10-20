@@ -1,0 +1,39 @@
+Commit 
+[Refactor] Input / UI / Game Flow 구조 정리 및 입력 캡처 안정화
+
+짧은 요약
+    액션맵 및 입력모드 구조를 전면 정리하고, PopUp 리바인드 루프에서 발생하던 
+    입력 잔여 신호(버튼 눌림 상태 유지)에 의한 재트리거 문제를 해결했습니다.
+
+상세 수정 내용
+1. InputManager.cs
+    - 액션맵 구조 확정 (Player / UI / Title / Locked / Restricted)
+    - ChangeInputMode() 전면 수정, 각 모드별 액션맵 전환 로직 명확화
+    - EndCapture() 개선: 바인딩 오버라이드 및 상태 완전 초기화
+    - GetAnyInput(): 액션맵 전환 방식으로 포인터/아날로그 입력 제거
+    - Restricted 모드 추가 및 UI 전용 입력 처리 대응
+
+2. GameManager.cs
+    - C_GetKeyInfo() 입력 리바인드 루프 수정
+        → 팝업 진입 시 InputMode.Restricted 적용
+        → 팝업 종료 시 InputMode.UIOnly 복귀
+    - 초기화 루틴(InitializeGame, ResetGame) 정리
+        → TitleScene → Ready → Playing 상태 흐름 안정화
+
+3. UIManager.cs
+    - UI 포커스 스택 로직 개선 (Push/Pop 일관화)
+    - Execute() / Execute_Internal() 구조 통합 및 ESC 입력 처리 개선
+    - HideAll() 시 스택 및 포커스 완전 초기화
+    - RefreshUI()로 외부에서 UI 강제 리셋 가능하도록 유지
+
+4. 입력 안정화
+    - WaitForAllButtonsReleased() 루틴 추가
+        → 마우스 전용 폴링 제거
+        → 모든 디바이스(Keyboard, Gamepad, Touch 등) 입력 업 상태 보장
+    - PopUp 리바인드 루프 시작 전 잔여 입력 제거
+
+결과
+    ✅ PopUp 리바인드 시 Position 이벤트로 InputField.text가 바뀌던 문제 해결
+    ✅ ESC 메뉴/PopUp 간 입력 충돌 해소
+    ✅ 입력 액션 중복 트리거 및 컨텍스트 유실 문제 방지
+    ✅ 멀티 디바이스(키보드/패드/터치) 대응 구조 완성

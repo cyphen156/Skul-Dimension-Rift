@@ -1,5 +1,6 @@
 using Assets.Scripts.Interface;
 using System.Collections.Generic;
+using System.Xml.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using static Types;
@@ -79,6 +80,8 @@ public class UIManager : MonoBehaviour
 
     private void SetUIFocus(IInteractive UIObject)
     {
+        Debug.Log($"[SetUIFocus] Push {((MonoBehaviour)UIObject).name}");
+
         if (UIObject != null)
         {
             uiInputStack.Push(UIObject);
@@ -94,6 +97,7 @@ public class UIManager : MonoBehaviour
     {
         if (focusedUI != null && focusedUI == targetUIHandler)
         {
+            Debug.Log($"[RemoveUIFocus] Pop {((MonoBehaviour)focusedUI).name}");
             uiInputStack.Pop();
             focusedUI = uiInputStack.Count > 0 ? uiInputStack.Peek() : null;
         }
@@ -178,6 +182,7 @@ public class UIManager : MonoBehaviour
             Debug.Log("There is No Activated UI\nPlayer Input has been Locked");
             return;
         }
+
         if (ctx.performed)
         {
             focusedUI.Execute(ctx);
@@ -190,54 +195,52 @@ public class UIManager : MonoBehaviour
     /// <param name="ctx"></param>
     public void Execute_Internal(InputAction.CallbackContext ctx)
     {
-        if (ctx.performed)
+        if (!ctx.performed)
         {
-            string name = ctx.action.name;
+            return;
+        }
 
-            GameState gameState = GameState.Paused;
+        string name = ctx.action.name;
 
-            // 현재 입력 처리를 위한 UI가 없으면 메뉴 열기
+        GameState gameState = GameState.Paused;
+
+        // 현재 입력 처리를 위한 UI가 없으면 메뉴 열기
+        if (focusedUI == null)
+        {
+            Show(name);  
+        }
+        // 현재 입력 처리를 위한 UI가 있으면 해당 UI 닫기
+        else
+        {
+            string target = ((MonoBehaviour)focusedUI).gameObject.name;
+            Hide(target);
+
+            // 만약 방금 닫은 UI가 마지막 상호작용 가능한 UI라면
+            // 게임 상태를 Playing으로 변경
             if (focusedUI == null)
             {
-                Show(name);  
+                gameState = GameState.Playing;
             }
-            // 현재 입력 처리를 위한 UI가 있으면 해당 UI 닫기
-            else
-            {
-                string target = ((MonoBehaviour)focusedUI).gameObject.name;
-                Hide(target);
-
-                // 만약 방금 닫은 UI가 마지막 상호작용 가능한 UI라면
-                // 게임 상태를 Playing으로 변경
-                if (focusedUI == null)
-                {
-                    gameState = GameState.Playing;
-                }
-            }
-            GameManager.instance.ChangeGameState(gameState);
         }
+        GameManager.instance.ChangeGameState(gameState);
     }
 
     /// <summary>
-    /// 외부 요인으로 인한 UI 요소의 변경이 있엇을 때 호출
-    /// UI를 갱신
+    /// 외부 요인으로 인한 상호작용 가능한 UI 요소의 변경이 있엇을 때 호출
+    /// InteractiveUI를 갱신
     /// </summary>
-    public void RefreshUI()
+    public void RefreshUI(GameObject targetUI = null)
     {
-        foreach (var ui in uiObjects.Values)
+        if (targetUI != null && !uiObjects.ContainsKey(targetUI.name))
         {
-            if (ui.activeInHierarchy && ui.TryGetComponent<IInteractive>(out IInteractive uiInputHandler))
-            {
-                if (focusedUI != uiInputHandler)
-                {
-                    SetUIFocus(uiInputHandler);
-                }
-                return;
-            }
+            return;
         }
-        // 활성화된 UI가 없다면 포커스 초기화
-        focusedUI = null;
-        uiInputStack.Clear();
+
+        targetUI = targetUI.gameObject;
+
+        // 추후 화면 갱신 관련 정리 필요할 수도 있음
+        targetUI.SetActive(false);
+        targetUI.SetActive(true);
     }
 
     public GameObject TryGetUI(string UIName)
