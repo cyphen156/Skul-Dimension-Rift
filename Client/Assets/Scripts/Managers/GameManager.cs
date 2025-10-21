@@ -208,7 +208,7 @@ public class GameManager : NetworkBehaviour
         // 전체 리셋
         if (buttonName == null)
         {
-            InputManager.instance.RebindAllActionsToDefault();
+            InputManager.instance.ResetBindings();
             UIManager.instance.RefreshUI();
             return;
         }

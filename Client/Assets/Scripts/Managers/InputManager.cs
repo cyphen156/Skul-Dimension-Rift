@@ -279,7 +279,7 @@ public class InputManager : NetworkBehaviour
 
     }
 
-    public void RebindAllActionsToDefault()
+    public void ResetBindings()
     {
 
     }

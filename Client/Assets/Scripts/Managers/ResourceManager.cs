@@ -53,6 +53,10 @@ public class ResourceManager : MonoBehaviour
         // 어드레서블 초기화
         Addressables.InitializeAsync().WaitForCompletion();
 
+        // 유저 데이터 로드
+        // Cloud OR LOACL??
+        // if cloud save -> call Server
+        // else data
         bgmClips.Clear();
         sfxClips.Clear();
 
@@ -95,11 +99,17 @@ public class ResourceManager : MonoBehaviour
     #endregion
 
     #region Resource Management
+    public bool SaveData()
+    {
+        return true;
+    }
 
+    public void LoadData()
+    {
+    }
     #endregion
 
     #region Utility Methods
-
     private void CacheClear(Exception e = null)
     {
         // 에러가 발생했으면 전체 캐시를 강제로 삭제
