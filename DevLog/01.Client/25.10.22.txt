@@ -1,14 +1,57 @@
 Branch 
     InputAction 동적 로딩 기능 구현
 
-Commit 
+Commit 7e9cf0c
+[Feat] ResourceManager 초기화 및 UserData 직렬화 구조 완성
 
-1. 로컬 유저 데이터 로딩 경로 신설
-        Application.persistentDataPath/UserData.Json
-            유저가 컨트롤을 변경했을 때 참조할 파일
+요약
+    유저 데이터(UserData), InputActionAsset, 사운드, 어드레서블 등
+    초기화 및 직렬화 로직을 통합한 ResourceManager 리팩토링.
 
-Resources/Input
-    InputActions.inputactions
-        ResetBindings() 호출시 이 파일을 리턴
-        UserData.Json/Control의 원본 
+상세 변경 내용
+1. ResourceManager.cs
+    - 어드레서블(Addressables) 초기화 추가 (WaitForCompletion)
+    - 오디오 리소스 로드 구조 정비:
+        • Resources/Audio 폴더 내 BGM, SFX 자동 로드 및 캐싱
+        • controlSprites 초기화 및 Controls 스프라이트 로드
+    - InputActionAsset 처리:
+        • 기본 액션 파일(Resources/Input/InputActions) 로드
+        • 신규 유저 데이터 생성 시 userInputAsset.ToJson() 직렬화 저장
+        • 기존 유저 데이터 존재 시 LoadFromJson()을 통한 복원
+        • 바인딩 JSON 누락 시 "[]" 기본값 적용
+        • 불필요한 lastUsedDevice 필드 제거 (JSON 내 그룹 정보로 대체)
+    - UserData 직렬화 구조 확립:
+        • Application.persistentDataPath/UserData.json 사용
+        • 임시 파일(.tmp) 생성 후 File.Replace()로 안전 저장
+        • JSON PrettyPrint 적용
+    - SoundManager 연동:
+        • 로드 완료 후 UserData의 Audio 설정을 통해 볼륨 일괄 세팅
+        • GameManager 이전 임시 처리로 구조 확장 고려
+    - 예외 처리 개선:
+        • 저장/로드 실패 시 Debug.LogError 및 Warning 출력 강화
+        • 캐시 정리(CacheClear) 시 예외 발생 여부에 따라 전면/부분 삭제 분기
+    - 코드 정리:
+        • Unused using 및 static import 제거
+        • Dictionary 초기화 및 키 리스트 디버그 지원 (UNITY_EDITOR 한정)
+        • 경로 결합(Path.Combine) 기반 플랫폼 독립 경로 구조 확립
+        • GetPlatformFolder() 함수로 플랫폼 문자열 정규화
 
+2. SoundManager.cs (연동)
+    - ResourceManager에서 불러온 오디오 설정 적용 가능하도록 인터페이스 확정
+    - SetVolumes(master, bgm, sfx) 호출로 초기 볼륨 설정 반영
+
+3. UserData 구조
+    - ControlData 내 bindings 필드에 InputAction JSON 저장
+    - lastUsedDevice 제거 (자동 감지 불필요)
+    - options → audio → masterVolume, bgmVolume, sfxVolume 반영 구조 유지
+
+결과
+    • 리소스 초기화 및 사용자 데이터 로드/저장 전체 흐름 완성
+    • InputActionAsset 바인딩이 플랫폼/디바이스별 자동 복원
+    • 첫 실행 시 자동으로 기본 UserData 생성 및 저장
+    • 이후 실행 시 유저 입력 설정 및 볼륨 정보 유지
+
+향후 계획
+    • GameManager로 옵션 전달 책임 이관
+    • DLC Catalog 및 Addressable 원격 로딩 구조 확장
+    • 입력 리바인드 시 UserData 즉시 업데이트 로직 추가 예정
