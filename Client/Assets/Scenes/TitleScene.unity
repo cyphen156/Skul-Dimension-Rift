@@ -769,6 +769,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 519420031}
     - target: {fileID: 3778848475064487523, guid: d0c8805e9f4675148b4b3d3ed56098e5, type: 3}
+      propertyPath: m_Actions
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 3778848475064487523, guid: d0c8805e9f4675148b4b3d3ed56098e5, type: 3}
       propertyPath: m_UIInputModule
       value: 
       objectReference: {fileID: 80530510}
@@ -778,7 +782,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3778848475064487523, guid: d0c8805e9f4675148b4b3d3ed56098e5, type: 3}
       propertyPath: m_ActionEvents.Array.size
-      value: 26
+      value: 30
       objectReference: {fileID: 0}
     - target: {fileID: 3778848475064487523, guid: d0c8805e9f4675148b4b3d3ed56098e5, type: 3}
       propertyPath: m_ActionEvents.Array.data[15].m_ActionId
@@ -826,7 +830,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3778848475064487523, guid: d0c8805e9f4675148b4b3d3ed56098e5, type: 3}
       propertyPath: m_ActionEvents.Array.data[26].m_ActionId
-      value: f0edd9a3-238f-4f01-a4f8-1c4358fc9501
+      value: 22cffa15-2c55-4e60-adce-4312b8c627e2
+      objectReference: {fileID: 0}
+    - target: {fileID: 3778848475064487523, guid: d0c8805e9f4675148b4b3d3ed56098e5, type: 3}
+      propertyPath: m_ActionEvents.Array.data[27].m_ActionId
+      value: 999db765-9e77-417f-a8aa-ce4360cef10e
+      objectReference: {fileID: 0}
+    - target: {fileID: 3778848475064487523, guid: d0c8805e9f4675148b4b3d3ed56098e5, type: 3}
+      propertyPath: m_ActionEvents.Array.data[28].m_ActionId
+      value: 2fca4131-98b2-42b1-b630-aa229e5be711
+      objectReference: {fileID: 0}
+    - target: {fileID: 3778848475064487523, guid: d0c8805e9f4675148b4b3d3ed56098e5, type: 3}
+      propertyPath: m_ActionEvents.Array.data[29].m_ActionId
+      value: 37ca46c6-249b-48e9-b8d0-a1fa20c76b45
       objectReference: {fileID: 0}
     - target: {fileID: 3778848475064487523, guid: d0c8805e9f4675148b4b3d3ed56098e5, type: 3}
       propertyPath: m_ActionEvents.Array.data[15].m_ActionName
@@ -874,7 +890,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3778848475064487523, guid: d0c8805e9f4675148b4b3d3ed56098e5, type: 3}
       propertyPath: m_ActionEvents.Array.data[26].m_ActionName
-      value: AnyKey/Action
+      value: 'Restricted/Menu[/Keyboard/escape]'
+      objectReference: {fileID: 0}
+    - target: {fileID: 3778848475064487523, guid: d0c8805e9f4675148b4b3d3ed56098e5, type: 3}
+      propertyPath: m_ActionEvents.Array.data[27].m_ActionName
+      value: 'Restricted/Navigate[/Keyboard/upArrow,/Keyboard/downArrow,/Keyboard/leftArrow,/Keyboard/rightArrow]'
+      objectReference: {fileID: 0}
+    - target: {fileID: 3778848475064487523, guid: d0c8805e9f4675148b4b3d3ed56098e5, type: 3}
+      propertyPath: m_ActionEvents.Array.data[28].m_ActionName
+      value: 'Restricted/Submit[/Keyboard/enter]'
+      objectReference: {fileID: 0}
+    - target: {fileID: 3778848475064487523, guid: d0c8805e9f4675148b4b3d3ed56098e5, type: 3}
+      propertyPath: m_ActionEvents.Array.data[29].m_ActionName
+      value: 'Restricted/Interaction[/Keyboard/f]'
       objectReference: {fileID: 0}
     - target: {fileID: 3778848475064487523, guid: d0c8805e9f4675148b4b3d3ed56098e5, type: 3}
       propertyPath: m_ActionEvents.Array.data[0].m_PersistentCalls.m_Calls.Array.size
@@ -922,7 +950,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3778848475064487523, guid: d0c8805e9f4675148b4b3d3ed56098e5, type: 3}
       propertyPath: m_ActionEvents.Array.data[26].m_PersistentCalls.m_Calls.Array.size
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3778848475064487523, guid: d0c8805e9f4675148b4b3d3ed56098e5, type: 3}
       propertyPath: m_ActionEvents.Array.data[25].m_PersistentCalls.m_Calls.Array.data[0].m_Mode

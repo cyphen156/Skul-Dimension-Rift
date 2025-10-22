@@ -1,9 +1,7 @@
 using System;
 using Unity.Netcode;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.InputSystem.Controls;
 using UnityEngine.InputSystem.Utilities;
 using static Types;
 
@@ -21,9 +19,9 @@ public class InputManager : NetworkBehaviour
     [SerializeField] private PlayerInput playerInput;
     [SerializeField] private InputActionMap currentActionMap;
 
-    [SerializeField] private static InputAction captureAction;
-    [SerializeField] private static InputAction.CallbackContext lastInputContext;
-    [SerializeField] private static bool isContextReady;
+    private static InputAction captureAction;
+    private static InputAction.CallbackContext lastInputContext;
+    private static bool isContextReady;
 
     #region Unity Methods
     private void Awake()
@@ -37,6 +35,19 @@ public class InputManager : NetworkBehaviour
         {
             Destroy(gameObject);
         }
+        if (playerInput == null)
+        {
+            playerInput = GetComponent<PlayerInput>();
+        }
+    }
+
+    private void OnEnable()
+    {
+        if (playerInput.actions == null)
+        {
+            InitializeInput();
+        }
+        playerInput.actions.Enable();
     }
 
     private void OnDisable()
@@ -60,10 +71,15 @@ public class InputManager : NetworkBehaviour
     }
     private void Start()
     {
-        if (playerInput == null)
+        if (playerInput.actions == null)
         {
-            playerInput = GetComponent<PlayerInput>();
+            InitializeInput();
         }
+    }
+
+    private void InitializeInput()
+    {
+        playerInput.actions = ResourceManager.instance.GetUserInputActions();
         AllocateInputActions();
         ChangeInputMode(InputMode.Locked);
     }
@@ -116,16 +132,8 @@ public class InputManager : NetworkBehaviour
                                 }
                                 else
                                 {
-                                    var method = playerController.GetType().GetMethod("On" + actionName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
-                                    if (method != null)
-                                    {
-                                        action.performed -= (InputAction.CallbackContext ctx) => method.Invoke(playerController, new object[] { ctx });
-                                        action.performed += (InputAction.CallbackContext ctx) => method.Invoke(playerController, new object[] { ctx });
-                                    }
-                                    else
-                                    { 
-                                        Debug.LogWarning($"InputManager: Method 'On{actionName}' not found in PlayerController.");
-                                    }
+                                    action.performed -= playerController.Execute;
+                                    action.performed += playerController.Execute;
                                 }
                             }
                         }
@@ -196,8 +204,8 @@ public class InputManager : NetworkBehaviour
             {
                 Debug.Log($"[ActionMap] {map.name} has been allocated.");
             }
-            ChangeActionMap("Locked"); // 초기 상태는 Locked
         }
+        ChangeActionMap("Locked"); // 초기 상태는 Locked
     }
 
     /// <summary>
@@ -345,6 +353,7 @@ public class InputManager : NetworkBehaviour
 
         if (captureAction != null)
         {
+            captureAction.performed -= OnCapturePerformedAction;
             if (captureAction.enabled)
             {
                 captureAction.Disable();

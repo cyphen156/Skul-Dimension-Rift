@@ -1,0 +1,14 @@
+Branch 
+    InputAction 동적 로딩 기능 구현
+
+Commit 
+
+1. 로컬 유저 데이터 로딩 경로 신설
+        Application.persistentDataPath/UserData.Json
+            유저가 컨트롤을 변경했을 때 참조할 파일
+
+Resources/Input
+    InputActions.inputactions
+        ResetBindings() 호출시 이 파일을 리턴
+        UserData.Json/Control의 원본 
+

@@ -5290,7 +5290,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\uADF8\uB798\uD53D"
+  m_text: "\uC624\uB514\uC624"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: c1403d5b7333ed949a08f8d37695cf8a, type: 2}
   m_sharedMaterial: {fileID: 7147836279002380392, guid: c1403d5b7333ed949a08f8d37695cf8a, type: 2}
@@ -9079,6 +9079,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e699f93ccb643dc48acf36157cad54b2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Options
+  buttons: []
+  selectedButton: {fileID: 0}
+  lastPoint: {x: 0, y: 0}
 --- !u!1 &7703718199910212853
 GameObject:
   m_ObjectHideFlags: 0
