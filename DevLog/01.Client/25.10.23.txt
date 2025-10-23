@@ -1,0 +1,63 @@
+Branch 
+    InputAction 동적 로딩 기능 구현
+
+[Refactor] Input / UI / Game Flow 구조 정리 및 입력 캡처 안정화
+
+요약
+입력 시스템(InputManager)과 UI 실행 구조(UIManager), 그리고 게임 흐름(GameManager)의 입력 처리 전환 로직을 재정비
+기존 입력 캡처 및 UI 모드 전환 시 발생하던 불안정 요소를 제거, Restricted 모드를 신설
+팝업 및 리바인드 캡처 상태를 명확히 분리했다.
+
+상세 수정 내용
+1. InputManager.cs
+    AllocateInputActions()
+        ActionMap 재구성: Player / UI / Title / Locked / Restricted
+
+    각 맵별 액션 분기 정리
+        Player → PlayerController.Execute()
+        UI / Restricted → UIManager.Execute() 또는 Execute_Internal()
+        Title → PressAnyKey.Execute()
+        FindAnyObjectByType<PlayerController>(IncludeInactive)로 탐색 방식 변경
+        hasAllocated 플래그 및 맵 단위 디버그 로그 추가
+    
+    입력 모드 전환(ChangeInputMode)
+        DeactivateInput → Disable → SwitchCurrentActionMap → Reset → Enable → ActivateInput 순서로 안정화
+
+    새로운 입력 모드 Restricted 추가
+
+    캡처 로직 개선
+        InitializeCaptureAction()에서 performed 핸들러 재연결
+        이미 활성 상태일 경우 자동 Disable()
+        EndCapture()는 기존 로직 유지 (Disable + ResetBindingOverrides)
+
+2. GameManager.cs
+    C_GetKeyInfo() 코루틴 정리
+    팝업 활성화 시 → InputMode.Restricted로 전환
+    입력 1회 캡처 후 → EndCapture() → InputMode.UIOnly 복귀
+    팝업 갱신은 UIManager.instance.RefreshUI()로 통일
+
+UI 실행 경로 통일
+    UIManager.Execute() / Execute_Internal() 구조 유지
+    Menu / Scroll → Internal, 
+    나머지 → 일반 Execute
+
+3. InputActions(.inputactions)
+    Restricted ActionMap 추가
+    각 액션별 groups 및 path 업데이트 (Keyboard, Gamepad 분기 갱신)
+    Press/Hold 등 Interaction 속성 정리
+
+4. 기타
+    널 가드 및 로깅 정리
+    코드 전체 포맷 정리 및 중복 제거
+
+결과
+    팝업 캡처 중 입력 차단이 확실히 분리됨
+    ActionMap 전환 시 불필요한 중복 실행 제거
+    Player / UI / Title 입력 흐름이 독립적으로 안정화됨
+    InputActionAsset 재로드 시에도 Binding 상태 일관성 유지
+
+향후 계획
+    Execute / Execute_Internal 통합 여부 재검토
+    InputActionAsset.LoadBindingOverridesFromJson() 기반 리바인드 복원 방식 전환
+    원본 InputActionAsset 보호를 위한 Instantiate() 사용 고려
+    캡처 단계에서 “모든 버튼 릴리즈 대기” 루틴 필요 시 별도 유틸로 분리
