@@ -1,13 +1,7 @@
-using Assets.Scripts.Interface;
 using System.Collections;
 using Unity.Netcode;
-using Unity.Services.Matchmaker.Models;
-using Unity.VisualScripting;
-using UnityEditor.Search;
 using UnityEngine;
-using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
-using UnityEngine.UI;
 using static Types;
 
 /// <summary>

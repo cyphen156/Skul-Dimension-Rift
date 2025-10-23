@@ -1,6 +1,5 @@
 using Assets.Scripts.Interface;
 using System.Collections.Generic;
-using System.Xml.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using static Types;
@@ -238,9 +237,7 @@ public class UIManager : MonoBehaviour
 
         targetUI = targetUI.gameObject;
 
-        // 추후 화면 갱신 관련 정리 필요할 수도 있음
-        targetUI.SetActive(false);
-        targetUI.SetActive(true);
+        targetUI.GetComponent<InteractiveUIBehaviour>().Refresh();
     }
 
     public GameObject TryGetUI(string UIName)

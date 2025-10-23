@@ -116,4 +116,9 @@ public class InteractiveUIBehaviour : MonoBehaviour, IInteractive
     protected virtual void OnSubmit()
     {
     }
+
+    public virtual void Refresh(string key = null)
+    {
+
+    }
 }

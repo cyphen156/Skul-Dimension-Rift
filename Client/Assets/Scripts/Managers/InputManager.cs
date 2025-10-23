@@ -2,8 +2,6 @@ using System;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.InputSystem.LowLevel;
-using UnityEngine.InputSystem.Users;
 using UnityEngine.InputSystem.Utilities;
 using static Types;
 
@@ -246,6 +244,7 @@ public class InputManager : NetworkBehaviour
             {
                 Debug.Log($"[ActionMap] {map.name} has been allocated.");
             }
+            ChangeActionMap("Locked");
         }
     }
 

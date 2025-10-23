@@ -1030,30 +1030,8 @@
         {
             "name": "Locked",
             "id": "3b97d0a1-7ccb-4535-9f9b-acd4624a8af3",
-            "actions": [
-                {
-                    "name": "New action",
-                    "type": "Button",
-                    "id": "feac1a66-c3cf-4436-a018-85f3cc69b01a",
-                    "expectedControlType": "",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
-                }
-            ],
-            "bindings": [
-                {
-                    "name": "",
-                    "id": "76ed570a-a05b-4590-8d54-bfef7b02b88b",
-                    "path": "",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "New action",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                }
-            ]
+            "actions": [],
+            "bindings": []
         },
         {
             "name": "NotUseContainer",

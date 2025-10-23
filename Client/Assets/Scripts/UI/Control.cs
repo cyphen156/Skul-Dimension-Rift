@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
 using static Types;
 
 // 컨트롤 전환 UI를 관리하는 클래스입니다.
@@ -5,6 +8,40 @@ using static Types;
 // 처음 상태로 리셋하는 기능을 담당합니다.
 public class Control : InteractiveUIBehaviour
 {
+    [SerializeField] private Dictionary<string, Image> controlButtons = new Dictionary<string, Image>();
+
+#if UNITY_EDITOR
+    [SerializeField] private List<Image> images = new List<Image>();
+#endif
+
+    private new void Awake()
+    {
+        base.Awake();
+
+        controlButtons.Clear();
+        foreach (Button button in buttons)
+        {
+            string key = button.name.Replace("Button", "");
+            if (key == "Reset" || key == "Return")
+            {
+                continue;
+            }
+
+            GameObject controlImage = button.transform.Find("ControlImage").gameObject;
+            GameObject buttonIcon = controlImage.transform.Find("ButtonIcon").gameObject;
+            controlButtons[key] = buttonIcon.GetComponent<Image>();
+#if UNITY_EDITOR
+            Image item = null;
+            controlButtons.TryGetValue(key, out item);
+            images.Add(item);
+#endif
+        }
+    }
+    private new void OnEnable()
+    {
+        Refresh();
+    }
+
     protected override void OnSubmit()
     {
         if (selectedButton == null)
@@ -30,6 +67,38 @@ public class Control : InteractiveUIBehaviour
             default:
                 GameManager.instance.ControlReBind(name); // 개별 리바인드
                 break;
+        }
+    }
+
+    public override void Refresh(string key = null)
+    {
+        if (!string.IsNullOrEmpty(key))
+        {
+            if (controlButtons.TryGetValue(key, out var img))
+            {
+                var sprite = ResourceManager.instance.GetSprite(key);
+                img.enabled = sprite != null;
+                if (sprite != null)
+                {
+                    img.sprite = sprite;
+                    img.preserveAspect = true;
+                }
+            }
+            return;
+        }
+
+        foreach (var kv in controlButtons)
+        {
+            var img = kv.Value;
+            if (!img) continue;
+
+            var sp = ResourceManager.instance.GetSprite(kv.Key);
+            img.enabled = sp != null;
+            if (sp != null)
+            {
+                img.sprite = sp;
+                img.preserveAspect = true;
+            }
         }
     }
 }

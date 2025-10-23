@@ -1,6 +1,5 @@
 using Assets.Scripts.Interface;
 using Unity.Netcode;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -46,7 +45,6 @@ public class PlayerController : NetworkBehaviour, IInteractive
     private void OnMove(InputAction.CallbackContext ctx)
     {
         velocity = ctx.ReadValue<Vector2>();
-        Debug.Log("Called");
     }
     #endregion Input Methods
 }

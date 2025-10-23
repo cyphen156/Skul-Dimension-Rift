@@ -2,7 +2,6 @@ using Assets.Scripts.Data;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.InputSystem;
@@ -44,9 +43,13 @@ public class ResourceManager : MonoBehaviour
     private Dictionary<string, AudioClip> sfxClips = new Dictionary<string, AudioClip>();
     private Dictionary<string, Sprite> controlSprites = new Dictionary<string, Sprite>();
 
+    [Header("Runtime System Data")]
+    [SerializeField] private string controlDeviceInfo;
+
     [Header("UserDatas")]
     [SerializeField] private UserData userData;
     [SerializeField] private InputActionAsset userInputAsset;
+
 #if UNITY_EDITOR
     [Header("DEBUG")]
     [SerializeField] private List<string> bgmKeys = new();
@@ -175,6 +178,63 @@ public class ResourceManager : MonoBehaviour
         return userInputAsset;
     }
 
+    public Sprite GetSprite(string key)
+    {
+        InputActionMap playerMap = userInputAsset.FindActionMap("Player");
+        InputAction action = playerMap?.FindAction(key, false);
+
+        if (action == null)
+        {
+            if (key.StartsWith("Move", StringComparison.OrdinalIgnoreCase))
+            {
+                action = playerMap.FindAction("Move", false);
+            }
+            else
+            {
+                Debug.LogWarning($"Action '{key}' not found in Player map.");
+                return null;
+            }
+        }
+        string displayString = action.GetBindingDisplayString();
+
+        if (action.name == "Move")
+        {
+            string part = key.Replace("Move", "");
+
+            for (int i = 0; i < action.bindings.Count; ++i)
+            {
+                InputBinding binding = action.bindings[i];
+                if (binding.isPartOfComposite == true && binding.name.Equals(part, StringComparison.OrdinalIgnoreCase))
+                {
+                    displayString = string.IsNullOrEmpty(binding.effectivePath) ? binding.path : binding.effectivePath;
+                    break;
+                }
+            }
+        }
+
+        if (string.IsNullOrEmpty(displayString))
+        {
+            Debug.LogWarning($"[ResourceManager] Action '{key}' has no valid binding display string.");
+            return null;
+        }
+
+        string[] tokens = displayString.Split('/');
+        string controlKey = tokens.Length > 1 ? tokens[^1] : displayString;
+
+        // 강제분할 1회 추가
+        tokens = controlKey.Split();
+        controlKey = tokens.Length > 1 ? tokens[^1] : controlKey;
+        controlKey = controlKey.Trim();
+        controlKey = char.ToUpper(controlKey[0]) + controlKey.Substring(1);
+
+        if (controlSprites.TryGetValue(controlKey, out Sprite sprite))
+        {
+            return sprite;
+        }
+
+        return null;
+    }
+   
     public AudioClip GetBGMClip(string bgmClipName)
     {
         return bgmClips.ContainsKey(bgmClipName) ? bgmClips[bgmClipName] : null;
@@ -292,6 +352,7 @@ public class ResourceManager : MonoBehaviour
         {
             case "controlSprites":
                 {
+                    controlDeviceInfo = ResourceTarget;
                     //controlSprites.Clear();
                     controlPaths.TryGetValue(ResourceTarget, out var targetPath);
                     string path = "Sprite/" + targetPath;
@@ -331,15 +392,12 @@ public class ResourceManager : MonoBehaviour
                         controlSprites[sprite.name] = sprite;
                     }
                 }
-                Debug.Log("");
                 break;
             default:
                 {
-
                 }
                 break;
         }
     }
-
     #endregion
 }

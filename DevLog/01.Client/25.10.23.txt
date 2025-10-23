@@ -64,7 +64,7 @@ UI 실행 경로 통일
     캡처 단계에서 “모든 버튼 릴리즈 대기” 루틴 필요 시 별도 유틸로 분리
 
 
-Commit 
+Commit c904c0b
 [Feat] 리소스 동적 교환 기능 구현
 
 요약
@@ -108,3 +108,39 @@ Control 이미지셋은 Multiple → Single Sprite 구조로 변경.
 향후 계획
     교체된 리소스를 UI에 반영
     가져온 리소스를 Control UI가 활성화 될때 참조하여 갱신 / Refresh함수 작업    
+
+
+Commit 
+[Feat] 리소스 매니저 이미지셋 UI 전달 로직 구현
+
+요약
+
+Control UI와 리소스 매니저의 리소스 요청 경로 확립
+이제 UI는 바인딩 변경사항에 대해 실시간으로 스프라이트를 변경을 적용할 수 있습니다.
+
+1. ResourceManager.cs
+    Public) sprite GetSprite(string key)
+        입력 바인딩에 따른 스프라이트를 전달하기 위한 임시 래핑 함수
+        추후 입력 바인딩 전용 파이프라인으로 전환 또는 인자를 추가로 받아 딕셔너리 분기를 통해 
+        다른 스프라이트 리소스 또한 외부로 제공할 예정
+
+2. InteractiveUIBehaviour.cs
+    UI의 화면 갱신을 위한 Refresh()함수 추가
+    Public) virtual void Refresh(string key = null)
+        key : target 
+        if 
+            key is null:
+        then
+            target
+        else
+            RefreshAllComponents
+
+3. Control.cs
+    내부 자식 오브젝트의 스프라이트를 제어하기 위한 딕셔너리 필드 ControlButtons 추가
+    private) Dictionary<string, Image> controlButtons;
+
+    private) new void Awake() 함수 추가로
+        오브젝트 생성시 내부 초기화 로직 추가로
+    
+    private) new void OnEnable()
+        오브젝트 재활성화시 항상 강제 갱신
