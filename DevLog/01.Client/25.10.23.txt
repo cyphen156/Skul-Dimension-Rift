@@ -1,6 +1,7 @@
 Branch 
     InputAction 동적 로딩 기능 구현
 
+Commit 7fcddb3
 [Refactor] Input / UI / Game Flow 구조 정리 및 입력 캡처 안정화
 
 요약
@@ -61,3 +62,49 @@ UI 실행 경로 통일
     InputActionAsset.LoadBindingOverridesFromJson() 기반 리바인드 복원 방식 전환
     원본 InputActionAsset 보호를 위한 Instantiate() 사용 고려
     캡처 단계에서 “모든 버튼 릴리즈 대기” 루틴 필요 시 별도 유틸로 분리
+
+
+Commit 
+[Feat] 리소스 동적 교환 기능 구현
+
+요약
+
+리소스 매니저(ResourceManager)에 입력 장치별 동적 리소스 교체 시스템 추가.
+입력 장치(Keyboard / Gamepad 등)의 실시간 변경에 따라 대응 리소스(스프라이트)를 자동 전환하도록 확장.
+Control 이미지셋은 Multiple → Single Sprite 구조로 변경.
+
+상세 수정 내용
+
+1. Types.cs
+    InputMode.None 추가 (비활성 상태 명시용)
+
+2. ResourceManager.cs
+    필드 추가
+    private) readonly Dictionary<string, string> controlPaths
+        입력 컨트롤 경로 관리
+        "Keyboard&Mouse", "Gamepad_Xbox", "Gamepad_PS" 등 매핑
+    
+    함수 추가
+    Public) void ChangeResource(string dictionaryName, string ResourceTarget)
+        dictionaryName에 지정된 리소스(예: controlSprites)를
+        ResourceTarget 경로로 교체/병합
+        Gamepad 계열일 경우 General → 변종(Xbox/PS/Switch) 순서로 로드 및 덮어쓰기
+        기존 라우트 기준으로 증분 병합(diff) 수행
+
+        필요할 경우 전체 클리어/언로드
+
+3. InputManager.cs
+    플레이어 입력 장치 변경 감지 기능 확장
+    private) void OnDeviceChanged(PlayerInput pi)
+        입력 장치 변경 시 리소스 매니저에 교체 요청
+        (ResourceManager.ChangeResource("controlSprites", currentControlScheme))
+        동일 스킴 반복 호출 방지 (currentActivatedDevice 비교)
+
+결과
+    입력 장치 변경 시 UI 리소스 자동 교체
+    Gamepad 사용 시 General + 변종 세트 병합 로드
+    기존 리소스 구조를 유지하면서도 장치 기반 동적 로딩 가능
+
+향후 계획
+    교체된 리소스를 UI에 반영
+    가져온 리소스를 Control UI가 활성화 될때 참조하여 갱신 / Refresh함수 작업    

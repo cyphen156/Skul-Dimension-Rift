@@ -2,6 +2,8 @@ using System;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
+using UnityEngine.InputSystem.Users;
 using UnityEngine.InputSystem.Utilities;
 using static Types;
 
@@ -22,6 +24,9 @@ public class InputManager : NetworkBehaviour
     private static InputAction captureAction;
     private static InputAction.CallbackContext lastInputContext;
     private static bool isContextReady;
+    private static string currentActivatedDevice;
+
+    private bool hasInitialized;
 
     #region Unity Methods
     private void Awake()
@@ -43,11 +48,22 @@ public class InputManager : NetworkBehaviour
 
     private void OnEnable()
     {
-        if (playerInput.actions == null)
+        if (!hasInitialized)
         {
             InitializeInput();
+            hasInitialized = true;
         }
-        playerInput.actions.Enable();
+
+        if (playerInput != null && playerInput.actions != null)
+        {
+            playerInput.actions.Enable();
+        }
+
+        if (playerInput != null)
+        {
+            playerInput.onControlsChanged -= OnDeviceChanged;
+            playerInput.onControlsChanged += OnDeviceChanged;
+        }
     }
 
     private void OnDisable()
@@ -68,12 +84,18 @@ public class InputManager : NetworkBehaviour
         }
 
         isContextReady = false;
+        
+        if (playerInput != null)
+        {
+            playerInput.onControlsChanged -= OnDeviceChanged;
+        }
     }
     private void Start()
     {
-        if (playerInput.actions == null)
+        if (!hasInitialized)
         {
             InitializeInput();
+            hasInitialized = true;
         }
     }
 
@@ -82,6 +104,26 @@ public class InputManager : NetworkBehaviour
         playerInput.actions = ResourceManager.instance.GetUserInputActions();
         AllocateInputActions();
         ChangeInputMode(InputMode.Locked);
+
+        currentActivatedDevice = playerInput.currentControlScheme;
+
+        ResourceManager.instance.ChangeResource("controlSprites", currentActivatedDevice);
+    }
+
+    private void OnDeviceChanged(PlayerInput pi)
+    {
+        string newScheme = pi.currentControlScheme;
+
+        if (string.Equals(newScheme, currentActivatedDevice, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        currentActivatedDevice = newScheme;
+
+        ResourceManager.instance.ChangeResource("controlSprites", currentActivatedDevice);
+        
+        Debug.Log("Input Device Changed");
     }
     #endregion Unity Methods
 
@@ -205,7 +247,6 @@ public class InputManager : NetworkBehaviour
                 Debug.Log($"[ActionMap] {map.name} has been allocated.");
             }
         }
-        ChangeActionMap("Locked"); // 초기 상태는 Locked
     }
 
     /// <summary>
@@ -281,7 +322,7 @@ public class InputManager : NetworkBehaviour
         Debug.LogWarning("Current ActionMap: " + playerInput.currentActionMap.name);
 #endif
     }
-
+    
     public void RebindAction(string ActionButtonName, string newBindKey)
     {
 

@@ -1132,6 +1132,10 @@ PrefabInstance:
       propertyPath: GlobalObjectIdHash
       value: 3900704415
       objectReference: {fileID: 0}
+    - target: {fileID: 7955620410520231725, guid: d0c8805e9f4675148b4b3d3ed56098e5, type: 3}
+      propertyPath: currentInputMode
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 8977937321519237635, guid: d0c8805e9f4675148b4b3d3ed56098e5, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
