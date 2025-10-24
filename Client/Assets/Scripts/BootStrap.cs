@@ -8,10 +8,10 @@ using UnityEngine;
 /// 1. NetworkManager
 /// 2. ResourceManager
 /// 3. SceneLoadManager
-/// 4. GameManager
-/// 5. UIManager
-/// 6. SoundManager
-/// 7. InputManager
+/// 4. UIManager
+/// 5. SoundManager
+/// 6. InputManager
+/// 7. GameManager
 /// </summary>
 public class BootStrap : MonoBehaviour
 {
@@ -68,14 +68,14 @@ public class BootStrap : MonoBehaviour
         PromoteOrCreate<ResourceManager>("ResourceManager");
         // SceneLoadManager 초기화
         PromoteOrCreate<SceneLoadManager>("SceneLoadManager");
-        // GameManager 초기화
-        PromoteOrCreate<GameManager>("GameManager");
         // UIManager 초기화
         PromoteOrCreate<UIManager>("UIManager");
         // SoundManager 초기화
         PromoteOrCreate<SoundManager>("SoundManager");
         // InputManager 초기화
         PromoteOrCreate<InputManager>("InputManager");
+        // GameManager 초기화
+        PromoteOrCreate<GameManager>("GameManager");
     }
 
     private T PromoteOrCreate<T>(string goName) where T : Component
