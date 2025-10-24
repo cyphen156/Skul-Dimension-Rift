@@ -110,9 +110,8 @@ Control 이미지셋은 Multiple → Single Sprite 구조로 변경.
     가져온 리소스를 Control UI가 활성화 될때 참조하여 갱신 / Refresh함수 작업    
 
 
-Commit 
-[Feat] 리소스 매니저 이미지셋 UI 전달 로직 구현
-
+Commit 59bbdae
+[Feat] Control UI ↔ ResourceManager 연동 및 입력 스프라이트 매핑 구조 구현
 요약
 
 Control UI와 리소스 매니저의 리소스 요청 경로 확립

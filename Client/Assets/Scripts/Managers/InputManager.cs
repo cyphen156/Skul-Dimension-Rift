@@ -324,12 +324,12 @@ public class InputManager : NetworkBehaviour
     
     public void RebindAction(string ActionButtonName, string newBindKey)
     {
-
+        Debug.Log("");
     }
 
     public void ResetBindings()
     {
-
+        playerInput.actions = ResourceManager.instance.GetUserInputActions(true);
     }
 
     private static void GetAnyInput(InputControl control)

@@ -204,6 +204,7 @@ public class GameManager : NetworkBehaviour
         {
             InputManager.instance.ResetBindings();
             UIManager.instance.RefreshUI();
+            ResourceManager.instance.SaveUserData();
             return;
         }
 
@@ -253,6 +254,7 @@ public class GameManager : NetworkBehaviour
         yield return null;
         UIManager.instance.RefreshUI(popUpUI);
         InputManager.instance.ChangeInputMode(InputMode.UIOnly);
+        ResourceManager.instance.SaveUserData();
     }
     #endregion
 }

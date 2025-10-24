@@ -1,0 +1,26 @@
+Branch 
+    InputAction 동적 로딩 기능 구현
+
+    
+Commit
+
+[Fix] 부트스트랩 초기화 순서 안정화 작업
+
+요약
+
+에디터 빌드시에는 발생하지 않는
+애플리케이션 패키징 빌드시 발생하는 초기화 문제를 해결하였습니다.
+
+BootStrap.cs
+    초기화 순서 변경
+        4. GameManager -> 마지막 순서로 변경
+
+project Settings
+    - Script Execution Rule
+        BootStrap : -500
+        ResourceManager : 40
+        SceneLoadManager : 45
+        UIManager : 50
+        SoundManage : 55
+        InputManager : 60
+        GamaManager : 100

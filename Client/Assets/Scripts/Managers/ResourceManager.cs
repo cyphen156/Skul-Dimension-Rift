@@ -173,12 +173,16 @@ public class ResourceManager : MonoBehaviour
             return (T)Resources.Load<T>(resourceName);
         }
     }
-    public InputActionAsset GetUserInputActions()
+    public InputActionAsset GetUserInputActions(bool isDefault = false)
     {
+        if (isDefault)
+        {
+            userInputAsset = Resources.Load<InputActionAsset>(defaultInputActionPath);
+        }
         return userInputAsset;
     }
 
-    public Sprite GetSprite(string key)
+    public string func1(string key)
     {
         InputActionMap playerMap = userInputAsset.FindActionMap("Player");
         InputAction action = playerMap?.FindAction(key, false);
@@ -227,7 +231,12 @@ public class ResourceManager : MonoBehaviour
         controlKey = controlKey.Trim();
         controlKey = char.ToUpper(controlKey[0]) + controlKey.Substring(1);
 
-        if (controlSprites.TryGetValue(controlKey, out Sprite sprite))
+        return controlKey;
+    }
+    public Sprite GetSprite(string key)
+    {
+        string controlKey = func1(key);    
+        if (controlKey != null && controlSprites.TryGetValue(controlKey, out Sprite sprite))
         {
             return sprite;
         }
