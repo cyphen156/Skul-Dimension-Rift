@@ -1,8 +1,7 @@
 Branch 
     InputAction 동적 로딩 기능 구현
 
-    
-Commit
+Commit a036c0d
 
 [Fix] 부트스트랩 초기화 순서 안정화 작업
 

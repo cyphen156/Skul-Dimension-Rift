@@ -54,6 +54,7 @@ public class ResourceManager : MonoBehaviour
     [Header("DEBUG")]
     [SerializeField] private List<string> bgmKeys = new();
     [SerializeField] private List<string> sfxKeys = new();
+    [SerializeField] private List<string> controlKeys = new();
 #endif
 
     #region Unity Methods
@@ -104,6 +105,7 @@ public class ResourceManager : MonoBehaviour
         sfxKeys.Clear();
         bgmKeys.AddRange(bgmClips.Keys);
         sfxKeys.AddRange(sfxClips.Keys);
+        controlKeys.Clear();
 #endif
         userInputAsset = Resources.Load<InputActionAsset>(defaultInputActionPath);
 
@@ -189,6 +191,9 @@ public class ResourceManager : MonoBehaviour
 
         if (action == null)
         {
+            // StartsWith을 로드가 아닌 런타임에 쓰지마라
+            // ==> Overhead 10만개 기준 130msc 정도 연산
+            // 근데 그렇게 오래걸리나?
             if (key.StartsWith("Move", StringComparison.OrdinalIgnoreCase))
             {
                 action = playerMap.FindAction("Move", false);
@@ -238,6 +243,7 @@ public class ResourceManager : MonoBehaviour
         string controlKey = func1(key);    
         if (controlKey != null && controlSprites.TryGetValue(controlKey, out Sprite sprite))
         {
+            long size = UnityEngine.Profiling.Profiler.GetRuntimeMemorySizeLong(this);
             return sprite;
         }
 
@@ -362,13 +368,14 @@ public class ResourceManager : MonoBehaviour
             case "controlSprites":
                 {
                     controlDeviceInfo = ResourceTarget;
-                    //controlSprites.Clear();
+                    controlSprites.Clear();
                     controlPaths.TryGetValue(ResourceTarget, out var targetPath);
                     string path = "Sprite/" + targetPath;
                     /// 여기서 병목이 생긴다면 Load스크린 코루틴 띄워야 할 수도 있습니다
                     /// 스프라이트 150개 가량이라서 그럴것 같지는 않지만 혹시 몰라 주석달아놓기
                     
                     // 게임 패드 종류라면 General폴더 먼저로드하기
+                    // 이후 개별 패드 스프라이트중 동일한 것이 있다면 오버라이드
                     if (path.Contains("GamePad"))
                     {
                         string generalPath = "Sprite/" + controlPaths["Gamepad"];
@@ -407,6 +414,10 @@ public class ResourceManager : MonoBehaviour
                 }
                 break;
         }
+#if UNITY_EDITOR
+        controlKeys.Clear();
+        controlKeys.AddRange(controlSprites.Keys);
+#endif
     }
-    #endregion
+#endregion
 }

@@ -34,10 +34,10 @@ public class PopUp : InteractiveUIBehaviour, IInteractive
     /// </summary>
     void IInteractive.Execute(InputAction.CallbackContext ctx)
     {
-        //if (!ctx.performed)
-        //{
-        //    return;
-        //}
+        if (!ctx.performed)
+        {
+            return;
+        }
 
         if (ctx.action.name == "Submit")
         {
@@ -51,7 +51,8 @@ public class PopUp : InteractiveUIBehaviour, IInteractive
 
     protected override void OnSubmit()
     {
-        UIManager.instance.Hide("PopUp");
+        string name = this.name;
+        UIManager.instance.Hide(name);
     }
 
     internal string GetInputKey()

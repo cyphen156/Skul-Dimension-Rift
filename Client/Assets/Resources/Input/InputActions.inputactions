@@ -3,6 +3,74 @@
     "name": "InputActions",
     "maps": [
         {
+            "name": "NotUseContainer",
+            "id": "91166fbd-fb1d-40b2-9597-efaf5cfceff3",
+            "actions": [
+                {
+                    "name": "MiddleClick",
+                    "type": "PassThrough",
+                    "id": "ce18abc2-9717-4592-8ba0-79850cefb377",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "TrackedDevicePosition",
+                    "type": "PassThrough",
+                    "id": "f0abdbb5-27c7-42c8-a260-1548f4dbe085",
+                    "expectedControlType": "Vector3",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "TrackedDeviceOrientation",
+                    "type": "PassThrough",
+                    "id": "98cc0241-60db-4234-9c95-3e746e688257",
+                    "expectedControlType": "Quaternion",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "b665d1e9-303d-4c37-9115-70c763758a5c",
+                    "path": "<Mouse>/middleButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "MiddleClick",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "04b62a2d-0768-4909-a9f0-4bc7f2dbe887",
+                    "path": "<XRController>/devicePosition",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "XR",
+                    "action": "TrackedDevicePosition",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "da01ca65-52aa-43bc-b9d6-0e93df49de92",
+                    "path": "<XRController>/deviceRotation",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "XR",
+                    "action": "TrackedDeviceOrientation",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        },
+        {
             "name": "Player",
             "id": "f903cd24-e924-41c6-9788-5ffa5232e0f5",
             "actions": [
@@ -1030,36 +1098,12 @@
         {
             "name": "Locked",
             "id": "3b97d0a1-7ccb-4535-9f9b-acd4624a8af3",
-            "actions": [],
-            "bindings": []
-        },
-        {
-            "name": "NotUseContainer",
-            "id": "91166fbd-fb1d-40b2-9597-efaf5cfceff3",
             "actions": [
                 {
-                    "name": "MiddleClick",
-                    "type": "PassThrough",
-                    "id": "ce18abc2-9717-4592-8ba0-79850cefb377",
-                    "expectedControlType": "Button",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
-                },
-                {
-                    "name": "TrackedDevicePosition",
-                    "type": "PassThrough",
-                    "id": "f0abdbb5-27c7-42c8-a260-1548f4dbe085",
-                    "expectedControlType": "Vector3",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
-                },
-                {
-                    "name": "TrackedDeviceOrientation",
-                    "type": "PassThrough",
-                    "id": "98cc0241-60db-4234-9c95-3e746e688257",
-                    "expectedControlType": "Quaternion",
+                    "name": "New action",
+                    "type": "Button",
+                    "id": "feac1a66-c3cf-4436-a018-85f3cc69b01a",
+                    "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
@@ -1068,34 +1112,12 @@
             "bindings": [
                 {
                     "name": "",
-                    "id": "b665d1e9-303d-4c37-9115-70c763758a5c",
-                    "path": "<Mouse>/middleButton",
+                    "id": "76ed570a-a05b-4590-8d54-bfef7b02b88b",
+                    "path": "",
                     "interactions": "",
                     "processors": "",
-                    "groups": "Keyboard&Mouse",
-                    "action": "MiddleClick",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "04b62a2d-0768-4909-a9f0-4bc7f2dbe887",
-                    "path": "<XRController>/devicePosition",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "XR",
-                    "action": "TrackedDevicePosition",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "da01ca65-52aa-43bc-b9d6-0e93df49de92",
-                    "path": "<XRController>/deviceRotation",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "XR",
-                    "action": "TrackedDeviceOrientation",
+                    "groups": "",
+                    "action": "New action",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

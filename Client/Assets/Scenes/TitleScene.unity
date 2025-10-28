@@ -210,7 +210,7 @@ MonoBehaviour:
   m_MoveRepeatDelay: 0.5
   m_MoveRepeatRate: 0.1
   m_XRTrackingOrigin: {fileID: 0}
-  m_ActionsAsset: {fileID: -944628639613478452, guid: a5b97647ae829874e941f5087040007a, type: 3}
+  m_ActionsAsset: {fileID: 0}
   m_PointAction: {fileID: -3891313613735743705, guid: a5b97647ae829874e941f5087040007a, type: 3}
   m_MoveAction: {fileID: 0}
   m_SubmitAction: {fileID: -6655010426800547061, guid: a5b97647ae829874e941f5087040007a, type: 3}
@@ -611,12 +611,8 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 519420031}
     - target: {fileID: 3778848475064487523, guid: d0c8805e9f4675148b4b3d3ed56098e5, type: 3}
-      propertyPath: m_UIInputModule
+      propertyPath: m_Actions
       value: 
-      objectReference: {fileID: 80530510}
-    - target: {fileID: 3778848475064487523, guid: d0c8805e9f4675148b4b3d3ed56098e5, type: 3}
-      propertyPath: m_NotificationBehavior
-      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 6179081287012426394, guid: d0c8805e9f4675148b4b3d3ed56098e5, type: 3}
       propertyPath: GlobalObjectIdHash
@@ -1046,6 +1042,14 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5387213070168793646, guid: ec6698e08937707478caa58471391cdc, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5669185249683971111, guid: ec6698e08937707478caa58471391cdc, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: -1.6999512
+      objectReference: {fileID: 0}
+    - target: {fileID: 6869328283080775855, guid: ec6698e08937707478caa58471391cdc, type: 3}
+      propertyPath: m_IsActive
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []

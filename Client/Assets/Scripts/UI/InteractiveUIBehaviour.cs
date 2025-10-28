@@ -26,6 +26,11 @@ public class InteractiveUIBehaviour : MonoBehaviour, IInteractive
         }
     }
 
+    protected void OnDisable()
+    {
+        selectedButton = null;
+    }
+
     public void Execute(InputAction.CallbackContext ctx)
     {
         if (!ctx.performed)

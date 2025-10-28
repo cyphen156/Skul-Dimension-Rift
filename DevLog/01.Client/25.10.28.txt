@@ -1,0 +1,28 @@
+Branch 
+    InputAction 동적 로딩 기능 구현
+
+Commit 
+[Refactor] UI 비활성화 시 잔존 선택 상태로 인해 즉시 Execute가 트리거되던 문제 수정 · PopUp Submit 인자 하드코딩 제거
+
+변경 요약
+UI가 OnDisable된 뒤에도 선택된 버튼 포커스가 남아 재활성화 시 즉시 Execute되는 문제를 제거.
+PopUp.OnSubmit의 하드코딩된 name 인자를 제거하고, UI 식별을 UIManager로 일원화.
+
+1. InteractiveUIBehaviour.cs
+    OnDisable()에서 선택 상태 초기화(포커스 잔존 제거)
+
+2. PopUp.cs
+    OnSubmit() 함수 수정
+        하드코딩된 문자열 인자 제거
+        이제 클래스 이름을 UIManager에게 전달합니다.
+    *** 이 함수의 기본 동작은 추후 InteractiveUIBehaviour()로 격상될 수 있습니다.***
+        만약 상위 기능으로 격상될 경우 
+        하위 UI가 자체적으로 Submit함수 실행 후 
+        OnDisable을 호출하여 렌더링을 중지하려 하기 때문에
+        충분히 고려 후 정책을 결정합니다. 
+        이득 : 더 이상 외부에서 Hide를 호출할 필요가 없다.
+        충돌지점 : 함수를 실행 후 UI가 꺼져선 안되는 부분이 존재할 수 있어 가상 처리가 필요할 수도 있다.
+
+
+3. Control.cs
+
