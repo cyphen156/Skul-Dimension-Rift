@@ -52,9 +52,9 @@ public class InputManager : NetworkBehaviour
             hasInitialized = true;
         }
 
-        if (playerInput != null && playerInput.actions != null)
+        if (playerInput != null && playerInput.currentActionMap != null)
         {
-            playerInput.actions.Enable();
+            playerInput.currentActionMap.Enable();
         }
 
         if (playerInput != null)
@@ -150,7 +150,6 @@ public class InputManager : NetworkBehaviour
     {
         foreach (var map in playerInput.actions.actionMaps)
         {
-            bool hasAllocated = true;
             switch (map.name)
             {
                 case "Player":
@@ -165,7 +164,7 @@ public class InputManager : NetworkBehaviour
                             {
                                 string actionName = action.name;
                                 // Menu와 Scroll은 UIManager에 연결
-                                if (actionName == "Menu" || actionName == "Scroll")
+                                if (actionName == "Menu" || actionName == "Interaction")
                                 {
                                     action.performed -= UIManager.instance.Execute_Internal;
                                     action.performed += UIManager.instance.Execute_Internal;
@@ -184,7 +183,7 @@ public class InputManager : NetworkBehaviour
                         foreach (var action in map.actions)
                         {
                             string actionName = action.name;
-                            if (actionName == "Menu" || actionName == "Scroll")
+                            if (actionName == "Menu" || actionName == "Interaction")
                             {
                                 action.performed -= UIManager.instance.Execute_Internal;
                                 action.performed += UIManager.instance.Execute_Internal;
@@ -206,8 +205,8 @@ public class InputManager : NetworkBehaviour
                             break;
                         }
 
-                        map["PressAnyKey"].performed -= pressAnyKey.Execute;
-                        map["PressAnyKey"].performed += pressAnyKey.Execute;
+                        map["PressAnyKey"].performed -= UIManager.instance.Execute;
+                        map["PressAnyKey"].performed += UIManager.instance.Execute;
                     }
                     break;
                 case "Locked":
@@ -220,7 +219,7 @@ public class InputManager : NetworkBehaviour
                         foreach (var action in map.actions)
                         {
                             string actionName = action.name;
-                            if (actionName == "Menu")
+                            if (actionName == "Menu" || actionName == "Interaction")
                             {
                                 action.performed -= UIManager.instance.Execute_Internal;
                                 action.performed += UIManager.instance.Execute_Internal;
@@ -235,17 +234,12 @@ public class InputManager : NetworkBehaviour
                     break;
                 default:
                     {
-                        hasAllocated = false;
                         Debug.LogWarning($"InputManager: Unhandled ActionMap '{map.name}'");
                     }
                     break;
             }
-            if (hasAllocated)
-            {
-                Debug.Log($"[ActionMap] {map.name} has been allocated.");
-            }
-            ChangeActionMap("Locked");
         }
+        ChangeActionMap("Locked");
     }
 
     /// <summary>
