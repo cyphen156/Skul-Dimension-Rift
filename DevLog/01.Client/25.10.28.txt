@@ -1,7 +1,7 @@
 Branch 
     InputAction 동적 로딩 기능 구현
 
-Commit 
+Commit ac4482f
 [Refactor] UI 비활성화 시 잔존 선택 상태로 인해 즉시 Execute가 트리거되던 문제 수정 · PopUp Submit 인자 하드코딩 제거
 
 변경 요약

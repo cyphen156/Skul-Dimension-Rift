@@ -39,6 +39,7 @@ public class Control : InteractiveUIBehaviour
     }
     private new void OnEnable()
     {
+        base.OnEnable();
         Refresh();
     }
 
@@ -49,7 +50,7 @@ public class Control : InteractiveUIBehaviour
             return;
         }
 
-        string name = selectedButton.name;
+        string name = selectedButton.name.Replace("Button", "");
 
         switch (name)
         {
@@ -84,7 +85,7 @@ public class Control : InteractiveUIBehaviour
         {
             if (controlButtons.TryGetValue(key, out var img))
             {
-                var sprite = ResourceManager.instance.GetSprite(key);
+                var sprite = ResourceManager.instance.GetControlSprite(key);
                 img.enabled = sprite != null;
                 if (sprite != null)
                 {
@@ -100,7 +101,7 @@ public class Control : InteractiveUIBehaviour
             var img = kv.Value;
             if (!img) continue;
 
-            var sp = ResourceManager.instance.GetSprite(kv.Key);
+            var sp = ResourceManager.instance.GetControlSprite(kv.Key);
             img.enabled = sp != null;
             if (sp != null)
             {

@@ -120,8 +120,9 @@ public class InputManager : NetworkBehaviour
         currentActivatedDevice = newScheme;
 
         ResourceManager.instance.ChangeResource("controlSprites", currentActivatedDevice);
-        
+#if UNITY_EDITOR
         Debug.Log("Input Device Changed");
+#endif
     }
     #endregion Unity Methods
 
@@ -316,14 +317,46 @@ public class InputManager : NetworkBehaviour
 #endif
     }
     
-    public void RebindAction(string ActionButtonName, string newBindKey)
+    /// <summary>
+    /// 액션의 바인딩을 리바인드하는 함수
+    /// </summary>
+    /// <param name="actionButtonName"></param>
+    /// <param name="newBindKey">만약 null일 경우 키 할당을 해제합니다.</param>
+    public void RebindAction(string actionButtonName, string newBindKey = null)
     {
-        Debug.Log("");
+        if (string.IsNullOrEmpty(actionButtonName) || playerInput == null)
+        {
+            return;
+        }
+
+        // 새 키가 왔다면 이미 할당된 키인지 확인해야 합니다.
+        if (newBindKey != null)
+        {
+            string actionName = ParseKey(actionButtonName);
+            string oldBindkey = playerInput.actions.FindAction(actionName).GetBindingDisplayString();
+            // 만약 할당되어 있다면 서로 교환합니다.
+            if (oldBindkey == newBindKey)
+            {
+                //switch
+            }
+        }
+
     }
 
     public void ResetBindings()
     {
-        playerInput.actions = ResourceManager.instance.GetUserInputActions(true);
+        if (playerInput == null || playerInput.actions == null)
+        {
+            return;
+        }
+
+        playerInput.DeactivateInput();
+        playerInput.actions.Disable();
+
+        playerInput.actions.FindActionMap("Player").RemoveAllBindingOverrides();
+
+        playerInput.actions.Enable();
+        playerInput.ActivateInput();
     }
 
     private static void GetAnyInput(InputControl control)
@@ -407,4 +440,60 @@ public class InputManager : NetworkBehaviour
         isContextReady = true;
     }
     #endregion Custom Methods
+
+    #region Utility
+    // 리소스 매니저에서 넘어온놈
+    // 외부에서 들어온 키를 파싱해서 리소스 매니저에게 넘겨줄 친구
+    public string ParseKey(string key)
+    {
+        InputActionMap playerMap = playerInput.actions.FindActionMap("Player");
+        InputAction action = playerMap?.FindAction(key, false);
+
+        if (action == null)
+        {
+            if (key.StartsWith("Move", StringComparison.OrdinalIgnoreCase))
+            {
+                action = playerMap.FindAction("Move", false);
+            }
+            else
+            {
+                Debug.LogWarning($"Action '{key}' not found in Player map.");
+                return null;
+            }
+        }
+        string displayString = action.GetBindingDisplayString();
+
+        if (action.name == "Move")
+        {
+            string part = key.Replace("Move", "");
+
+            for (int i = 0; i < action.bindings.Count; ++i)
+            {
+                InputBinding binding = action.bindings[i];
+                if (binding.isPartOfComposite == true && binding.name.Equals(part, StringComparison.OrdinalIgnoreCase))
+                {
+                    displayString = string.IsNullOrEmpty(binding.effectivePath) ? binding.path : binding.effectivePath;
+                    break;
+                }
+            }
+        }
+
+        if (string.IsNullOrEmpty(displayString))
+        {
+            Debug.LogWarning($"[ResourceManager] Action '{key}' has no valid binding display string.");
+            return null;
+        }
+
+        string[] tokens = displayString.Split('/');
+        string controlKey = tokens.Length > 1 ? tokens[^1] : displayString;
+
+        // 강제분할 1회 추가
+        tokens = controlKey.Split();
+        controlKey = tokens.Length > 1 ? tokens[^1] : controlKey;
+        controlKey = controlKey.Trim();
+        controlKey = char.ToUpper(controlKey[0]) + controlKey.Substring(1);
+
+        return controlKey;
+    }
+    #endregion
 }

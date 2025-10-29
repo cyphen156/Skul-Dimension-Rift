@@ -203,7 +203,7 @@ public class GameManager : NetworkBehaviour
         if (buttonName == null)
         {
             InputManager.instance.ResetBindings();
-            UIManager.instance.RefreshUI();
+            UIManager.instance.RefreshUI("Control");
             ResourceManager.instance.SaveUserData();
             return;
         }
@@ -230,29 +230,40 @@ public class GameManager : NetworkBehaviour
             // 동프레임 입력누적을 처리하기 위한 한프레임 대기
             yield return null;
             // 키 하나 입력받을 때까지 대기
-            yield return new WaitUntil(() => InputManager.instance.GetAnyKey());
+            yield return new WaitUntil(() =>
+                !popUpUI.activeInHierarchy || InputManager.instance.GetAnyKey()
+            );
+
+            yield return null;
 
             if (!popUpUI.activeInHierarchy)
             {
-                InputManager.instance.EndCapture();
-                InputManager.instance.ChangeInputMode(InputMode.UIOnly);
-                yield break;
+                break;
             }
 
             var ctx = InputManager.instance.PeekLastInput();
-
-            // 입력받은 키를 팝업 UI에 전달
             UIManager.instance.Execute(ctx);
             InputManager.instance.EndCapture();
         }
 
+        InputManager.instance.EndCapture();
+        InputManager.instance.ChangeInputMode(InputMode.UIOnly);
+
         // 팝업 UI에서 입력받은 키 정보 가져오기
         PopUp popUpComponent = popUpUI.GetComponent<PopUp>();
+
+        // Execute_Internal에 의한 PopUp Close
+        if (!popUpComponent.CheckConfirm())
+        {
+            yield break;
+        }
+
         string newKey = popUpComponent.GetInputKey();
         InputManager.instance.RebindAction(buttonName, newKey);
 
         yield return null;
-        UIManager.instance.RefreshUI(popUpUI);
+        // 리바인드 종료 로직
+        UIManager.instance.RefreshUI("Control");
         InputManager.instance.ChangeInputMode(InputMode.UIOnly);
         ResourceManager.instance.SaveUserData();
     }

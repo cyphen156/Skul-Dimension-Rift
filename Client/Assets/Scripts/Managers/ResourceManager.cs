@@ -41,7 +41,8 @@ public class ResourceManager : MonoBehaviour
     [Header("Resources")]
     private Dictionary<string, AudioClip> bgmClips = new Dictionary<string, AudioClip>();
     private Dictionary<string, AudioClip> sfxClips = new Dictionary<string, AudioClip>();
-    private Dictionary<string, Sprite> controlSprites = new Dictionary<string, Sprite>();
+    private readonly Dictionary<string, string> controlBindings = new();
+    private readonly Dictionary<string, Sprite> controlSprites = new();
 
     [Header("Runtime System Data")]
     [SerializeField] private string controlDeviceInfo;
@@ -108,21 +109,21 @@ public class ResourceManager : MonoBehaviour
         controlKeys.Clear();
 #endif
         userInputAsset = Resources.Load<InputActionAsset>(defaultInputActionPath);
+        userInputAsset = Instantiate(userInputAsset);
 
         // 유저 데이터 로드
-
         userData = LoadUserData();
         if (userData == null)
         {
             var now = DateTime.UtcNow.ToString("o");
-
+            InputActionMap playerMap = userInputAsset.FindActionMap("Player");
             userData = new UserData
             {
                 createdAt = now,
                 lastModified = now,
                 control = new ControlData
                 {
-                    bindings = userInputAsset != null ? userInputAsset.ToJson() : "[]",
+                    bindings = playerMap != null ? playerMap.SaveBindingOverridesAsJson() : ""
                 }
             };
             SaveUserData();
@@ -133,7 +134,11 @@ public class ResourceManager : MonoBehaviour
             {
                 try
                 {
-                    userInputAsset.LoadFromJson(userData.control.bindings);
+                    InputActionMap playerMap = userInputAsset.FindActionMap("Player");
+                    if (playerMap != null)
+                    {
+                        InputActionRebindingExtensions.LoadBindingOverridesFromJson(playerMap, userData.control.bindings);
+                    }
                 }
                 catch (Exception e)
                 {
@@ -154,14 +159,16 @@ public class ResourceManager : MonoBehaviour
         var audioData = options.audio;
         var gamePlayData = options.gameplay;
         //SoundManager.instance.SetVolumes(audioData.masterVolume, audioData.BGMVolume, audioData.SFXVolume);
-
-        Debug.Log("!");
         #endregion
     }
 
     #endregion
 
     #region Resource Accessors
+    public void SetBindingInfo()
+    {
+
+    }
     public T GetResource<T>(string resourceName) where T : Object
     {
         // how to Resource??
@@ -175,75 +182,19 @@ public class ResourceManager : MonoBehaviour
             return (T)Resources.Load<T>(resourceName);
         }
     }
-    public InputActionAsset GetUserInputActions(bool isDefault = false)
+    public InputActionAsset GetUserInputActions()
     {
-        if (isDefault)
-        {
-            userInputAsset = Resources.Load<InputActionAsset>(defaultInputActionPath);
-        }
         return userInputAsset;
     }
 
-    public string func1(string key)
+    public Sprite GetControlSprite(string key, bool isHighlight = false)
     {
-        InputActionMap playerMap = userInputAsset.FindActionMap("Player");
-        InputAction action = playerMap?.FindAction(key, false);
-
-        if (action == null)
+        if (isHighlight)
         {
-            // StartsWith을 로드가 아닌 런타임에 쓰지마라
-            // ==> Overhead 10만개 기준 130msc 정도 연산
-            // 근데 그렇게 오래걸리나?
-            if (key.StartsWith("Move", StringComparison.OrdinalIgnoreCase))
-            {
-                action = playerMap.FindAction("Move", false);
-            }
-            else
-            {
-                Debug.LogWarning($"Action '{key}' not found in Player map.");
-                return null;
-            }
+            key += "_White";
         }
-        string displayString = action.GetBindingDisplayString();
-
-        if (action.name == "Move")
+        if (key != null && controlSprites.TryGetValue(key, out Sprite sprite))
         {
-            string part = key.Replace("Move", "");
-
-            for (int i = 0; i < action.bindings.Count; ++i)
-            {
-                InputBinding binding = action.bindings[i];
-                if (binding.isPartOfComposite == true && binding.name.Equals(part, StringComparison.OrdinalIgnoreCase))
-                {
-                    displayString = string.IsNullOrEmpty(binding.effectivePath) ? binding.path : binding.effectivePath;
-                    break;
-                }
-            }
-        }
-
-        if (string.IsNullOrEmpty(displayString))
-        {
-            Debug.LogWarning($"[ResourceManager] Action '{key}' has no valid binding display string.");
-            return null;
-        }
-
-        string[] tokens = displayString.Split('/');
-        string controlKey = tokens.Length > 1 ? tokens[^1] : displayString;
-
-        // 강제분할 1회 추가
-        tokens = controlKey.Split();
-        controlKey = tokens.Length > 1 ? tokens[^1] : controlKey;
-        controlKey = controlKey.Trim();
-        controlKey = char.ToUpper(controlKey[0]) + controlKey.Substring(1);
-
-        return controlKey;
-    }
-    public Sprite GetSprite(string key)
-    {
-        string controlKey = func1(key);    
-        if (controlKey != null && controlSprites.TryGetValue(controlKey, out Sprite sprite))
-        {
-            long size = UnityEngine.Profiling.Profiler.GetRuntimeMemorySizeLong(this);
             return sprite;
         }
 
@@ -291,12 +242,14 @@ public class ResourceManager : MonoBehaviour
             {
                 File.Move(temp, userDataPath);
             }
+#if UNITY_EDITOR
             Debug.Log("UserData Save Successe");
+#endif
             return true;
         }
         catch (Exception e)
         {
-            Debug.Assert(true, $"Saveing UserData Failed : {e}");
+            Debug.Assert(false, $"Saveing UserData Failed : {e}");
             return false;
         }
     }
@@ -311,7 +264,9 @@ public class ResourceManager : MonoBehaviour
             {
                 throw new Exception("JSON parse failed");
             }
+#if UNITY_EDITOR
             Debug.Log("User Data has been Loaded");
+#endif
             return loaded;
         }
         catch (Exception e)
@@ -419,5 +374,5 @@ public class ResourceManager : MonoBehaviour
         controlKeys.AddRange(controlSprites.Keys);
 #endif
     }
-#endregion
+    #endregion
 }

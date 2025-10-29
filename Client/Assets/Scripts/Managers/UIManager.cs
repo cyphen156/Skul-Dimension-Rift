@@ -79,24 +79,25 @@ public class UIManager : MonoBehaviour
 
     private void SetUIFocus(IInteractive UIObject)
     {
-        Debug.Log($"[SetUIFocus] Push {((MonoBehaviour)UIObject).name}");
-
-        if (UIObject != null)
-        {
-            uiInputStack.Push(UIObject);
-            focusedUI = UIObject;
-        }
-        else
+        if (UIObject == null)
         {
             Debug.LogWarning("UIManager: Attempted to set focus to a null UIObject.");
+            return;
         }
+        
+        if (focusedUI == UIObject)
+        {
+            return;
+        }
+
+        uiInputStack.Push(UIObject);
+        focusedUI = UIObject;
     }
 
     private void RemoveUIFocus(IInteractive targetUIHandler)
     {
         if (focusedUI != null && focusedUI == targetUIHandler)
         {
-            Debug.Log($"[RemoveUIFocus] Pop {((MonoBehaviour)focusedUI).name}");
             uiInputStack.Pop();
             focusedUI = uiInputStack.Count > 0 ? uiInputStack.Peek() : null;
         }
@@ -142,7 +143,6 @@ public class UIManager : MonoBehaviour
         {
             if (!uiObject.activeInHierarchy)
             {
-                Debug.Log($"{uiObject} has been Already Disabled");
                 return;
             }
             if (uiObject.TryGetComponent<IInteractive>(out IInteractive uiInputHandler))
@@ -228,16 +228,32 @@ public class UIManager : MonoBehaviour
     /// 외부 요인으로 인한 상호작용 가능한 UI 요소의 변경이 있엇을 때 호출
     /// InteractiveUI를 갱신
     /// </summary>
-    public void RefreshUI(GameObject targetUI = null)
+    public void RefreshUI(string targetUI = null, string param = null)
     {
-        if (targetUI != null && !uiObjects.ContainsKey(targetUI.name))
+        if (string.IsNullOrEmpty(targetUI))
+        {
+            RefreshAll();
+            return;
+        }
+
+        // 존재하지 않으면 무시
+        if (!uiObjects.TryGetValue(targetUI, out var target))
         {
             return;
         }
 
-        targetUI = targetUI.gameObject;
+        target.GetComponent<InteractiveUIBehaviour>()?.Refresh(param);
+    }
 
-        targetUI.GetComponent<InteractiveUIBehaviour>().Refresh();
+    private void RefreshAll()
+    {
+        foreach (var ui in uiObjects.Values)
+        {
+            if (ui != null && ui.activeInHierarchy)
+            {
+                ui.GetComponent<InteractiveUIBehaviour>()?.Refresh();
+            }
+        }
     }
 
     public GameObject TryGetUI(string UIName)

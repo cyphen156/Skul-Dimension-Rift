@@ -11,6 +11,7 @@ public class PopUp : InteractiveUIBehaviour, IInteractive
 {
     [SerializeField] private string inputKey;
     [SerializeField] private TMP_InputField inputField;
+    [SerializeField] private bool isSubmitted;
 
     private new void Awake()
     {
@@ -27,6 +28,7 @@ public class PopUp : InteractiveUIBehaviour, IInteractive
         inputField.text = string.Empty;
         inputField.Select();
         inputField.ActivateInputField();
+        isSubmitted = false;
     }
 
     /// <summary>
@@ -51,12 +53,17 @@ public class PopUp : InteractiveUIBehaviour, IInteractive
 
     protected override void OnSubmit()
     {
-        string name = this.name;
+        isSubmitted = true;
         UIManager.instance.Hide(name);
     }
 
     internal string GetInputKey()
     {
         return inputKey;
+    }
+
+    public bool CheckConfirm()
+    {
+        return isSubmitted;
     }
 }
