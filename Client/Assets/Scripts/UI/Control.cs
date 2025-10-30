@@ -59,10 +59,10 @@ public class Control : InteractiveUIBehaviour
             // ResourceManager, UIManager, GameManager, InputManager가 모두 필요하기 때문
             // 흐름이 일괄적으로 통제되게 하기 위해
             // 이 모두를 알 수 있는건 GameManager로 제한하고 싶음
-            case "ReturnButton":
+            case "Return":
                 GameManager.instance.ChangeGameState(GameState.Playing);
                 break;
-            case "ResetButton":
+            case "Reset":
                 GameManager.instance.ControlReBind(); // 전체 리셋
                 break;
             default:
@@ -86,12 +86,9 @@ public class Control : InteractiveUIBehaviour
             if (controlButtons.TryGetValue(key, out var img))
             {
                 var sprite = ResourceManager.instance.GetControlSprite(key);
-                img.enabled = sprite != null;
-                if (sprite != null)
-                {
-                    img.sprite = sprite;
-                    img.preserveAspect = true;
-                }
+                // sprite가 널이 올 수 있다
+                img.sprite = sprite;
+                img.preserveAspect = true;
             }
             return;
         }
@@ -102,12 +99,8 @@ public class Control : InteractiveUIBehaviour
             if (!img) continue;
 
             var sp = ResourceManager.instance.GetControlSprite(kv.Key);
-            img.enabled = sp != null;
-            if (sp != null)
-            {
-                img.sprite = sp;
-                img.preserveAspect = true;
-            }
+            img.sprite = sp;
+            img.preserveAspect = true;
         }
     }
 }

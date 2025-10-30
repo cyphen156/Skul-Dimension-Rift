@@ -43,7 +43,7 @@ public class ResourceManager : MonoBehaviour
     private Dictionary<string, AudioClip> sfxClips = new Dictionary<string, AudioClip>();
     private readonly Dictionary<string, string> controlBindings = new();
     private readonly Dictionary<string, Sprite> controlSprites = new();
-
+    private Sprite placeHolderSprite;
     [Header("Runtime System Data")]
     [SerializeField] private string controlDeviceInfo;
 
@@ -55,7 +55,9 @@ public class ResourceManager : MonoBehaviour
     [Header("DEBUG")]
     [SerializeField] private List<string> bgmKeys = new();
     [SerializeField] private List<string> sfxKeys = new();
-    [SerializeField] private List<string> controlKeys = new();
+    [SerializeField] private List<string> ControlSprites = new();
+    [SerializeField] private List<string> ControlNames = new();
+    [SerializeField] private List<string> spriteKeys = new();
 #endif
 
     #region Unity Methods
@@ -101,12 +103,15 @@ public class ResourceManager : MonoBehaviour
             }
         }
 
+        placeHolderSprite = Resources.Load<Sprite>("Sprite/PlaceHolder");
 #if UNITY_EDITOR
         bgmKeys.Clear();
         sfxKeys.Clear();
         bgmKeys.AddRange(bgmClips.Keys);
         sfxKeys.AddRange(sfxClips.Keys);
-        controlKeys.Clear();
+        ControlSprites.Clear();
+        ControlNames.Clear();
+        spriteKeys.Clear();
 #endif
         userInputAsset = Resources.Load<InputActionAsset>(defaultInputActionPath);
         userInputAsset = Instantiate(userInputAsset);
@@ -187,20 +192,39 @@ public class ResourceManager : MonoBehaviour
         return userInputAsset;
     }
 
-    public Sprite GetControlSprite(string key, bool isHighlight = false)
+    public Sprite GetControlSprite(string controlName, bool isHighlight = false)
     {
-        if (isHighlight)
+        if (string.IsNullOrEmpty(controlName))
         {
-            key += "_White";
-        }
-        if (key != null && controlSprites.TryGetValue(key, out Sprite sprite))
-        {
-            return sprite;
+            return null;
         }
 
-        return null;
+        string bindingKey;
+        if (!controlBindings.TryGetValue(controlName, out bindingKey))
+        {
+            return null;
+        }
+
+        if (string.IsNullOrEmpty(bindingKey))
+        {
+            return placeHolderSprite;
+        }
+
+        if (isHighlight)
+        {
+            bindingKey += "_White";
+        }
+
+        Sprite sprite;
+        if (!controlSprites.TryGetValue(bindingKey, out sprite))
+        {
+            // 스프라이트를 조회했는데 없다면 에러처리한다.
+            Debug.Log("there is No value In Dictionary");
+        }
+
+        return sprite;
     }
-   
+
     public AudioClip GetBGMClip(string bgmClipName)
     {
         return bgmClips.ContainsKey(bgmClipName) ? bgmClips[bgmClipName] : null;
@@ -219,6 +243,9 @@ public class ResourceManager : MonoBehaviour
         {
             // 현재 사용중인 데이터 저장 
             userData.lastModified = DateTime.UtcNow.ToString("o");
+            InputActionMap playerMap = userInputAsset.FindActionMap("Player");
+
+            userData.control.bindings = playerMap != null ? playerMap.SaveBindingOverridesAsJson() : "";
 
             var dir = Path.GetDirectoryName(userDataPath);
             if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
@@ -227,29 +254,29 @@ public class ResourceManager : MonoBehaviour
             }
 
             var json = JsonUtility.ToJson(userData, prettyPrint: true);
-
             var temp = userDataPath + ".tmp";
-
             File.WriteAllText(temp, json);
 
             // 기존 파일이 있는 경우
             if (File.Exists(userDataPath))
             {
-                File.Replace(temp, userDataPath, userDataPath + ".bak");
+                var bak = userDataPath + ".bak";
+                try { File.Copy(userDataPath, bak, true); } catch { /*백업 실패 무시*/ }
+                File.Copy(temp, userDataPath, true);
+                File.Delete(temp);
             }
-            // 없는 경우 생성
             else
             {
                 File.Move(temp, userDataPath);
             }
 #if UNITY_EDITOR
-            Debug.Log("UserData Save Successe");
+            Debug.Log("UserData Save Success");
 #endif
             return true;
         }
         catch (Exception e)
         {
-            Debug.Assert(false, $"Saveing UserData Failed : {e}");
+            Debug.Assert(false, $"Saving UserData Failed : {e}");
             return false;
         }
     }
@@ -258,6 +285,11 @@ public class ResourceManager : MonoBehaviour
     {
         try
         {
+            if (!File.Exists(userDataPath))
+            {
+                return null;
+            }
+
             var json = File.ReadAllText(userDataPath);
             var loaded = JsonUtility.FromJson<UserData>(json);
             if (loaded == null)
@@ -274,40 +306,6 @@ public class ResourceManager : MonoBehaviour
             Debug.Log($"Loading UserData Failed : {e}");
             return null;
         }
-    }
-    #endregion
-
-    #region Utility Methods
-    private void CacheClear(Exception e = null)
-    {
-        // 에러가 발생했으면 전체 캐시를 강제로 삭제
-        if (e != null)
-        {
-            Debug.LogError($"ResourceManager Cache Clear Exception: {e.Message}");
-
-            Caching.ClearCache();
-        }
-
-        // 이 외에는 사용하지 않는 캐시만 삭제
-        Addressables.CleanBundleCache();
-    }
-
-    /// <summary>
-    /// 플랫폼 정보를 정규화하여 리턴합니다.
-    /// 어드레서블 데이터를 다운로드 할때 사용할 예정입니다.
-    /// </summary>
-    /// <returns></returns>
-    private static string GetPlatformFolder()
-    {
-        return Application.platform switch
-        {
-            RuntimePlatform.Android => "ANDROID",
-            RuntimePlatform.IPhonePlayer => "IOS",
-            RuntimePlatform.WindowsPlayer or RuntimePlatform.WindowsEditor => "WINDOWS",
-            RuntimePlatform.OSXPlayer or RuntimePlatform.OSXEditor => "OSX",
-            RuntimePlatform.WebGLPlayer => "WEB",
-            _ => Application.platform.ToString()
-        };
     }
 
     public void ChangeResource(string dictionaryName, string ResourceTarget)
@@ -328,7 +326,7 @@ public class ResourceManager : MonoBehaviour
                     string path = "Sprite/" + targetPath;
                     /// 여기서 병목이 생긴다면 Load스크린 코루틴 띄워야 할 수도 있습니다
                     /// 스프라이트 150개 가량이라서 그럴것 같지는 않지만 혹시 몰라 주석달아놓기
-                    
+
                     // 게임 패드 종류라면 General폴더 먼저로드하기
                     // 이후 개별 패드 스프라이트중 동일한 것이 있다면 오버라이드
                     if (path.Contains("GamePad"))
@@ -370,9 +368,68 @@ public class ResourceManager : MonoBehaviour
                 break;
         }
 #if UNITY_EDITOR
-        controlKeys.Clear();
-        controlKeys.AddRange(controlSprites.Keys);
+        ControlSprites.Clear();
+        ControlSprites.AddRange(controlSprites.Keys);
 #endif
+    }
+
+    public void ApplyControlBinding(string controlName, string bindingKey)
+    {
+        if (string.IsNullOrEmpty(controlName))
+        {
+            return;
+        }
+
+        if (bindingKey == null)
+        {
+            bindingKey = string.Empty;
+        }
+
+        controlBindings[controlName] = bindingKey;
+#if UNITY_EDITOR
+        if (!ControlNames.Contains(controlName))
+        {
+            ControlNames.Add(controlName);
+        }
+        if (!spriteKeys.Contains(bindingKey))
+        {
+            spriteKeys.Add(bindingKey);
+        }
+#endif
+    }
+    #endregion
+
+    #region Utility Methods
+    private void CacheClear(Exception e = null)
+    {
+        // 에러가 발생했으면 전체 캐시를 강제로 삭제
+        if (e != null)
+        {
+            Debug.LogError($"ResourceManager Cache Clear Exception: {e.Message}");
+
+            Caching.ClearCache();
+        }
+
+        // 이 외에는 사용하지 않는 캐시만 삭제
+        Addressables.CleanBundleCache();
+    }
+
+    /// <summary>
+    /// 플랫폼 정보를 정규화하여 리턴합니다.
+    /// 어드레서블 데이터를 다운로드 할때 사용할 예정입니다.
+    /// </summary>
+    /// <returns></returns>
+    private static string GetPlatformFolder()
+    {
+        return Application.platform switch
+        {
+            RuntimePlatform.Android => "ANDROID",
+            RuntimePlatform.IPhonePlayer => "IOS",
+            RuntimePlatform.WindowsPlayer or RuntimePlatform.WindowsEditor => "WINDOWS",
+            RuntimePlatform.OSXPlayer or RuntimePlatform.OSXEditor => "OSX",
+            RuntimePlatform.WebGLPlayer => "WEB",
+            _ => Application.platform.ToString()
+        };
     }
     #endregion
 }

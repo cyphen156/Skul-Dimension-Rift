@@ -1,5 +1,6 @@
 using Assets.Scripts.Interface;
 using TMPro;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -10,6 +11,7 @@ using UnityEngine.InputSystem;
 public class PopUp : InteractiveUIBehaviour, IInteractive
 {
     [SerializeField] private string inputKey;
+    [SerializeField] private InputControl bindingControl;
     [SerializeField] private TMP_InputField inputField;
     [SerializeField] private bool isSubmitted;
 
@@ -47,7 +49,8 @@ public class PopUp : InteractiveUIBehaviour, IInteractive
             return;
         }
 
-        inputKey = ctx.control.displayName;
+        bindingControl = ctx.control;
+        inputKey = bindingControl.displayName;
         inputField.text = inputKey;
     }
 
@@ -57,9 +60,9 @@ public class PopUp : InteractiveUIBehaviour, IInteractive
         UIManager.instance.Hide(name);
     }
 
-    internal string GetInputKey()
+    public InputControl GetBindingControl()
     {
-        return inputKey;
+        return bindingControl;
     }
 
     public bool CheckConfirm()

@@ -1,6 +1,8 @@
 using System.Collections;
 using Unity.Netcode;
+using UnityEditor.Build.Pipeline.Tasks;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using static Types;
 
@@ -258,12 +260,17 @@ public class GameManager : NetworkBehaviour
             yield break;
         }
 
-        string newKey = popUpComponent.GetInputKey();
-        InputManager.instance.RebindAction(buttonName, newKey);
-
+        InputControl newKey = popUpComponent.GetBindingControl();
+        string switchButton;
+        InputManager.instance.RebindAction(buttonName, out switchButton, newKey);
         yield return null;
         // 리바인드 종료 로직
-        UIManager.instance.RefreshUI("Control");
+        UIManager.instance.RefreshUI("Control", buttonName);
+        // 
+        if (switchButton != null)
+        {
+            UIManager.instance.RefreshUI("Control", switchButton);
+        }
         InputManager.instance.ChangeInputMode(InputMode.UIOnly);
         ResourceManager.instance.SaveUserData();
     }

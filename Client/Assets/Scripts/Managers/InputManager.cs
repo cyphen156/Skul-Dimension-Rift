@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -7,9 +8,6 @@ using static Types;
 
 /// <summary>
 /// 사용자의 입력을 관리하는 싱글톤 매니저 클래스입니다.
-/// 게임매니저에 의해 제어되며 
-/// 사용자 입력은 항상 어떠한 방식으로든 들어오는 이벤트로 간주합니다.
-/// 따라서, 이 매니저는 입력 이벤트를 수신하고 이를 처리하는 역할을 합니다.
 /// </summary>
 public class InputManager : NetworkBehaviour
 {
@@ -18,7 +16,30 @@ public class InputManager : NetworkBehaviour
     [SerializeField] private InputMode currentInputMode;
     [SerializeField] private PlayerInput playerInput;
     [SerializeField] private InputActionMap currentActionMap;
+    [SerializeField] private InputActionMap playerMap;
+    // 자주 사용되는 플레이어 액션 맵은 조회 횟수를 감소시키기 위하여 레퍼런스로 저장합니다.
+#if UNITY_EDITOR
+    [System.Serializable]
+    private struct OverrideView
+    {
+        public string action;
+        public string binding;
+    }
+    [SerializeField] private List<OverrideView> currentOverrideActions = new List<OverrideView>();
+#endif
 
+    private static readonly Dictionary<string, string> moveAction =
+    new()
+    {
+        { "MoveUp", "up" },
+        { "MoveDown", "down" },
+        { "MoveLeft", "left" },
+        { "MoveRight", "right" },
+    };
+    private static readonly HashSet<string> NonRebindables = new(StringComparer.Ordinal)
+    {
+        "ArrowDash",
+    };
     private static InputAction captureAction;
     private static InputAction.CallbackContext lastInputContext;
     private static bool isContextReady;
@@ -88,6 +109,7 @@ public class InputManager : NetworkBehaviour
             playerInput.onControlsChanged -= OnDeviceChanged;
         }
     }
+
     private void Start()
     {
         if (!hasInitialized)
@@ -96,16 +118,29 @@ public class InputManager : NetworkBehaviour
             hasInitialized = true;
         }
     }
+#endregion Unity Methods
 
     private void InitializeInput()
     {
         playerInput.actions = ResourceManager.instance.GetUserInputActions();
+        playerMap = playerInput.actions.FindActionMap("Player");
         AllocateInputActions();
         ChangeInputMode(InputMode.Locked);
 
         currentActivatedDevice = playerInput.currentControlScheme;
-
         ResourceManager.instance.ChangeResource("controlSprites", currentActivatedDevice);
+        PopulateControlBindings();
+#if UNITY_EDITOR
+        currentOverrideActions.Clear();
+        for (int i = 0; i < playerMap.actions.Count; i++)
+        {
+            var act = playerMap.actions[i];
+            var v = new OverrideView();
+            v.action = act.name;
+            v.binding = act.GetBindingDisplayString();
+            currentOverrideActions.Add(v);
+        }
+#endif
     }
 
     private void OnDeviceChanged(PlayerInput pi)
@@ -120,11 +155,12 @@ public class InputManager : NetworkBehaviour
         currentActivatedDevice = newScheme;
 
         ResourceManager.instance.ChangeResource("controlSprites", currentActivatedDevice);
+
+        PopulateControlBindings();
 #if UNITY_EDITOR
         Debug.Log("Input Device Changed");
 #endif
     }
-    #endregion Unity Methods
 
     #region Custom Methods
     private static void InitializeCaptureAction()
@@ -316,31 +352,223 @@ public class InputManager : NetworkBehaviour
         Debug.LogWarning("Current ActionMap: " + playerInput.currentActionMap.name);
 #endif
     }
-    
+
     /// <summary>
     /// 액션의 바인딩을 리바인드하는 함수
     /// </summary>
-    /// <param name="actionButtonName"></param>
+    /// <param name="actionButtonName">새 바인딩을 할당할 액션의 이름</param>
     /// <param name="newBindKey">만약 null일 경우 키 할당을 해제합니다.</param>
-    public void RebindAction(string actionButtonName, string newBindKey = null)
+    /// <param name="swapButtonName"></param>
+    public void RebindAction(string actionButtonName, out string swapButtonName, InputControl newBindKey = null)
     {
-        if (string.IsNullOrEmpty(actionButtonName) || playerInput == null)
+        swapButtonName = null;
+
+        string newPath = newBindKey != null ? newBindKey.path : string.Empty;
+
+        if (string.IsNullOrEmpty(actionButtonName) || playerMap == null)
         {
             return;
         }
 
-        // 새 키가 왔다면 이미 할당된 키인지 확인해야 합니다.
-        if (newBindKey != null)
+        // 맵에서 버튼 이름에 해당하는 액션 이름 찾기
+        string targetActionName = actionButtonName;
+        string targetPartName = null;
+
+        if (NonRebindables.Contains(targetActionName))
         {
-            string actionName = ParseKey(actionButtonName);
-            string oldBindkey = playerInput.actions.FindAction(actionName).GetBindingDisplayString();
-            // 만약 할당되어 있다면 서로 교환합니다.
-            if (oldBindkey == newBindKey)
+            Debug.LogWarning("현재 비활성화된 액션입니다.");
+            return;
+        }
+
+        if (actionButtonName.StartsWith("Move", StringComparison.OrdinalIgnoreCase))
+        {
+            targetActionName = "Move";
+
+            if (moveAction.ContainsKey(actionButtonName))
             {
-                //switch
+                targetPartName = moveAction[actionButtonName];
+            }
+            else
+            {
+                string suffix = actionButtonName.Substring("Move".Length);
+                if (!string.IsNullOrEmpty(suffix))
+                {
+                    targetPartName = suffix.ToLowerInvariant();
+                }
             }
         }
 
+        InputAction action = playerInput.actions.FindAction(targetActionName);
+        if (action == null)
+        {
+            return;
+        }
+
+
+        // 대상 바인딩 인덱스 찾기
+        int targetIndex = -1;
+
+        if (!string.IsNullOrEmpty(targetPartName))
+        {
+            for (int i = 0; i < action.bindings.Count; i++)
+            {
+                InputBinding binding = action.bindings[i];
+
+                if (!binding.isPartOfComposite)
+                {
+                    continue;
+                }
+
+                if (string.IsNullOrEmpty(binding.name))
+                {
+                    continue;
+                }
+
+                if (!binding.name.Equals(targetPartName, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (!string.IsNullOrEmpty(currentActivatedDevice) && !string.IsNullOrEmpty(binding.groups))
+                {
+                    if (!GroupsContain(binding.groups, currentActivatedDevice))   
+                    {
+                        continue;
+                    }
+                }
+
+                targetIndex = i;
+                break;
+            }
+        }
+
+        if (targetIndex == -1)
+        {
+            for (int i = 0; i < action.bindings.Count; i++)
+            {
+                InputBinding binding = action.bindings[i];
+
+                if (binding.isComposite)
+                {
+                    continue;
+                }
+
+                if (binding.isPartOfComposite)
+                {
+                    continue;
+                }
+
+                if (!string.IsNullOrEmpty(currentActivatedDevice) && !string.IsNullOrEmpty(binding.groups))
+                {
+                    if (!GroupsContain(binding.groups, currentActivatedDevice))
+                    {
+                        continue;
+                    }
+                }
+
+                targetIndex = i;
+                break;
+            }
+        }
+
+        if (targetIndex == -1)
+        {
+            return;
+        }
+
+        if (newBindKey == null)
+        {
+            action.ApplyBindingOverride(targetIndex, string.Empty);
+            ResourceManager.instance.ApplyControlBinding(actionButtonName, string.Empty);
+            return;
+        }
+
+        InputAction foundedAction = null;
+        int foundedIndex = -1;
+
+        foreach (InputAction act in playerMap.actions)
+        {
+            int count = act.bindings.Count;
+
+            for (int i = 0; i < count; i++)
+            {
+                InputBinding binding = act.bindings[i];
+
+                if (binding.isComposite)
+                {
+                    continue;
+                }
+
+                if (!string.IsNullOrEmpty(currentActivatedDevice) && !string.IsNullOrEmpty(binding.groups))
+                {
+                    if (!GroupsContain(binding.groups, currentActivatedDevice))
+                    {
+                        continue;
+                    }
+                }
+
+                var pathOnBinding = string.IsNullOrEmpty(binding.effectivePath) ? binding.path : binding.effectivePath;
+                if (!string.IsNullOrEmpty(pathOnBinding) && Norm(pathOnBinding) == Norm(newPath))
+                {
+                    if (NonRebindables.Contains(act.name))
+                    {
+                        continue;
+                    }
+
+                    foundedAction = act;
+                    foundedIndex = i;
+                    break;
+                }
+            }
+
+            if (foundedAction != null)
+            {
+                break;
+            }
+        }
+
+        if (foundedAction != null)
+        {
+            bool sameAction = foundedAction == action;
+            bool sameIndex = sameAction && foundedIndex == targetIndex;
+
+            if (sameIndex)
+            {
+                return;
+            }
+            string oldPathOnTarget = string.IsNullOrEmpty(action.bindings[targetIndex].effectivePath)
+                ? action.bindings[targetIndex].path
+                : action.bindings[targetIndex].effectivePath;
+            if (oldPathOnTarget == null)
+            {
+                oldPathOnTarget = string.Empty;
+            }
+
+            foundedAction.ApplyBindingOverride(foundedIndex, oldPathOnTarget);
+            string foundedAlias = foundedAction.name;
+            var foundedBinding = foundedAction.bindings[foundedIndex];
+            if (foundedBinding.isPartOfComposite && !string.IsNullOrEmpty(foundedBinding.name))
+            {
+                foundedAlias = "Move" + char.ToUpper(foundedBinding.name[0]) + foundedBinding.name.Substring(1);
+            }
+            swapButtonName = foundedAlias;
+            ResourceManager.instance.ApplyControlBinding(foundedAlias, ParseKey(foundedAlias));
+        }
+
+        action.ApplyBindingOverride(targetIndex, newPath);
+        ResourceManager.instance.ApplyControlBinding(actionButtonName, ParseKey(actionButtonName));
+
+#if UNITY_EDITOR
+        currentOverrideActions.Clear();
+        for (int i = 0; i < playerMap.actions.Count; i++)
+        {
+            var act = playerMap.actions[i];
+            OverrideView view = new OverrideView();
+            view.action = act.name;
+            view.binding = act.GetBindingDisplayString();
+            currentOverrideActions.Add(view);
+        }
+#endif
     }
 
     public void ResetBindings()
@@ -353,10 +581,23 @@ public class InputManager : NetworkBehaviour
         playerInput.DeactivateInput();
         playerInput.actions.Disable();
 
-        playerInput.actions.FindActionMap("Player").RemoveAllBindingOverrides();
+        playerMap.RemoveAllBindingOverrides();
 
         playerInput.actions.Enable();
         playerInput.ActivateInput();
+        PopulateControlBindings();
+
+#if UNITY_EDITOR
+        currentOverrideActions.Clear();
+        for (int i = 0; i < playerMap.actions.Count; i++)
+        {
+            var act = playerMap.actions[i];
+            OverrideView view = new OverrideView();
+            view.action = act.name;
+            view.binding = act.GetBindingDisplayString();
+            currentOverrideActions.Add(view);
+        }
+#endif
     }
 
     private static void GetAnyInput(InputControl control)
@@ -442,11 +683,10 @@ public class InputManager : NetworkBehaviour
     #endregion Custom Methods
 
     #region Utility
-    // 리소스 매니저에서 넘어온놈
-    // 외부에서 들어온 키를 파싱해서 리소스 매니저에게 넘겨줄 친구
+    // 외부에서 들어온 키를 파싱해서 리소스 매니저에게 넘겨주기 위한 파서
+    // 리소스 매니저는 이 것을 기반으로 맞는 컨트롤 키에 해당하는 스프라이트를 조회할 수 있게한다.
     public string ParseKey(string key)
     {
-        InputActionMap playerMap = playerInput.actions.FindActionMap("Player");
         InputAction action = playerMap?.FindAction(key, false);
 
         if (action == null)
@@ -480,7 +720,7 @@ public class InputManager : NetworkBehaviour
 
         if (string.IsNullOrEmpty(displayString))
         {
-            Debug.LogWarning($"[ResourceManager] Action '{key}' has no valid binding display string.");
+            Debug.LogWarning($"[InputManager] Action '{key}' has no x binding display string.");
             return null;
         }
 
@@ -494,6 +734,82 @@ public class InputManager : NetworkBehaviour
         controlKey = char.ToUpper(controlKey[0]) + controlKey.Substring(1);
 
         return controlKey;
+    }
+
+    private void PopulateControlBindings()
+    {
+        if (playerMap == null)
+        {
+            return;
+        }
+
+        foreach (var action in playerMap.actions)
+        {
+            if (NonRebindables.Contains(action.name))
+            {
+                continue;
+            }
+
+            if (action.name == "Move")
+            {
+                for (int i = 0; i < action.bindings.Count; i++)
+                {
+                    var binding = action.bindings[i];
+                    if (binding.isPartOfComposite == true && !string.IsNullOrEmpty(binding.name))
+                    {
+                        string alias = "Move" + char.ToUpper(binding.name[0]) + binding.name.Substring(1);
+                        string normalized = ParseKey(alias);
+                        if (string.IsNullOrEmpty(normalized))
+                        {
+                            normalized = string.Empty;
+                        }
+                        ResourceManager.instance.ApplyControlBinding(alias, normalized);
+                    }
+                }
+            }
+            else
+            {
+                string normalized = ParseKey(action.name);
+                if (string.IsNullOrEmpty(normalized))
+                {
+                    normalized = string.Empty;
+                }
+                ResourceManager.instance.ApplyControlBinding(action.name, normalized);
+            }
+        }
+    }
+
+    private static bool GroupsContain(string groups, string scheme)
+    {
+        if (string.IsNullOrEmpty(scheme))
+        {
+            return true;
+        }
+        if (string.IsNullOrEmpty(groups))
+        {
+            return false;
+        }
+
+        var tokens = groups.Split(new[] { ';', ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var token in tokens)
+        {
+            if (string.Equals(token.Trim(), scheme.Trim(), StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static string Norm(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return string.Empty;
+        }
+        return path.Trim().ToLowerInvariant()
+                   .Replace("gamepad:", "gamepad/")
+                   .Replace("<", "").Replace(">", "");
     }
     #endregion
 }
