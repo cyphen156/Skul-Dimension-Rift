@@ -22,7 +22,6 @@ public class InteractiveUIBehaviour : MonoBehaviour, IInteractive
         {
             selectedButton = buttons[0];
             lastPoint = selectedButton.transform.position;
-            selectedButton.Select();
         }
     }
 

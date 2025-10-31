@@ -1,0 +1,71 @@
+Branch 
+    InputAction 동적 로딩 기능 구현
+
+Conmit 
+[Feat][Fix] Control 리바인드 플로우 완성 · 리바인드 중 Interaction 차단 · 키 파싱/스왑 안정화
+
+변경 요약
+- InputAction 동적 로딩 기능이 완성되었습니다. (입력 → 팝업 → 키 캡처 → 바인딩 → UI 갱신 → 저장)
+- 리바인드 중 F/Enter 키 입력이 메뉴 또는 Submit으로 중복 처리되던 문제를 해결했습니다.
+- foundedAction ↔ targetAction 간 바인딩 스왑 로직을 안정화하였으며, 첫 입력 시 스왑 실패 문제를 해결했습니다.
+- InputMode.Restricted 상태에서 Interaction 액션만 비활성화하도록 분기 추가하였습니다.
+- UI 활성화 시 잔존 포커스 문제를 제거하였으며, Control UI 갱신 및 Refresh 구조를 단순화했습니다.
+- ParseKey 및 Norm 함수의 로직을 단순화하여 장치별 하드코딩 및 displayName 의존성을 제거했습니다.
+- Scroll → Interaction 액션 매핑 일원화 및 Title 맵 실행 책임을 UIManager로 이관했습니다.
+
+상세 수정 내용
+1. GameManager.cs  
+    - ControlReBind(string buttonName)  
+        · buttonName이 null일 경우 전체 리셋, 아닐 경우 개별 리바인드 코루틴 실행  
+    - C_GetKeyInfo()  
+        · InputMode.Restricted 진입 시 sequence 인자를 통해 Interaction 액션 비활성화  
+        · PopUp이 닫히면 입력 캡처 종료 후 UI 갱신 및 UserData 자동 저장  
+
+2. UIManager.cs  
+    - Show() / Hide()  
+        · UI 활성화 및 비활성화 시 포커스 스택과 FocusedUI를 동기화  
+    - Execute()  
+        · FocusedUI가 없을 경우 입력을 무시하도록 처리  
+    - Execute_Internal()  
+        · UI 닫힘/열림 후 GameState를 자동 전환  
+
+3. Control.cs  
+    - Awake()  
+        · 버튼 → 이미지 매핑 구조 정리 및 중복 탐색 제거  
+    - OnEnable()  
+        · selectedButton 초기화로 포커스 잔존으로 인한 즉시 Execute 문제 해결  
+    - OnSubmit()  
+        · GameManager.ControlReBind() 호출로 리바인드 프로세스 일원화  
+    - Refresh()  
+        · PreserveAspect 유지 및 스프라이트 갱신 로직 단순화  
+
+4. InputManager.cs  
+    - ChangeInputMode()  
+        · "ControlRebind" 시 Interaction 액션만 Disable 처리  
+    - RebindAction()  
+        · foundedAction ↔ action 양방향 ApplyBindingOverride 수행  
+        · 첫 입력 시 스왑 실패 및 동일 키 충돌 문제 해결  
+    - Norm() / ParseKey()  
+        · 경로 정규화 로직 단순화  
+        · displayName 제거, 마지막 토큰 기반 PascalCase 변환으로 일관화  
+    - AllocateInputActions()  
+        · Scroll → Interaction 액션으로 변경  
+        · Title 맵의 실행 책임을 UIManager로 위임  
+    - PopulateControlBindings()  
+        · Move 파트 및 일반 액션 모두 리소스 갱신  
+
+5. PopUp.cs  
+    - Execute()  
+        · Submit/Enter 중복 입력 방지  
+    - OnEnable()  
+        · InputField 초기화 및 즉시 활성화  
+    - OnSubmit()  
+        · isSubmitted 플래그 설정 후 UIManager.Hide()로 통합  
+
+6. ResourceManager.cs  
+    - ApplyControlBinding()  
+        · null-safe 처리 및 캐싱 키 동기화 개선  
+    - SaveUserData()  
+        · playerMap의 최신 상태를 직렬화하여 저장  
+    - ChangeResource("controlSprites", scheme)  
+        · GamePad/General 폴더 병합 및 스프라이트 우선순위 로드 정리  

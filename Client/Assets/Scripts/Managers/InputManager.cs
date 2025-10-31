@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Unity.Netcode;
+using UnityEditor.Build.Pipeline.Utilities;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.Utilities;
@@ -135,10 +136,10 @@ public class InputManager : NetworkBehaviour
         for (int i = 0; i < playerMap.actions.Count; i++)
         {
             var act = playerMap.actions[i];
-            var v = new OverrideView();
-            v.action = act.name;
-            v.binding = act.GetBindingDisplayString();
-            currentOverrideActions.Add(v);
+            var view = new OverrideView();
+            view.action = act.name;
+            view.binding = act.GetBindingDisplayString();
+            currentOverrideActions.Add(view);
         }
 #endif
     }
@@ -302,7 +303,7 @@ public class InputManager : NetworkBehaviour
     /// InputMode를 ActionMap을 전환하여 입력 모드를 변경합니다.
     /// </summary>
     /// <param name="mode">변경할 모드</param>
-    public void ChangeInputMode(InputMode mode)
+    public void ChangeInputMode(InputMode mode, string sequence = null)
     {
         if (currentInputMode == mode)
         {
@@ -342,6 +343,10 @@ public class InputManager : NetworkBehaviour
                 // (예: 대화 중, 컷신 등)
                 {
                     ChangeActionMap("Restricted");
+                    if (sequence == "ControlRebind")
+                    {
+                        playerInput.actions.FindAction("Interaction").Disable();
+                    }
                 }
                 break;
             default:
@@ -398,14 +403,14 @@ public class InputManager : NetworkBehaviour
             }
         }
 
-        InputAction action = playerInput.actions.FindAction(targetActionName);
+        InputAction action = playerMap.FindAction(targetActionName);
+
         if (action == null)
         {
             return;
         }
 
-
-        // 대상 바인딩 인덱스 찾기
+        // Move와 같은 Partition이벤트 일경우
         int targetIndex = -1;
 
         if (!string.IsNullOrEmpty(targetPartName))
@@ -442,6 +447,8 @@ public class InputManager : NetworkBehaviour
             }
         }
 
+        // partition테스트를 끝냈는데 못찾았을 경우
+        // partition이 아니라고 가정하고 테스트를 진행함
         if (targetIndex == -1)
         {
             for (int i = 0; i < action.bindings.Count; i++)
@@ -536,15 +543,19 @@ public class InputManager : NetworkBehaviour
             {
                 return;
             }
+
             string oldPathOnTarget = string.IsNullOrEmpty(action.bindings[targetIndex].effectivePath)
                 ? action.bindings[targetIndex].path
                 : action.bindings[targetIndex].effectivePath;
+
             if (oldPathOnTarget == null)
             {
                 oldPathOnTarget = string.Empty;
             }
 
             foundedAction.ApplyBindingOverride(foundedIndex, oldPathOnTarget);
+            action.ApplyBindingOverride(targetIndex, newPath);
+
             string foundedAlias = foundedAction.name;
             var foundedBinding = foundedAction.bindings[foundedIndex];
             if (foundedBinding.isPartOfComposite && !string.IsNullOrEmpty(foundedBinding.name))
@@ -553,11 +564,13 @@ public class InputManager : NetworkBehaviour
             }
             swapButtonName = foundedAlias;
             ResourceManager.instance.ApplyControlBinding(foundedAlias, ParseKey(foundedAlias));
+            ResourceManager.instance.ApplyControlBinding(actionButtonName, ParseKey(actionButtonName));
         }
-
-        action.ApplyBindingOverride(targetIndex, newPath);
-        ResourceManager.instance.ApplyControlBinding(actionButtonName, ParseKey(actionButtonName));
-
+        else 
+        {
+            action.ApplyBindingOverride(targetIndex, newPath);
+            ResourceManager.instance.ApplyControlBinding(actionButtonName, ParseKey(actionButtonName));
+        }
 #if UNITY_EDITOR
         currentOverrideActions.Clear();
         for (int i = 0; i < playerMap.actions.Count; i++)
@@ -701,18 +714,27 @@ public class InputManager : NetworkBehaviour
                 return null;
             }
         }
-        string displayString = action.GetBindingDisplayString();
+        string displayString = null;
 
         if (action.name == "Move")
         {
             string part = key.Replace("Move", "");
-
-            for (int i = 0; i < action.bindings.Count; ++i)
+            foreach (var binding in action.bindings)
             {
-                InputBinding binding = action.bindings[i];
-                if (binding.isPartOfComposite == true && binding.name.Equals(part, StringComparison.OrdinalIgnoreCase))
+                if (binding.isPartOfComposite && binding.name.Equals(part, StringComparison.OrdinalIgnoreCase))
                 {
-                    displayString = string.IsNullOrEmpty(binding.effectivePath) ? binding.path : binding.effectivePath;
+                    displayString = binding.effectivePath ?? binding.path;
+                    break;
+                }
+            }
+        }
+        else
+        {
+            foreach (var binding in action.bindings)
+            {
+                if (!binding.isComposite && !binding.isPartOfComposite)
+                {
+                    displayString = binding.effectivePath ?? binding.path;
                     break;
                 }
             }
@@ -745,11 +767,6 @@ public class InputManager : NetworkBehaviour
 
         foreach (var action in playerMap.actions)
         {
-            if (NonRebindables.Contains(action.name))
-            {
-                continue;
-            }
-
             if (action.name == "Move")
             {
                 for (int i = 0; i < action.bindings.Count; i++)
@@ -787,7 +804,7 @@ public class InputManager : NetworkBehaviour
         }
         if (string.IsNullOrEmpty(groups))
         {
-            return false;
+            return true;
         }
 
         var tokens = groups.Split(new[] { ';', ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
@@ -807,9 +824,17 @@ public class InputManager : NetworkBehaviour
         {
             return string.Empty;
         }
-        return path.Trim().ToLowerInvariant()
-                   .Replace("gamepad:", "gamepad/")
-                   .Replace("<", "").Replace(">", "");
+        path = path.Trim().ToLowerInvariant();
+
+        path = path.Replace("<", "").Replace(">", "");
+
+        path = path.Replace(":", "/").Replace("//", "/");
+
+        while (path.StartsWith("/"))
+        {
+            path = path.Substring(1);
+        }
+        return path;
     }
     #endregion
 }

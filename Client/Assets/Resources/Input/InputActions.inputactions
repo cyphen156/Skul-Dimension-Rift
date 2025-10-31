@@ -1160,7 +1160,7 @@
                     "id": "37ca46c6-249b-48e9-b8d0-a1fa20c76b45",
                     "expectedControlType": "",
                     "processors": "",
-                    "interactions": "Hold,Press",
+                    "interactions": "Press,Hold",
                     "initialStateCheck": false
                 }
             ],

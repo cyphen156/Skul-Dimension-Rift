@@ -225,8 +225,7 @@ public class GameManager : NetworkBehaviour
 
         // 키 변경 팝업 호출
         UIManager.instance.Show("PopUp");
-        InputManager.instance.ChangeInputMode(InputMode.Restricted);
-
+        InputManager.instance.ChangeInputMode(InputMode.Restricted, "ControlRebind");
         while (popUpUI.activeInHierarchy)
         {
             // 동프레임 입력누적을 처리하기 위한 한프레임 대기

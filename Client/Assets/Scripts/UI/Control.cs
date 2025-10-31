@@ -37,10 +37,16 @@ public class Control : InteractiveUIBehaviour
 #endif
         }
     }
+
+    private void Start()
+    {
+        Refresh();
+    }
+
     private new void OnEnable()
     {
         base.OnEnable();
-        Refresh();
+        selectedButton = null;
     }
 
     protected override void OnSubmit()
