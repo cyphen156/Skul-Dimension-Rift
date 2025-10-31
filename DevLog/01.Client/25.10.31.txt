@@ -1,7 +1,7 @@
 Branch 
     InputAction 동적 로딩 기능 구현
 
-Conmit 
+Conmit 504c0b0
 [Feat][Fix] Control 리바인드 플로우 완성 · 리바인드 중 Interaction 차단 · 키 파싱/스왑 안정화
 
 변경 요약
@@ -21,6 +21,7 @@ Conmit
         · InputMode.Restricted 진입 시 sequence 인자를 통해 Interaction 액션 비활성화  
         · PopUp이 닫히면 입력 캡처 종료 후 UI 갱신 및 UserData 자동 저장  
 
+2. UIManager.cs  
 2. UIManager.cs  
     - Show() / Hide()  
         · UI 활성화 및 비활성화 시 포커스 스택과 FocusedUI를 동기화  
