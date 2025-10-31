@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
 
 /// <summary>
 /// root의 자식들 중 T 타입의 컴포넌트를 찾아 List로 반환합니다.

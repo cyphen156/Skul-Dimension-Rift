@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using static Types;
@@ -38,13 +39,6 @@ public class SoundManager : MonoBehaviour
             Destroy(gameObject);
             return;
         }
-
-        // 초기 볼륨 설정
-        // 파일로부터 불러올 수도 있음
-        // 임시로 클라이언트 초기화 때 1.0f로 설정
-        SetMasterVolume(1.0f);
-        SetBGMVolume(1.0f);
-        SetSFXVolume(1.0f);
 
         // BGM AudioSource 설정
         bgmSource = GetComponent<AudioSource>();
@@ -172,6 +166,13 @@ public class SoundManager : MonoBehaviour
             Debug.LogError($"SoundManager: SFX '{sfxName}' not found in ResourceManager.");
             return;
         }
+    }
+
+    public void SetVolumes(float masterVolume, float BGMVolume, float SFXVolume)
+    {
+        SetBGMVolume(BGMVolume);
+        SetSFXVolume(SFXVolume);
+        SetMasterVolume(masterVolume);
     }
     #endregion Custom Methods
 }

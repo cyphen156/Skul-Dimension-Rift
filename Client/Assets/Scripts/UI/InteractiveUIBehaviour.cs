@@ -22,8 +22,12 @@ public class InteractiveUIBehaviour : MonoBehaviour, IInteractive
         {
             selectedButton = buttons[0];
             lastPoint = selectedButton.transform.position;
-            selectedButton.Select();
         }
+    }
+
+    protected void OnDisable()
+    {
+        selectedButton = null;
     }
 
     public void Execute(InputAction.CallbackContext ctx)
@@ -115,5 +119,10 @@ public class InteractiveUIBehaviour : MonoBehaviour, IInteractive
 
     protected virtual void OnSubmit()
     {
+    }
+
+    public virtual void Refresh(string key = null)
+    {
+
     }
 }

@@ -106,19 +106,7 @@ MonoBehaviour:
       m_Calls: []
   m_ActionEvents:
   - m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 7552477111992581297, guid: 9f543e82509c22e40b056a78f9964177, type: 3}
-        m_TargetAssemblyTypeName: PlayerController, Assembly-CSharp
-        m_MethodName: OnMove
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
     m_ActionId: 9e772c40-8c0e-4fdc-a7a1-fe4cdec03c14
     m_ActionName: 'Player/Move[/Keyboard/upArrow,/Keyboard/downArrow,/Keyboard/leftArrow,/Keyboard/rightArrow]'
   - m_PersistentCalls:
@@ -154,35 +142,11 @@ MonoBehaviour:
     m_ActionId: bfe99d51-a1fb-4df3-9f50-ca54f173592e
     m_ActionName: 'Player/Interaction[/Keyboard/f]'
   - m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 3279499540733367719, guid: ec6698e08937707478caa58471391cdc, type: 3}
-        m_TargetAssemblyTypeName: UIManager, Assembly-CSharp
-        m_MethodName: Execute_Internal
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
     m_ActionId: 41c5e96a-5717-46b4-ae25-880799e70e40
     m_ActionName: 'Player/Scroll[/Keyboard/tab]'
   - m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: UIManager, Assembly-CSharp
-        m_MethodName: Execute_Internal
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
     m_ActionId: 5ebd58bf-f003-4759-915b-a11c0a8258b0
     m_ActionName: 'Player/Menu[/Keyboard/escape]'
   - m_PersistentCalls:
@@ -194,33 +158,13 @@ MonoBehaviour:
     m_ActionId: 46fcded7-f034-4a60-b4a5-c11b1b3c1208
     m_ActionName: 'UI/Interaction[/Keyboard/f]'
   - m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 3279499540733367719, guid: ec6698e08937707478caa58471391cdc, type: 3}
-        m_TargetAssemblyTypeName: UIManager, Assembly-CSharp
-        m_MethodName: Execute_Internal
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
     m_ActionId: 39f439df-d9aa-47df-b770-af663ce24a9f
     m_ActionName: 'UI/ScrollOff[/Keyboard/tab]'
   - m_PersistentCalls:
       m_Calls: []
     m_ActionId: 34e48928-2d89-4f56-8c8f-efecdf11d014
     m_ActionName: 'UI/Submit[/Keyboard/enter]'
-  - m_PersistentCalls:
-      m_Calls: []
-    m_ActionId: fc299920-b030-40e2-a43b-f8a307df5ddb
-    m_ActionName: 'UI/Cancel[/Keyboard/escape]'
-  - m_PersistentCalls:
-      m_Calls: []
-    m_ActionId: 199347f1-0a47-4779-84f0-93d8fea147df
-    m_ActionName: 'UI/Point[/Mouse/position]'
   - m_PersistentCalls:
       m_Calls: []
     m_ActionId: 5ea7d1a6-0810-44a4-b9ce-f2518252e54b
@@ -231,58 +175,58 @@ MonoBehaviour:
     m_ActionName: 'UI/RightClick[/Mouse/rightButton]'
   - m_PersistentCalls:
       m_Calls: []
-    m_ActionId: 623b0079-94bf-4ce1-8193-3906450d4b49
-    m_ActionName: 'UI/MiddleClick[/Mouse/middleButton]'
-  - m_PersistentCalls:
-      m_Calls: []
     m_ActionId: 37d48ba1-b7d5-464f-975a-9c93fab79134
     m_ActionName: 'UI/ScrollWheel[/Mouse/scroll]'
-  - m_PersistentCalls:
-      m_Calls: []
-    m_ActionId: 4160b7d6-59b6-4a02-bada-91c20010acd5
-    m_ActionName: UI/TrackedDevicePosition
-  - m_PersistentCalls:
-      m_Calls: []
-    m_ActionId: f12d8d17-73e2-477e-91fe-1586c1747d23
-    m_ActionName: UI/TrackedDeviceOrientation
-  - m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 6100313189803823281, guid: c15180813b454044b8921e1c9be9dc19, type: 3}
-        m_TargetAssemblyTypeName: PressAnyKey, Assembly-CSharp
-        m_MethodName: Execute
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
-    m_ActionId: a2090c79-4576-494c-8bbf-ba308f3c3e09
-    m_ActionName: 'Title/PressAnyKey[/Keyboard/anyKey,/Mouse/leftButton,/Mouse/rightButton]'
   - m_PersistentCalls:
       m_Calls: []
     m_ActionId: feac1a66-c3cf-4436-a018-85f3cc69b01a
     m_ActionName: Locked/New action
   - m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 3279499540733367719, guid: ec6698e08937707478caa58471391cdc, type: 3}
-        m_TargetAssemblyTypeName: UIManager, Assembly-CSharp
-        m_MethodName: Execute_Internal
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
     m_ActionId: ac4f1b85-8606-4316-91ee-86c378a07f05
     m_ActionName: 'UI/Menu[/Keyboard/escape]'
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: 0d337e96-c709-4d40-aca3-aca5767b3489
+    m_ActionName: Player/ArrowDash
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: 4563bbcd-fbee-4564-9749-0a3b0628bd6c
+    m_ActionName: 'UI/Point[/Mouse/position]'
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: ce18abc2-9717-4592-8ba0-79850cefb377
+    m_ActionName: 'NotUseContainer/MiddleClick[/Mouse/middleButton]'
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: f0abdbb5-27c7-42c8-a260-1548f4dbe085
+    m_ActionName: NotUseContainer/TrackedDevicePosition
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: 98cc0241-60db-4234-9c95-3e746e688257
+    m_ActionName: NotUseContainer/TrackedDeviceOrientation
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: a2090c79-4576-494c-8bbf-ba308f3c3e09
+    m_ActionName: 'Title/PressAnyKey[/Keyboard/anyKey,/Mouse/leftButton,/Mouse/rightButton]'
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: 22cffa15-2c55-4e60-adce-4312b8c627e2
+    m_ActionName: 'Restricted/Menu[/Keyboard/escape]'
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: 999db765-9e77-417f-a8aa-ce4360cef10e
+    m_ActionName: 'Restricted/Navigate[/Keyboard/upArrow,/Keyboard/downArrow,/Keyboard/leftArrow,/Keyboard/rightArrow]'
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: 2fca4131-98b2-42b1-b630-aa229e5be711
+    m_ActionName: 'Restricted/Submit[/Keyboard/enter]'
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: 37ca46c6-249b-48e9-b8d0-a1fa20c76b45
+    m_ActionName: 'Restricted/Interaction[/Keyboard/f]'
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: 
-  m_DefaultActionMap: Player
+  m_DefaultActionMap: 
   m_SplitScreenIndex: -1
   m_Camera: {fileID: 0}

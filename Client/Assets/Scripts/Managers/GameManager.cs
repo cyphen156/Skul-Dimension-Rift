@@ -1,13 +1,9 @@
-using Assets.Scripts.Interface;
 using System.Collections;
 using Unity.Netcode;
-using Unity.Services.Matchmaker.Models;
-using Unity.VisualScripting;
-using UnityEditor.Search;
+using UnityEditor.Build.Pipeline.Tasks;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
-using UnityEngine.UI;
 using static Types;
 
 /// <summary>
@@ -209,7 +205,8 @@ public class GameManager : NetworkBehaviour
         if (buttonName == null)
         {
             InputManager.instance.ResetBindings();
-            UIManager.instance.RefreshUI();
+            UIManager.instance.RefreshUI("Control");
+            ResourceManager.instance.SaveUserData();
             return;
         }
 
@@ -228,37 +225,53 @@ public class GameManager : NetworkBehaviour
 
         // 키 변경 팝업 호출
         UIManager.instance.Show("PopUp");
-        InputManager.instance.ChangeInputMode(InputMode.Restricted);
-
+        InputManager.instance.ChangeInputMode(InputMode.Restricted, "ControlRebind");
         while (popUpUI.activeInHierarchy)
         {
             // 동프레임 입력누적을 처리하기 위한 한프레임 대기
             yield return null;
             // 키 하나 입력받을 때까지 대기
-            yield return new WaitUntil(() => InputManager.instance.GetAnyKey());
+            yield return new WaitUntil(() =>
+                !popUpUI.activeInHierarchy || InputManager.instance.GetAnyKey()
+            );
+
+            yield return null;
 
             if (!popUpUI.activeInHierarchy)
             {
-                InputManager.instance.EndCapture();
-                InputManager.instance.ChangeInputMode(InputMode.UIOnly);
-                yield break;
+                break;
             }
 
             var ctx = InputManager.instance.PeekLastInput();
-
-            // 입력받은 키를 팝업 UI에 전달
             UIManager.instance.Execute(ctx);
             InputManager.instance.EndCapture();
         }
 
+        InputManager.instance.EndCapture();
+        InputManager.instance.ChangeInputMode(InputMode.UIOnly);
+
         // 팝업 UI에서 입력받은 키 정보 가져오기
         PopUp popUpComponent = popUpUI.GetComponent<PopUp>();
-        string newKey = popUpComponent.GetInputKey();
-        InputManager.instance.RebindAction(buttonName, newKey);
 
+        // Execute_Internal에 의한 PopUp Close
+        if (!popUpComponent.CheckConfirm())
+        {
+            yield break;
+        }
+
+        InputControl newKey = popUpComponent.GetBindingControl();
+        string switchButton;
+        InputManager.instance.RebindAction(buttonName, out switchButton, newKey);
         yield return null;
-        UIManager.instance.RefreshUI(popUpUI);
+        // 리바인드 종료 로직
+        UIManager.instance.RefreshUI("Control", buttonName);
+        // 
+        if (switchButton != null)
+        {
+            UIManager.instance.RefreshUI("Control", switchButton);
+        }
         InputManager.instance.ChangeInputMode(InputMode.UIOnly);
+        ResourceManager.instance.SaveUserData();
     }
     #endregion
 }

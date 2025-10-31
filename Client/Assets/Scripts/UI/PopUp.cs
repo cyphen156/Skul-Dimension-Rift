@@ -1,5 +1,6 @@
 using Assets.Scripts.Interface;
 using TMPro;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -10,7 +11,9 @@ using UnityEngine.InputSystem;
 public class PopUp : InteractiveUIBehaviour, IInteractive
 {
     [SerializeField] private string inputKey;
+    [SerializeField] private InputControl bindingControl;
     [SerializeField] private TMP_InputField inputField;
+    [SerializeField] private bool isSubmitted;
 
     private new void Awake()
     {
@@ -27,6 +30,7 @@ public class PopUp : InteractiveUIBehaviour, IInteractive
         inputField.text = string.Empty;
         inputField.Select();
         inputField.ActivateInputField();
+        isSubmitted = false;
     }
 
     /// <summary>
@@ -34,10 +38,10 @@ public class PopUp : InteractiveUIBehaviour, IInteractive
     /// </summary>
     void IInteractive.Execute(InputAction.CallbackContext ctx)
     {
-        //if (!ctx.performed)
-        //{
-        //    return;
-        //}
+        if (!ctx.performed)
+        {
+            return;
+        }
 
         if (ctx.action.name == "Submit")
         {
@@ -45,17 +49,24 @@ public class PopUp : InteractiveUIBehaviour, IInteractive
             return;
         }
 
-        inputKey = ctx.control.displayName;
+        bindingControl = ctx.control;
+        inputKey = bindingControl.displayName;
         inputField.text = inputKey;
     }
 
     protected override void OnSubmit()
     {
-        UIManager.instance.Hide("PopUp");
+        isSubmitted = true;
+        UIManager.instance.Hide(name);
     }
 
-    internal string GetInputKey()
+    public InputControl GetBindingControl()
     {
-        return inputKey;
+        return bindingControl;
+    }
+
+    public bool CheckConfirm()
+    {
+        return isSubmitted;
     }
 }

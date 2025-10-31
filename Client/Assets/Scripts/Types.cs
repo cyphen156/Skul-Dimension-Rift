@@ -48,6 +48,7 @@ public static class Types
     /// </summary>
     public enum InputMode
     {
+        None,
         Locked,
         Ready,      // 준비 상태 (예: 타이틀 화면)
         UIOnly,

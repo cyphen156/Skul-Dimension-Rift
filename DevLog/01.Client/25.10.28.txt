@@ -1,0 +1,39 @@
+Branch 
+    InputAction 동적 로딩 기능 구현
+
+Commit ac4482f
+[Refactor] UI 비활성화 시 잔존 선택 상태로 인해 즉시 Execute가 트리거되던 문제 수정 · PopUp Submit 인자 하드코딩 제거
+
+변경 요약
+- UI 비활성화 후 재활성화 시, 남아 있던 선택 상태(포커스)로 인해 즉시 Execute가 트리거되던 문제를 수정했습니다.
+- PopUp.OnSubmit 내 하드코딩된 문자열 인자를 제거하고, UI 식별 및 호출 체계를 UIManager 중심으로 일원화했습니다.
+- InputManager의 액션 바인딩 정책을 정리하여 Scroll → Interaction으로 교체, Title 맵의 실행 책임을 UIManager로 이관했습니다.
+- 불필요한 디버그 로그 및 hasAllocated 변수를 정리하여 코드 일관성을 개선했습니다.
+
+1. InteractiveUIBehaviour.cs
+   - OnDisable()에서 선택 상태 초기화(잔존 포커스 제거)
+
+2. PopUp.cs
+    - OnSubmit() 수정
+        - 하드코딩된 문자열 인자 제거
+        - UI 식별을 UIManager 경유로 일원화
+    - 정책 메모
+        - 본 기능은 추후 InteractiveUIBehaviour로 격상될 수 있음
+        - Submit 이후 자동 비활성화 동작을 통합할 경우,
+        일부 UI가 즉시 닫히면 안 되는 상황을 고려해 가상 처리 필요
+            · 장점: 외부에서 Hide 호출 불필요
+            · 주의: 실행 후 닫힘이 부적절한 UI는 조건 분기 필요
+
+3) InputManager.cs
+    - AllocateInputActions() 수정
+        a. case "Player"  
+            - Execute_Internal 연결 액션 Scroll → Interaction 변경  
+            - 사유: Scroll은 플레이 중 제스처 전용, Interaction은 UI 상호작용용으로 분리
+        b. case "UI"  
+            - 동일 사유로 Interaction으로 변경
+        c. case "Restricted"  
+            - 동일 사유로 Interaction으로 변경
+        d. case "Title"  
+            - 스크립트 직접 Execute 호출 → UIManager 위임으로 구조 개선
+        e. hasAllocated 변수 제거
+        f. Default 외 디버그 로그 출력 제거
