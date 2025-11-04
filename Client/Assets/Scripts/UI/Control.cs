@@ -43,12 +43,6 @@ public class Control : InteractiveUIBehaviour
         Refresh();
     }
 
-    private new void OnEnable()
-    {
-        base.OnEnable();
-        selectedButton = null;
-    }
-
     protected override void OnSubmit()
     {
         if (selectedButton == null)
@@ -66,7 +60,7 @@ public class Control : InteractiveUIBehaviour
             // 흐름이 일괄적으로 통제되게 하기 위해
             // 이 모두를 알 수 있는건 GameManager로 제한하고 싶음
             case "Return":
-                GameManager.instance.ChangeGameState(GameState.Playing);
+                UIManager.instance.Hide(gameObject.name);
                 break;
             case "Reset":
                 GameManager.instance.ControlReBind(); // 전체 리셋

@@ -8,7 +8,7 @@ using static Types;
 public class InteractiveUIBehaviour : MonoBehaviour, IInteractive
 {
     [SerializeField] protected List<Button> buttons;
-    [SerializeField] protected Button selectedButton;
+    [SerializeField] protected Selectable selectedButton;
     [SerializeField] protected Vector2 lastPoint;
     protected void Awake()
     {
@@ -18,11 +18,7 @@ public class InteractiveUIBehaviour : MonoBehaviour, IInteractive
     // 항상 활성화 된다면 선택된 버튼 요소를 첫 요소로 지정
     protected void OnEnable()
     {
-        if (buttons.Count > 0)
-        {
-            selectedButton = buttons[0];
-            lastPoint = selectedButton.transform.position;
-        }
+        selectedButton = null;
     }
 
     protected void OnDisable()
@@ -47,8 +43,9 @@ public class InteractiveUIBehaviour : MonoBehaviour, IInteractive
                 foreach (Button button in buttons)
                 {
                     if (button == null || !button.gameObject.activeInHierarchy || !button.interactable)
+                    {
                         continue;
-
+                    }
                     RectTransform rect = button.GetComponent<RectTransform>();
                     if (RectTransformUtility.RectangleContainsScreenPoint(rect, lastPoint))
                     {
@@ -79,6 +76,7 @@ public class InteractiveUIBehaviour : MonoBehaviour, IInteractive
     protected void HandlePoint(InputAction.CallbackContext ctx)
     {
         Vector2 pointerPosition = ctx.ReadValue<Vector2>();
+
         if (pointerPosition != lastPoint)
         {
             lastPoint = pointerPosition;
@@ -103,16 +101,32 @@ public class InteractiveUIBehaviour : MonoBehaviour, IInteractive
         {
             return;
         }
+        
+        if (selectedButton == null)
+        {
+            selectedButton = buttons[0];
+            selectedButton.Select();
+            return;
+        }
+
         Vector2 navigation = ctx.ReadValue<Vector2>();
-        int currentIndex = buttons.IndexOf(selectedButton);
-        if (navigation.y > 0) // 위로 이동
+
+        int currentIndex = -1;
+
+        if (selectedButton is Button button)
+        {
+            currentIndex = buttons.IndexOf(button);
+        }
+
+        if (navigation.x < 0 || navigation.y > 0) // 좌, 위로 이동
         {
             currentIndex = (currentIndex - 1 + buttons.Count) % buttons.Count;
         }
-        else if (navigation.y < 0) // 아래로 이동
+        else if (navigation.x > 0 || navigation.y < 0) // 우, 아래로 이동
         {
             currentIndex = (currentIndex + 1) % buttons.Count;
         }
+
         selectedButton = buttons[currentIndex];
         selectedButton.Select();
     }

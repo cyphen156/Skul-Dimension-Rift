@@ -166,14 +166,9 @@ public class ResourceManager : MonoBehaviour
         //SoundManager.instance.SetVolumes(audioData.masterVolume, audioData.BGMVolume, audioData.SFXVolume);
         #endregion
     }
-
     #endregion
 
     #region Resource Accessors
-    public void SetBindingInfo()
-    {
-
-    }
     public T GetResource<T>(string resourceName) where T : Object
     {
         // how to Resource??
@@ -233,6 +228,11 @@ public class ResourceManager : MonoBehaviour
     public AudioClip GetSFXClip(string sfxClipName)
     {
         return sfxClips.ContainsKey(sfxClipName) ? sfxClips[sfxClipName] : null;
+    }
+
+    public OptionsData GetOptionsData()
+    {
+        return userData.options;
     }
     #endregion
 

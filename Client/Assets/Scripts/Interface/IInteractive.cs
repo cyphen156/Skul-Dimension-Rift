@@ -6,6 +6,4 @@ namespace Assets.Scripts.Interface
     {
         void Execute(InputAction.CallbackContext ctx);
     }
-
-
 }

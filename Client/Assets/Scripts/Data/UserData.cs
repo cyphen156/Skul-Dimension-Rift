@@ -31,10 +31,10 @@ namespace Assets.Scripts.Data
     [Serializable]
     public class Graphic
     {
-        public string resolution = "1920x1080";
-        public string window = "FullScreen";
-        public bool lightingEffect = false;
-        public string particlePerformance = "High";
+        public Resolution resolution = new Resolution();
+        public Window window = Window.FullScreen;
+        public LightingEffect lightingEffect = LightingEffect.Off;
+        public ParticlePerformance particlePerformance = ParticlePerformance.High;
         public float windowEarthQuaqingEffect = 0.5f;
         public float shakingEffect = 0.5f;
     }
@@ -58,9 +58,80 @@ namespace Assets.Scripts.Data
     [Serializable]
     public class GamePlay
     {
-        public string language = "ko";
-        public bool rukiMode = false;
-        public bool showTimer = false;
-        public string ShowUIs = "All";
+        public Languages language = Languages.Korean;
+        public RukiMode rukiMode = RukiMode.Off;
+        public ShowTimer showTimer = ShowTimer.Off;
+        public ShowUIs showUIs = ShowUIs.All;
+    }
+
+    [Serializable]
+    public struct Resolution
+    {
+        public int width;
+        public int height;
+
+        public Resolution(int width, int height)
+        {
+            this.width = width;
+            this.height = height;
+        }
+
+        public override string ToString()
+        {
+            return width + " x " + height;
+        }
+    }
+
+    [Serializable]
+    public enum Window
+    {
+        FullScreen,
+        Window,
+        BorderlessFullScreen,
+    }
+
+    [Serializable]
+    public enum LightingEffect
+    {
+        On,
+        Off,
+    }
+
+    [Serializable]
+    public enum ParticlePerformance
+    {
+        Low,
+        Middle,
+        High,
+    }
+
+    [Serializable]
+    public enum Languages
+    {
+        Korean,
+        English,
+        Japanese,
+    }
+
+    [Serializable]
+    public enum RukiMode
+    {
+        On,
+        Off,
+    }
+   
+    [Serializable]
+    public enum ShowTimer
+    {
+        On,
+        Off,
+    }
+
+    [Serializable]
+    public enum ShowUIs
+    {
+        All,
+        None,
+        InGame,
     }
 }

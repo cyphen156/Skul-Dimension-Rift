@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using Unity.Netcode;
-using UnityEditor.Build.Pipeline.Utilities;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.Utilities;
@@ -596,7 +595,7 @@ public class InputManager : NetworkBehaviour
 
         playerMap.RemoveAllBindingOverrides();
 
-        playerInput.actions.Enable();
+        playerInput.currentActionMap.Enable();
         playerInput.ActivateInput();
         PopulateControlBindings();
 
