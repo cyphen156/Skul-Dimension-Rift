@@ -14,6 +14,10 @@ public class Options : InteractiveUIBehaviour
     private new void Awake()
     {
         base.Awake();
+    }
+
+    private new void Start()
+    {
         AllocateChildren();
     }
 
@@ -31,7 +35,10 @@ public class Options : InteractiveUIBehaviour
 
         foreach (var widget in foundWidgets)
         {
-            if (widget == null) { continue; }
+            if (widget == null) 
+            { 
+                continue; 
+            }
 
             // 위젯 내부 구성 요소 연결
             switch (widget.widgetType)
@@ -44,22 +51,22 @@ public class Options : InteractiveUIBehaviour
                             break; 
                         }
 
-                        var leftT = widget.transform.Find("LeftArrowButton");
-                        var rightT = widget.transform.Find("RightArrowButton");
-                        var textT = widget.transform.Find("OptionText");
+                        var leftArrowButton = widget.transform.Find("LeftArrowButton");
+                        var rightArrowButton = widget.transform.Find("RightArrowButton");
+                        var text = widget.transform.Find("OptionText");
 
-                        if (leftT != null) 
+                        if (leftArrowButton != null) 
                         {
-                            stepper.leftArrow = leftT.GetComponent<Button>(); 
+                            stepper.leftArrow = leftArrowButton.GetComponent<Button>(); 
                         }
 
-                        if (rightT != null) 
+                        if (rightArrowButton != null) 
                         { 
-                            stepper.rightArrow = rightT.GetComponent<Button>(); 
+                            stepper.rightArrow = rightArrowButton.GetComponent<Button>(); 
                         }
-                        if (textT != null) 
+                        if (text != null) 
                         {
-                            stepper.optionText = textT.GetComponent<TMP_Text>(); 
+                            stepper.optionText = text.GetComponent<TMP_Text>(); 
                         }
                         break;
                     }
@@ -67,7 +74,10 @@ public class Options : InteractiveUIBehaviour
                 case WidgetType.SliderWidget:
                     {
                         var slider = widget.widget as SliderWidget;
-                        if (slider == null) { break; }
+                        if (slider == null) 
+                        { 
+                            break; 
+                        }
 
                         slider.slider = widget.GetComponentInChildren<Slider>(true);
                         break;
@@ -111,46 +121,36 @@ public class Options : InteractiveUIBehaviour
         }
     }
 
-    //    protected override void OnSubmit()
-    //    {
-    //        // 메인에서 아무것도 선택 안 된 상태라면 자기 자신 닫기
-    //        if (selectedButton == null)
-    //        {
-    //            UIManager.instance.Hide(gameObject.name);
-    //            return;
-    //        }
+    protected override void OnSubmit()
+    {
+        // 메인에서 아무것도 선택 안 된 상태라면 자기 자신 닫기
+        if (selectedButton == null)
+        {
+            UIManager.instance.Hide(gameObject.name);
+            return;
+        }
 
-    //        string name = selectedButton.name.Replace("Button", "");
+        string name = selectedButton.name.Replace("Button", "").Replace("Slider", "");
 
-    //        switch (name)
-    //        {
-    //            case "Return":
-    //                {
-    //                    UIManager.instance.Hide(gameObject.name);
-    //                    return;
-    //                }
+        switch (name)
+        {
+            case "Return":
+                {
+                    UIManager.instance.Hide(gameObject.name);
+                    return;
+                }
+            default:
+                {
+                    Widget widget;
+                    if (!widgets.TryGetValue(name, out widget))
+                    {
+                        return;
+                    }
 
-    //            default:
-    //                {
-    //                    Widget w;
-    //                    if (!widgets.TryGetValue(name, out w))
-    //                    {
-    //                        return;
-    //                    }
-
-    //                    // Proxy를 UI 스택에 올리고 위젯 바인딩
-    //                    UIManager.instance.Show("WidgetProxy");
-    //                    var proxyGO = UIManager.instance.TryGetUI("WidgetProxy");
-    //                    if (proxyGO != null)
-    //                    {
-    //                        var proxy = proxyGO.GetComponent<WidgetProxy>();
-    //                        if (proxy != null)
-    //                        {
-    //                            proxy.Bind(w);
-    //                        }
-    //                    }
-    //                    return;
-    //                }
-    //        }
-    //    }
+                    //// Proxy를 UI 스택에 올리고 위젯 바인딩
+                    UIManager.instance.UseProxy(widget);
+                    return;
+                }
+        }
+    }
 }

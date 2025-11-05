@@ -2,6 +2,8 @@ using Assets.Scripts.Data;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Unity.VisualScripting;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.InputSystem;
@@ -34,16 +36,17 @@ public class ResourceManager : MonoBehaviour
         { "Gamepad_Switch", "Control/GamePad/NintendoSwitch" },
     };
 
-
     [Header("Optional DLC Catalogs")]
     [SerializeField] private List<string> dlcCatalogUrls = new List<string>();
 
     [Header("Resources")]
+    private Dictionary<string, GameObject> prefabs = new Dictionary<string, GameObject>();
     private Dictionary<string, AudioClip> bgmClips = new Dictionary<string, AudioClip>();
     private Dictionary<string, AudioClip> sfxClips = new Dictionary<string, AudioClip>();
-    private readonly Dictionary<string, string> controlBindings = new();
-    private readonly Dictionary<string, Sprite> controlSprites = new();
+    private readonly Dictionary<string, string> controlBindings = new Dictionary<string, string>();
+    private readonly Dictionary<string, Sprite> controlSprites = new Dictionary<string, Sprite>();
     private Sprite placeHolderSprite;
+
     [Header("Runtime System Data")]
     [SerializeField] private string controlDeviceInfo;
 
@@ -53,11 +56,12 @@ public class ResourceManager : MonoBehaviour
 
 #if UNITY_EDITOR
     [Header("DEBUG")]
-    [SerializeField] private List<string> bgmKeys = new();
-    [SerializeField] private List<string> sfxKeys = new();
-    [SerializeField] private List<string> ControlSprites = new();
-    [SerializeField] private List<string> ControlNames = new();
-    [SerializeField] private List<string> spriteKeys = new();
+    [SerializeField] private List<string> prefabKeys = new List<string>();
+    [SerializeField] private List<string> bgmKeys = new List<string>();
+    [SerializeField] private List<string> sfxKeys = new List<string>();
+    [SerializeField] private List<string> ControlSprites = new List<string>();
+    [SerializeField] private List<string> ControlNames = new List<string>();
+    [SerializeField] private List<string> spriteKeys = new List<string>();
 #endif
 
     #region Unity Methods
@@ -86,6 +90,13 @@ public class ResourceManager : MonoBehaviour
         // 어드레서블 초기화
         Addressables.InitializeAsync().WaitForCompletion();
 
+        prefabs.Clear();
+        var Prefabs = Resources.LoadAll<GameObject>("Prefab");
+        foreach (var pref in Prefabs)
+        {
+            prefabs[pref.name] = pref;
+        }
+
         bgmClips.Clear();
         sfxClips.Clear();
 
@@ -105,6 +116,8 @@ public class ResourceManager : MonoBehaviour
 
         placeHolderSprite = Resources.Load<Sprite>("Sprite/PlaceHolder");
 #if UNITY_EDITOR
+        prefabKeys.Clear();
+        prefabKeys.AddRange(prefabs.Keys);
         bgmKeys.Clear();
         sfxKeys.Clear();
         bgmKeys.AddRange(bgmClips.Keys);
@@ -187,6 +200,22 @@ public class ResourceManager : MonoBehaviour
         return userInputAsset;
     }
 
+    public GameObject GetGameObject(string objectName)
+    {
+        GameObject gameObject;
+
+        if (string.IsNullOrEmpty(objectName))
+        {
+            return null;
+        }
+
+        if(!prefabs.TryGetValue(objectName, out gameObject))
+        {
+            gameObject = Resources.Load<GameObject>(objectName);
+        }
+        
+        return gameObject;
+    }
     public Sprite GetControlSprite(string controlName, bool isHighlight = false)
     {
         if (string.IsNullOrEmpty(controlName))

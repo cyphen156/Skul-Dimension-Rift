@@ -1003,9 +1003,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e310fdd33485e6e478e4c19232234b42, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Widget
+  buttons: []
+  selectedButton: {fileID: 0}
+  lastPoint: {x: 0, y: 0}
   groupKey: 
-  widgetName: 
-  type: 0
+  buttonName: 
+  widgetType: 0
 --- !u!1 &1245686450551087063
 GameObject:
   m_ObjectHideFlags: 0
@@ -1122,9 +1125,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e310fdd33485e6e478e4c19232234b42, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Widget
+  buttons: []
+  selectedButton: {fileID: 0}
+  lastPoint: {x: 0, y: 0}
   groupKey: 
-  widgetName: 
-  type: 0
+  buttonName: 
+  widgetType: 0
 --- !u!1 &1314175849228157626
 GameObject:
   m_ObjectHideFlags: 0
@@ -2199,9 +2205,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e310fdd33485e6e478e4c19232234b42, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Widget
+  buttons: []
+  selectedButton: {fileID: 0}
+  lastPoint: {x: 0, y: 0}
   groupKey: 
-  widgetName: 
-  type: 0
+  buttonName: 
+  widgetType: 0
 --- !u!1 &2334209035735553489
 GameObject:
   m_ObjectHideFlags: 0
@@ -2883,9 +2892,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e310fdd33485e6e478e4c19232234b42, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Widget
+  buttons: []
+  selectedButton: {fileID: 0}
+  lastPoint: {x: 0, y: 0}
   groupKey: 
-  widgetName: 
-  type: 0
+  buttonName: 
+  widgetType: 0
 --- !u!1 &2695657364810957868
 GameObject:
   m_ObjectHideFlags: 0
@@ -4115,9 +4127,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e310fdd33485e6e478e4c19232234b42, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Widget
+  buttons: []
+  selectedButton: {fileID: 0}
+  lastPoint: {x: 0, y: 0}
   groupKey: 
-  widgetName: 
-  type: 0
+  buttonName: 
+  widgetType: 0
 --- !u!1 &3858734494070962769
 GameObject:
   m_ObjectHideFlags: 0
@@ -4515,9 +4530,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e310fdd33485e6e478e4c19232234b42, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Widget
+  buttons: []
+  selectedButton: {fileID: 0}
+  lastPoint: {x: 0, y: 0}
   groupKey: 
-  widgetName: 
-  type: 0
+  buttonName: 
+  widgetType: 0
 --- !u!1 &4008254133855890253
 GameObject:
   m_ObjectHideFlags: 0
@@ -4878,9 +4896,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e310fdd33485e6e478e4c19232234b42, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Widget
+  buttons: []
+  selectedButton: {fileID: 0}
+  lastPoint: {x: 0, y: 0}
   groupKey: 
-  widgetName: 
-  type: 0
+  buttonName: 
+  widgetType: 0
 --- !u!1 &4284343167326755374
 GameObject:
   m_ObjectHideFlags: 0
@@ -5516,9 +5537,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e310fdd33485e6e478e4c19232234b42, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Widget
+  buttons: []
+  selectedButton: {fileID: 0}
+  lastPoint: {x: 0, y: 0}
   groupKey: 
-  widgetName: 
-  type: 0
+  buttonName: 
+  widgetType: 0
 --- !u!1 &4789612957715152306
 GameObject:
   m_ObjectHideFlags: 0
@@ -7856,9 +7880,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e310fdd33485e6e478e4c19232234b42, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Widget
+  buttons: []
+  selectedButton: {fileID: 0}
+  lastPoint: {x: 0, y: 0}
   groupKey: 
-  widgetName: 
-  type: 0
+  buttonName: 
+  widgetType: 0
 --- !u!1 &6278799690352135993
 GameObject:
   m_ObjectHideFlags: 0
@@ -8269,9 +8296,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e310fdd33485e6e478e4c19232234b42, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Widget
+  buttons: []
+  selectedButton: {fileID: 0}
+  lastPoint: {x: 0, y: 0}
   groupKey: 
-  widgetName: 
-  type: 0
+  buttonName: 
+  widgetType: 0
 --- !u!1 &6452004932494221712
 GameObject:
   m_ObjectHideFlags: 0
@@ -8386,9 +8416,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e310fdd33485e6e478e4c19232234b42, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Widget
+  buttons: []
+  selectedButton: {fileID: 0}
+  lastPoint: {x: 0, y: 0}
   groupKey: 
-  widgetName: 
-  type: 0
+  buttonName: 
+  widgetType: 0
 --- !u!1 &6543783317966669066
 GameObject:
   m_ObjectHideFlags: 0
@@ -9040,9 +9073,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e310fdd33485e6e478e4c19232234b42, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Widget
+  buttons: []
+  selectedButton: {fileID: 0}
+  lastPoint: {x: 0, y: 0}
   groupKey: 
-  widgetName: 
-  type: 0
+  buttonName: 
+  widgetType: 0
 --- !u!1 &6918953578962383275
 GameObject:
   m_ObjectHideFlags: 0
@@ -9366,9 +9402,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e310fdd33485e6e478e4c19232234b42, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Widget
+  buttons: []
+  selectedButton: {fileID: 0}
+  lastPoint: {x: 0, y: 0}
   groupKey: 
-  widgetName: 
-  type: 0
+  buttonName: 
+  widgetType: 0
 --- !u!1 &7088319087057159069
 GameObject:
   m_ObjectHideFlags: 0
@@ -10092,9 +10131,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e310fdd33485e6e478e4c19232234b42, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Widget
+  buttons: []
+  selectedButton: {fileID: 0}
+  lastPoint: {x: 0, y: 0}
   groupKey: 
-  widgetName: 
-  type: 0
+  buttonName: 
+  widgetType: 0
 --- !u!1 &7718856798132179896
 GameObject:
   m_ObjectHideFlags: 0
@@ -10396,9 +10438,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e310fdd33485e6e478e4c19232234b42, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Widget
+  buttons: []
+  selectedButton: {fileID: 0}
+  lastPoint: {x: 0, y: 0}
   groupKey: 
-  widgetName: 
-  type: 0
+  buttonName: 
+  widgetType: 0
 --- !u!1 &7971312596527464626
 GameObject:
   m_ObjectHideFlags: 0

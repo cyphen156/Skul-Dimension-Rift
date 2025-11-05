@@ -26,7 +26,12 @@ public class InteractiveUIBehaviour : MonoBehaviour, IInteractive
         selectedButton = null;
     }
 
-    public void Execute(InputAction.CallbackContext ctx)
+    protected void Start()
+    {
+        
+    }
+
+    public virtual void Execute(InputAction.CallbackContext ctx)
     {
         if (!ctx.performed)
         {

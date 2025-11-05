@@ -1,5 +1,6 @@
 using Assets.Scripts.Interface;
 using System.Collections.Generic;
+using System.Xml.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using static Types;
@@ -14,6 +15,8 @@ public class UIManager : MonoBehaviour
     private Stack<IInteractive> uiInputStack = new Stack<IInteractive>();
     private IInteractive focusedUI;
     private Dictionary<string, GameObject> uiObjects = new Dictionary<string, GameObject>();
+    private GameObject UIProxyPrefab;   /// 풀링 대상이 될 수 있음 풀대상으로 지정시 현재의 Interactive 캔버스가 아닌 독립 캔버스 사용 권장
+    private Canvas editCanvas;
 
 #if UNITY_EDITOR
     [SerializeField] List<GameObject> _uiInputStack = new List<GameObject>();
@@ -63,6 +66,10 @@ public class UIManager : MonoBehaviour
         Canvas[] canvasList = transform.gameObject.GetComponentsInChildren<Canvas>();
         foreach (Canvas canvas in canvasList)
         {
+            if (canvas.name == "InteractiveCanvas")
+            {
+                editCanvas = canvas;
+            }
             foreach (Transform child in canvas.transform)
             {
                 uiObjects.Add(child.name, child.gameObject);
@@ -79,6 +86,8 @@ public class UIManager : MonoBehaviour
         }
         uiInputStack.Clear();
         focusedUI = null;
+
+        UIProxyPrefab = ResourceManager.instance.GetGameObject("UIProxy");
     }
 
     private void SetUIFocus(IInteractive UIObject)
@@ -134,7 +143,6 @@ public class UIManager : MonoBehaviour
             Debug.LogWarning($"UIManager: UI '{UIName}' not found in dictionary.");
         }
     }
-
     /// <summary>
     /// UI를 비활성화하는 메서드
     /// </summary>
@@ -158,13 +166,21 @@ public class UIManager : MonoBehaviour
             }
 
             uiObject.SetActive(false);
+
+            // ****추후 풀 대상으로 변경될 수 있음*****
+            if (uiObject.name.Contains("Proxy"))
+            {
+                uiObjects.Remove(UIName);
+                Destroy(uiObject);
+            }
         }
         else
         {
             Debug.LogWarning($"UIManager: UI '{UIName}' not found in dictionary.");
         }
+        
     }
-
+        
     public void HideAll()
     {
         foreach (var ui in uiObjects.Values)
@@ -174,6 +190,27 @@ public class UIManager : MonoBehaviour
         uiInputStack.Clear();
         focusedUI = null;
     }
+
+    /// <summary>
+    /// 프록시 패턴을 통해 기존 함수를 우회하여 대신 기능을 수행해주는 함수
+    /// </summary>
+    /// <param name="UIOrigin">원본 타겟</param>
+    public void UseProxy(InteractiveUIBehaviour UIOrigin)
+    {
+        if (UIOrigin == null)
+        {
+            return;
+        }
+        GameObject UIProxyObject = Instantiate(UIProxyPrefab);
+        string name = UIOrigin.name + "Proxy";
+        UIProxyObject.name = name;
+        uiObjects.Add(name, UIProxyObject);
+        UIProxyObject.transform.SetParent(editCanvas.transform, false);
+        UIProxyObject.GetComponent<UIProxy>().Bind(UIOrigin);
+
+        Show(name);
+    }
+
     #endregion Custom Methods
 
     #region Input Methods

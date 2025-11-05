@@ -48,9 +48,13 @@ public class Widget : InteractiveUIBehaviour
         if (parent != null)
         {
             var buttonName = parent.name;
-            if (!string.IsNullOrEmpty(buttonName) && buttonName.EndsWith("Button"))
+            if (buttonName.EndsWith("Button"))
             {
                 this.buttonName = buttonName.Substring(0, buttonName.Length - "Button".Length);
+            }
+            else if (buttonName.EndsWith("Slider"))
+            {
+                this.buttonName = buttonName.Substring(0, buttonName.Length - "Slider".Length);
             }
 
             var group = parent.parent;
