@@ -46,7 +46,7 @@ public class InteractiveUIBehaviour : MonoBehaviour, IInteractive
                     {
                         continue;
                     }
-                    RectTransform rect = button.GetComponent<RectTransform>();
+                    RectTransform rect = (RectTransform)button.transform;
                     if (RectTransformUtility.RectangleContainsScreenPoint(rect, lastPoint))
                     {
                         selectedButton = button;
@@ -84,8 +84,8 @@ public class InteractiveUIBehaviour : MonoBehaviour, IInteractive
             // Raycast to find the button under the pointer
             foreach (Button button in buttons)
             {
-                RectTransform rectTransform = button.GetComponent<RectTransform>();
-                if (RectTransformUtility.RectangleContainsScreenPoint(rectTransform, pointerPosition))
+                RectTransform rect = (RectTransform)button.transform;
+                if (RectTransformUtility.RectangleContainsScreenPoint(rect, pointerPosition))
                 {
                     selectedButton = button;
                     selectedButton.Select();

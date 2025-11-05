@@ -8,23 +8,13 @@ public class Options : InteractiveUIBehaviour
     private readonly Dictionary<string, Widget> widgets = new Dictionary<string, Widget>();
 
 #if UNITY_EDITOR
-    [SerializeField] private List<Widget> debugWidgets;
+    [SerializeField] private List<Widget> debugWidgets = new List<Widget>();
 #endif
 
     private new void Awake()
     {
         base.Awake();
         AllocateChildren();
-    }
-
-    protected new void OnEnable()
-    {
-        base.OnEnable();
-    }
-
-    protected new void OnDisable()
-    {
-        base.OnDisable();
     }
 
     private void AllocateChildren()
@@ -34,189 +24,133 @@ public class Options : InteractiveUIBehaviour
         debugWidgets?.Clear();
 #endif
 
-        foreach (Button button in buttons)
+        // Option 하위 모든 Widget 컴포넌트를 수집
+        var foundWidgets = ComponentRegistrar.RegisterComponentsInChildren<Widget>(
+            transform, 0, 0, 0, true, true
+        );
+
+        foreach (var widget in foundWidgets)
         {
-            if (button == null)
+            if (widget == null) { continue; }
+
+            // 위젯 내부 구성 요소 연결
+            switch (widget.widgetType)
             {
-                continue;
-            }
-
-            Transform group = button.transform.parent;
-            if (group == null)
-            {
-                continue;
-            }
-
-            string groupKey = group.name.Replace("ButtonGroup", "");
-            string widgetName = button.name.Replace("Button", "");
-
-            List<Transform> all = ComponentRegistrar.RegisterComponentsInChildren<Transform>(
-                button.transform, 0, 0, 0, true, true
-            );
-
-            Transform optionButtons = null;
-            Transform optionSlider = null;
-
-            foreach (Transform t in all)
-            {
-                if (t == null)
-                {
-                    continue;
-                }
-                if (t.name == "OptionButtons")
-                {
-                    optionButtons = t;
-                }
-                else if (t.name == "OptionSlider")
-                {
-                    optionSlider = t;
-                }
-            }
-
-            if (optionButtons != null)
-            {
-                Transform leftT = null;
-                Transform rightT = null;
-                Transform oneShotT = null;
-                TMP_Text optionText = null;
-
-                List<Transform> ob = ComponentRegistrar.RegisterComponentsInChildren<Transform>(
-                    optionButtons, 0, 0, 0, true, true
-                );
-
-                foreach (Transform t in ob)
-                {
-                    if (t == null)
+                case WidgetType.StepperWidget:
                     {
-                        continue;
-                    }
-
-                    if (t.name == "LeftArrowButton" || t.name == "LeftArrow")
-                    {
-                        leftT = t; continue;
-                    }
-                    if (t.name == "RightArrowButton" || t.name == "RightArrow")
-                    {
-                        rightT = t; continue;
-                    }
-                    if (t.name == "OneShotButton" || t.name == "OneShotButtonImage")
-                    {
-                        oneShotT = t; continue;
-                    }
-                    if (t.name == "OptionText")
-                    {
-                        var txt = t.GetComponent<TMP_Text>();
-                        if (txt != null)
-                        {
-                            optionText = txt;
+                        var stepper = widget.widget as StepperWidget;
+                        if (stepper == null) 
+                        { 
+                            break; 
                         }
+
+                        var leftT = widget.transform.Find("LeftArrowButton");
+                        var rightT = widget.transform.Find("RightArrowButton");
+                        var textT = widget.transform.Find("OptionText");
+
+                        if (leftT != null) 
+                        {
+                            stepper.leftArrow = leftT.GetComponent<Button>(); 
+                        }
+
+                        if (rightT != null) 
+                        { 
+                            stepper.rightArrow = rightT.GetComponent<Button>(); 
+                        }
+                        if (textT != null) 
+                        {
+                            stepper.optionText = textT.GetComponent<TMP_Text>(); 
+                        }
+                        break;
                     }
-                }
 
-                if (leftT != null && rightT != null)
-                {
-                    StepperWidget step = new StepperWidget();
-                    step.groupKey = groupKey;
-                    step.widgetName = widgetName;
-                    step.type = WidgetType.StepperWidget;
-                    step.leftArrow = leftT.GetComponent<Button>();
-                    step.rightArrow = rightT.GetComponent<Button>();
-                    step.optionText = optionText;
+                case WidgetType.SliderWidget:
+                    {
+                        var slider = widget.widget as SliderWidget;
+                        if (slider == null) { break; }
 
-                    widgets[widgetName] = step;
-#if UNITY_EDITOR
-                    debugWidgets?.Add(step);
-#endif
-                    continue;
-                }
+                        slider.slider = widget.GetComponentInChildren<Slider>(true);
+                        break;
+                    }
 
-                if (oneShotT != null)
-                {
-                    OneShotWidget one = new OneShotWidget();
-                    one.groupKey = groupKey;
-                    one.widgetName = widgetName;
-                    one.type = WidgetType.OneShotWidget;
-                    one.oneShotButton = oneShotT.GetComponent<Button>();
-                    one.optionText = optionText;
+                case WidgetType.OneShotWidget:
+                    {
+                        var oneShot = widget.widget as OneShotWidget;
+                        if (oneShot == null) 
+                        { 
+                            break;
+                        }
 
-                    widgets[widgetName] = one;
-#if UNITY_EDITOR
-                    debugWidgets?.Add(one);
-#endif
-                    continue;
-                }
+                        var button = widget.transform.Find("OneShotButton");
+                        var text = widget.transform.Find("OptionText");
+
+                        if (button != null) 
+                        { 
+                            oneShot.oneShotButton = button.GetComponent<Button>(); 
+                        }
+                        if (text != null) 
+                        { 
+                            oneShot.optionText = text.GetComponent<TMP_Text>(); 
+                        }
+                        break;
+                    }
             }
 
-            if (optionSlider != null)
+            if (!string.IsNullOrEmpty(widget.buttonName))
             {
-                Slider slider = optionSlider.GetComponent<Slider>();
-                if (slider == null)
-                {
-                    var found = ComponentRegistrar.RegisterComponentsInChildren<Slider>(optionSlider, 0, 0, 0, true, true);
-                    if (found.Count > 0)
-                    {
-                        slider = found[0];
-                    }
-                }
-
-                if (slider != null)
-                {
-                    SliderWidget sw = new SliderWidget();
-                    sw.groupKey = groupKey;
-                    sw.widgetName = widgetName;
-                    sw.type = WidgetType.SliderWidget;
-                    sw.slider = slider;
-
-                    widgets[widgetName] = sw;
+                widgets[widget.buttonName] = widget;
 #if UNITY_EDITOR
-                    debugWidgets?.Add(sw);
+                debugWidgets?.Add(widget);
 #endif
-                    continue;
-                }
+            }
+            else
+            {
+                // 매칭 실패 시 디버그 확인용
+                Debug.LogWarning($"[Options] widgetName not set for {widget.name}");
             }
         }
     }
 
-    protected override void OnSubmit()
-    {
-        // 메인에서 아무것도 선택 안 된 상태라면 자기 자신 닫기
-        if (selectedButton == null)
-        {
-            UIManager.instance.Hide(gameObject.name);
-            return;
-        }
+    //    protected override void OnSubmit()
+    //    {
+    //        // 메인에서 아무것도 선택 안 된 상태라면 자기 자신 닫기
+    //        if (selectedButton == null)
+    //        {
+    //            UIManager.instance.Hide(gameObject.name);
+    //            return;
+    //        }
 
-        string name = selectedButton.name.Replace("Button", "");
+    //        string name = selectedButton.name.Replace("Button", "");
 
-        switch (name)
-        {
-            case "Return":
-                {
-                    UIManager.instance.Hide(gameObject.name);
-                    return;
-                }
+    //        switch (name)
+    //        {
+    //            case "Return":
+    //                {
+    //                    UIManager.instance.Hide(gameObject.name);
+    //                    return;
+    //                }
 
-            default:
-                {
-                    Widget w;
-                    if (!widgets.TryGetValue(name, out w))
-                    {
-                        return;
-                    }
+    //            default:
+    //                {
+    //                    Widget w;
+    //                    if (!widgets.TryGetValue(name, out w))
+    //                    {
+    //                        return;
+    //                    }
 
-                    // Proxy를 UI 스택에 올리고 위젯 바인딩
-                    UIManager.instance.Show("WidgetProxy");
-                    var proxyGO = UIManager.instance.TryGetUI("WidgetProxy");
-                    if (proxyGO != null)
-                    {
-                        var proxy = proxyGO.GetComponent<WidgetProxy>();
-                        if (proxy != null)
-                        {
-                            proxy.Bind(w);
-                        }
-                    }
-                    return;
-                }
-        }
-    }
+    //                    // Proxy를 UI 스택에 올리고 위젯 바인딩
+    //                    UIManager.instance.Show("WidgetProxy");
+    //                    var proxyGO = UIManager.instance.TryGetUI("WidgetProxy");
+    //                    if (proxyGO != null)
+    //                    {
+    //                        var proxy = proxyGO.GetComponent<WidgetProxy>();
+    //                        if (proxy != null)
+    //                        {
+    //                            proxy.Bind(w);
+    //                        }
+    //                    }
+    //                    return;
+    //                }
+    //        }
+    //    }
 }

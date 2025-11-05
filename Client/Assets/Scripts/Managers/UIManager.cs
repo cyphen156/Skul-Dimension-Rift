@@ -60,19 +60,23 @@ public class UIManager : MonoBehaviour
     /// </summary>
     private void Initialize()
     {
-        foreach (Transform child in transform)
+        Canvas[] canvasList = transform.gameObject.GetComponentsInChildren<Canvas>();
+        foreach (Canvas canvas in canvasList)
         {
-            uiObjects.Add(child.name, child.gameObject);
-            child.gameObject.SetActive(false);
-        }
+            foreach (Transform child in canvas.transform)
+            {
+                uiObjects.Add(child.name, child.gameObject);
+                child.gameObject.SetActive(false);
+            }
 
 #if UNITY_EDITOR
-        uiObjectnames.Clear();
-        foreach (var key in uiObjects.Keys)
-        {
-            uiObjectnames.Add(key);
-        }
+            uiObjectnames.Clear();
+            foreach (var key in uiObjects.Keys)
+            {
+                uiObjectnames.Add(key);
+            }
 #endif
+        }
         uiInputStack.Clear();
         focusedUI = null;
     }

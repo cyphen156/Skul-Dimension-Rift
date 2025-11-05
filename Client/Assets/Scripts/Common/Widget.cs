@@ -1,4 +1,5 @@
 ﻿using Assets.Scripts.Interface;
+using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -10,15 +11,18 @@ public enum WidgetType
     OneShotWidget
 }
 
-public class Widget : MonoBehaviour
+[Serializable]
+public class Widget : InteractiveUIBehaviour
 {
     public string groupKey;
-    public string widgetName;
+    public string buttonName;
     public WidgetType widgetType;
     public IWidget widget;
 
-    protected void Awake()
+    protected new void Awake()
     {
+        base.Awake();
+
         string type = transform.gameObject.name;
         switch (type)
         {
@@ -38,9 +42,31 @@ public class Widget : MonoBehaviour
                 Debug.Log("object Name missMatch with WidgetType");
                 break;
         }
+
+        var parent = transform.parent;
+
+        if (parent != null)
+        {
+            var buttonName = parent.name;
+            if (!string.IsNullOrEmpty(buttonName) && buttonName.EndsWith("Button"))
+            {
+                this.buttonName = buttonName.Substring(0, buttonName.Length - "Button".Length);
+            }
+
+            var group = parent.parent;
+            if (group != null)
+            {
+                var groupName = group.name;
+                if (!string.IsNullOrEmpty(groupName) && groupName.EndsWith("ButtonGroup"))
+                {
+                    groupKey = groupName.Substring(0, groupName.Length - "ButtonGroup".Length);
+                }
+            }
+        }
     }
 }
 
+[Serializable]
 public class StepperWidget : IWidget
 {
     public Button leftArrow;
@@ -48,11 +74,13 @@ public class StepperWidget : IWidget
     public TMP_Text optionText;
 }
 
+[Serializable]
 public class SliderWidget : IWidget
 {
     public Slider slider;
 }
 
+[Serializable]
 public class OneShotWidget : IWidget
 {
     public Button oneShotButton;
