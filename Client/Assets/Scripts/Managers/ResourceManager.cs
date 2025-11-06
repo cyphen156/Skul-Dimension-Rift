@@ -2,11 +2,10 @@ using Assets.Scripts.Data;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using Unity.VisualScripting;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.InputSystem;
+using static Types;
 using Object = UnityEngine.Object;
 
 /// <summary>
@@ -25,7 +24,7 @@ public class ResourceManager : MonoBehaviour
     [SerializeField] private string defaultInputActionPath = "Input/InputActions";
     private const string userDataFileName = "UserData.json";
     private string userDataPath => Path.Combine(Application.persistentDataPath, userDataFileName);
-  
+
     private readonly Dictionary<string, string> controlPaths = new()
     {
         { "Keyboard&Mouse", "Control/Keyboard&Mouse" },
@@ -195,6 +194,7 @@ public class ResourceManager : MonoBehaviour
             return (T)Resources.Load<T>(resourceName);
         }
     }
+
     public InputActionAsset GetUserInputActions()
     {
         return userInputAsset;
@@ -209,11 +209,11 @@ public class ResourceManager : MonoBehaviour
             return null;
         }
 
-        if(!prefabs.TryGetValue(objectName, out gameObject))
+        if (!prefabs.TryGetValue(objectName, out gameObject))
         {
             gameObject = Resources.Load<GameObject>(objectName);
         }
-        
+
         return gameObject;
     }
     public Sprite GetControlSprite(string controlName, bool isHighlight = false)
@@ -259,7 +259,12 @@ public class ResourceManager : MonoBehaviour
         return sfxClips.ContainsKey(sfxClipName) ? sfxClips[sfxClipName] : null;
     }
 
-    public OptionsData GetOptionsData()
+    public ref readonly UserData GetUserData()
+    {
+        return ref userData;
+    }
+
+    public OptionsData GetUserOptionsData()
     {
         return userData.options;
     }
@@ -275,7 +280,6 @@ public class ResourceManager : MonoBehaviour
             InputActionMap playerMap = userInputAsset.FindActionMap("Player");
 
             userData.control.bindings = playerMap != null ? playerMap.SaveBindingOverridesAsJson() : "";
-
             var dir = Path.GetDirectoryName(userDataPath);
             if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
             {

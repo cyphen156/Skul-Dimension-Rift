@@ -1,3 +1,4 @@
+using Assets.Scripts.Data;
 using System.Collections.Generic;
 using UnityEngine;
 using static Types;
@@ -8,6 +9,7 @@ using static Types;
 public class SoundManager : MonoBehaviour
 {
     public static SoundManager instance;
+    [SerializeField] private Audio userAudioData;
 
     [Header("Volumes (0.0 ~ 1.0)")]
     [SerializeField] private float masterVolume;
@@ -38,6 +40,8 @@ public class SoundManager : MonoBehaviour
             Destroy(gameObject);
             return;
         }
+
+        Initialize();
 
         // BGM AudioSource ¼³Á¤
         bgmSource = GetComponent<AudioSource>();
@@ -73,6 +77,10 @@ public class SoundManager : MonoBehaviour
     #endregion Unity Methods    
 
     #region Custom Methods
+    private void Initialize()
+    {
+        userAudioData = ResourceManager.instance.GetUserOptionsData().audio;
+    }
 
     #region Volume Control
     private void ApplyVolume(VolumeType volumeType)

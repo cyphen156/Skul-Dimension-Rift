@@ -4624,7 +4624,7 @@ GameObject:
   - component: {fileID: 6867774184887088361}
   - component: {fileID: 6248570385912973101}
   m_Layer: 5
-  m_Name: WindowEarthQuaqingEffectSlider
+  m_Name: WindowEarthQuaqeEffectSlider
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

@@ -1,4 +1,6 @@
-﻿/// <summary>
+﻿using System;
+
+/// <summary>
 /// 정적 타입들을 정의하는 클래스
 /// 게임 전반에 걸쳐 사용되는 열거형 타입들을 포함
 /// </summary>
@@ -54,4 +56,85 @@ public static class Types
         PlayerOnly,
         Restricted, // 제한된 플레이어 입력 (예: 대화 중)
     }
+
+    #region UserData Section
+    /// <summary>
+    /// UserData에 저장되는 타입의 실 사용 유형
+    /// </summary>
+    public enum UserDataType
+    {
+        ControlData,
+        OptionData,
+    }
+
+    public enum OptionDataType
+    {
+        Graphic,
+        Data,
+        Audio,
+        GamePlay,
+    }
+
+    #region UserData_Graphic
+    public enum Resolution
+    {
+        // UHD_4K부터 QHD까지는 기기에 따른 제한 필요
+        UHD_4K,
+        UHD,
+        WQHD,
+        QHD,
+        FHD,
+        HD,
+        SD,
+        Custom
+    }
+    public enum Window
+    {
+        FullScreen, 
+        Window,
+        BorderlessFullScreen,
+    }
+
+    public enum LightingEffect
+    {
+        On,
+        Off,
+    }
+
+    public enum ParticlePerformance
+    {
+        Low,
+        Middle,
+        High,
+    }
+    #endregion UserData_Graphic
+
+    #region UserData_Gameplay
+    public enum Languages
+    {
+        Korean,
+        English,
+        Japanese,
+    }
+
+    public enum RukiMode
+    {
+        On,
+        Off,
+    }
+
+    public enum ShowTimer
+    {
+        On,
+        Off,
+    }
+
+    public enum ShowUIs
+    {
+        All,
+        None,
+        InGame,
+    }
+    #endregion UserData_Gameplay
+    #endregion UserData Section
 }

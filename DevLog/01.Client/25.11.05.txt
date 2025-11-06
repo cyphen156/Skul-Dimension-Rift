@@ -1,7 +1,7 @@
 Branch
     설정창 UI 개발
 
-Commit
+Commit ccb95d1
 [Feat][UI] 설정창 위젯-프록시 구조 도입 및 입력 스택 안정화
 
 변경 요약

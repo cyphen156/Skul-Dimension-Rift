@@ -38,7 +38,7 @@ public class Control : InteractiveUIBehaviour
         }
     }
 
-    private void Start()
+    private new void Start()
     {
         Refresh();
     }

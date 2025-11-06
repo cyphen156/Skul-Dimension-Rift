@@ -1,4 +1,5 @@
 ﻿using System;
+using T = Types;
 
 namespace Assets.Scripts.Data
 {
@@ -31,11 +32,11 @@ namespace Assets.Scripts.Data
     [Serializable]
     public class Graphic
     {
-        public Resolution resolution = new Resolution();
-        public Window window = Window.FullScreen;
-        public LightingEffect lightingEffect = LightingEffect.Off;
-        public ParticlePerformance particlePerformance = ParticlePerformance.High;
-        public float windowEarthQuaqingEffect = 0.5f;
+        public T.Resolution resolution = T.Resolution.FHD;
+        public T.Window window = T.Window.FullScreen;
+        public T.LightingEffect lightingEffect = T.LightingEffect.Off;
+        public T.ParticlePerformance particlePerformance = T.ParticlePerformance.High;
+        public float windowEarthQuakeEffect = 0.5f;
         public float shakingEffect = 0.5f;
     }
 
@@ -58,80 +59,9 @@ namespace Assets.Scripts.Data
     [Serializable]
     public class GamePlay
     {
-        public Languages language = Languages.Korean;
-        public RukiMode rukiMode = RukiMode.Off;
-        public ShowTimer showTimer = ShowTimer.Off;
-        public ShowUIs showUIs = ShowUIs.All;
-    }
-
-    [Serializable]
-    public struct Resolution
-    {
-        public int width;
-        public int height;
-
-        public Resolution(int width, int height)
-        {
-            this.width = width;
-            this.height = height;
-        }
-
-        public override string ToString()
-        {
-            return width + " x " + height;
-        }
-    }
-
-    [Serializable]
-    public enum Window
-    {
-        FullScreen,
-        Window,
-        BorderlessFullScreen,
-    }
-
-    [Serializable]
-    public enum LightingEffect
-    {
-        On,
-        Off,
-    }
-
-    [Serializable]
-    public enum ParticlePerformance
-    {
-        Low,
-        Middle,
-        High,
-    }
-
-    [Serializable]
-    public enum Languages
-    {
-        Korean,
-        English,
-        Japanese,
-    }
-
-    [Serializable]
-    public enum RukiMode
-    {
-        On,
-        Off,
-    }
-   
-    [Serializable]
-    public enum ShowTimer
-    {
-        On,
-        Off,
-    }
-
-    [Serializable]
-    public enum ShowUIs
-    {
-        All,
-        None,
-        InGame,
+        public T.Languages language = T.Languages.Korean;
+        public T.RukiMode rukiMode = T.RukiMode.Off;
+        public T.ShowTimer showTimer = T.ShowTimer.Off;
+        public T.ShowUIs showUIs = T.ShowUIs.All;
     }
 }
