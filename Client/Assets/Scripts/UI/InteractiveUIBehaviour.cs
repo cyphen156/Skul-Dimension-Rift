@@ -6,12 +6,12 @@ using UnityEngine.UI;
 
 public class InteractiveUIBehaviour : MonoBehaviour, IInteractive
 {
-    [SerializeField] protected List<Button> buttons;
+    [SerializeField] protected List<Selectable> buttons;
     [SerializeField] protected Selectable selectedButton;
     [SerializeField] protected Vector2 lastPoint;
     protected void Awake()
     {
-        buttons = ComponentRegistrar.RegisterComponentsInChildren<Button>(transform, includeInactive: true);
+        buttons = ComponentRegistrar.RegisterComponentsInChildren<Selectable>(transform, includeInactive: true);
     }
 
     // 항상 활성화 된다면 선택된 버튼 요소를 첫 요소로 지정
@@ -44,7 +44,7 @@ public class InteractiveUIBehaviour : MonoBehaviour, IInteractive
                 HandlePoint(ctx);
                 break;
             case "Click":
-                foreach (Button button in buttons)
+                foreach (Selectable button in buttons)
                 {
                     if (button == null || !button.gameObject.activeInHierarchy || !button.interactable)
                     {
@@ -77,7 +77,7 @@ public class InteractiveUIBehaviour : MonoBehaviour, IInteractive
         }
     }
 
-    protected void HandlePoint(InputAction.CallbackContext ctx)
+    protected virtual void HandlePoint(InputAction.CallbackContext ctx)
     {
         Vector2 pointerPosition = ctx.ReadValue<Vector2>();
 
@@ -86,7 +86,7 @@ public class InteractiveUIBehaviour : MonoBehaviour, IInteractive
             lastPoint = pointerPosition;
 
             // Raycast to find the button under the pointer
-            foreach (Button button in buttons)
+            foreach (Selectable button in buttons)
             {
                 RectTransform rect = (RectTransform)button.transform;
                 if (RectTransformUtility.RectangleContainsScreenPoint(rect, pointerPosition))
@@ -117,7 +117,7 @@ public class InteractiveUIBehaviour : MonoBehaviour, IInteractive
 
         int currentIndex = -1;
 
-        if (selectedButton is Button button)
+        if (selectedButton is Selectable button)
         {
             currentIndex = buttons.IndexOf(button);
         }

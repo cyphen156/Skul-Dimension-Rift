@@ -2,6 +2,7 @@
 using System;
 using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 public enum WidgetType
@@ -68,6 +69,36 @@ public class Widget : InteractiveUIBehaviour
             }
         }
     }
+
+    public override void Execute(InputAction.CallbackContext ctx)
+    {
+        var action = ctx.action.name;
+
+        if (action == "Point")
+        {
+            return;
+        }
+
+        if (action == "Point" || action == "Navigate" || action == "ScrollWheel" || action == "Click")
+        {
+            base.Execute(ctx);
+
+            if (widgetType == WidgetType.StepperWidget || widgetType == WidgetType.OneShotWidget)
+            {
+                if (action == "Click" || action == "Navigate")
+                {
+                    //SubmitFromWidget();
+                }
+            }
+            return;
+        }
+    }
+
+    protected override void OnSubmit()
+    {
+        GameManager.instance.ApplyUserOptionSetting(this);
+        selectedButton = null;
+    }
 }
 
 [Serializable]
@@ -76,6 +107,8 @@ public class StepperWidget : IWidget
     public Button leftArrow;
     public Button rightArrow;
     public TMP_Text optionText;
+
+    public int value;
 }
 
 [Serializable]

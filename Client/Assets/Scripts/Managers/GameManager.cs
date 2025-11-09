@@ -272,5 +272,34 @@ public class GameManager : NetworkBehaviour
         InputManager.instance.ChangeInputMode(InputMode.UIOnly);
         ResourceManager.instance.SaveUserData();
     }
+
+    public void ApplyUserOptionSetting(Widget widget)
+    {
+        switch (widget.groupKey)
+        {
+            case "Graphic":
+                GraphicManager.instance.ApplyOption(widget);
+                break;
+            case "Audio":
+                SoundManager.instance.ApplyOption(widget);
+                break;
+            case "Data":
+                ResourceManager.instance.ApplyOption(widget);
+                break;
+            case "GamePlay":
+                break;
+            default:
+                break;
+        }
+    }
+
+    /// <summary>
+    /// 유저 데이터를 저장하기 위한 외부 공개 API
+    /// 추후 상황에 따른 권한과 실행 제어 설정 필요
+    /// </summary>
+    public void SaveUserData()
+    {
+        ResourceManager.instance.SaveUserData();
+    }
     #endregion
 }

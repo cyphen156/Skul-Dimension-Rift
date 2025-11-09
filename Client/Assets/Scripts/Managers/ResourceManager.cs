@@ -464,5 +464,10 @@ public class ResourceManager : MonoBehaviour
             _ => Application.platform.ToString()
         };
     }
+
+    internal void ApplyOption(Widget widget)
+    {
+        throw new NotImplementedException();
+    }
     #endregion
 }

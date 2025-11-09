@@ -1,4 +1,5 @@
 using Assets.Scripts.Data;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using static Types;
@@ -180,6 +181,11 @@ public class SoundManager : MonoBehaviour
         SetBGMVolume(BGMVolume);
         SetSFXVolume(SFXVolume);
         SetMasterVolume(masterVolume);
+    }
+
+    internal void ApplyOption(Widget widget)
+    {
+        throw new NotImplementedException();
     }
     #endregion Custom Methods
 }

@@ -1,7 +1,7 @@
 Branch
     설정창 UI 개발
 
-Commit 
+Commit 41a42c8
 [Feat] 신규 매니저 GraphicManager추가
 
 변경 요약

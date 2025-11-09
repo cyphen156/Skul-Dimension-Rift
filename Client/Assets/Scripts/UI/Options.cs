@@ -80,6 +80,7 @@ public class Options : InteractiveUIBehaviour
                         }
 
                         slider.slider = widget.GetComponentInChildren<Slider>(true);
+                        selectedButton = slider.slider;
                         break;
                     }
 
