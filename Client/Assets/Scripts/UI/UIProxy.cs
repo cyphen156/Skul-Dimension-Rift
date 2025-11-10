@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.UI;
 
 public class UIProxy : InteractiveUIBehaviour
 {
@@ -85,26 +84,31 @@ public class UIProxy : InteractiveUIBehaviour
             return;
         }
 
-
-        if (!ctx.performed)
-        {
-            return;
-        }
-
         string actionName = ctx.action.name;
         // 포인트 점검
-        if (actionName == "Point")
+        if (actionName == "Point" && ctx.performed)
         {
             HandlePoint(ctx);
-            return;
         }
 
-        // 클릭시 클릭 위치 검증
         if (actionName == "Click")
         {
-            if (!RectTransformUtility.RectangleContainsScreenPoint(localTransform, lastPoint))
+            // 클릭 시작 - 영역 밖이면 무시
+            if (ctx.started)
             {
-                return;
+                if (!RectTransformUtility.RectangleContainsScreenPoint(localTransform, lastPoint))
+                {
+                    return;
+                }
+            }
+
+            // 클릭 종료 - 영역 밖이면 취소
+            if (ctx.canceled)
+            {
+                if (!RectTransformUtility.RectangleContainsScreenPoint(localTransform, lastPoint))
+                {
+                    return;
+                }
             }
         }
 

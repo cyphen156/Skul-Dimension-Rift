@@ -245,10 +245,7 @@ public class UIManager : MonoBehaviour
             return;
         }
 
-        if (ctx.performed)
-        {
-            focusedUI.Execute(ctx);
-        }
+        focusedUI.Execute(ctx);
     }
 
     /// <summary>

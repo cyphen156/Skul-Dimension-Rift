@@ -1,6 +1,5 @@
 ﻿using Assets.Scripts.Interface;
 using System;
-using System.Diagnostics.Eventing.Reader;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -29,8 +28,9 @@ public class Widget : InteractiveUIBehaviour
     public string parentName;       // 위젯이 달린 오브젝트 이름 -> 종속성을 가지고 있음
     public WidgetType widgetType;   // 리플렉션 방지용
     public IWidget widget;
-    public float value;
+    private InputAction clickAction;
 
+    [SerializeField] private bool isDragging;        // 슬라이더를 위한 드래그
 #if UNITY_EDITOR
     [SerializeField] private string groupName;
 #endif
@@ -63,6 +63,7 @@ public class Widget : InteractiveUIBehaviour
                     break;
             }
         }
+        isDragging = false;
     }
 
     /// <summary>
@@ -77,7 +78,6 @@ public class Widget : InteractiveUIBehaviour
     {
         this.groupKey = groupKey;
         this.parentName = parentName;
-
 #if UNITY_EDITOR
         groupName = groupKey.ToString();
 #endif
@@ -87,32 +87,96 @@ public class Widget : InteractiveUIBehaviour
     {
         string actionName = ctx.action.name;
 
-        // Point는 이미 프록시에서 처리되었음
-        // 클릭의 경우 현재 포지션에 해당하는 버튼을 검증할 필요가 있음
-        // 네비게이트의 경우는 재정렬 필요 버튼 인덱스를 루프하지 않도록 조정
-        // => 방향이 바뀌엇을 때만 +- 값 조정
-        // ==> 인덱스가 아니라 그냥 float의 형태로 위젯에+-1 전달
-        switch (actionName)
+        if (selectedButton == null)
         {
-            case "Click":
-                HandlePoint(ctx);
-                break;
-            case "Navigate":
-            case "ScrollWheel":
-                HandleNavigate(ctx);
-                break;
-            // 아래 기능들은 동작을 차단
-            case "Point":
-            case "RightClick":
-                break;
-            // Submit의 경우 항상 동작하도록 변경
-            case "Submit":
-                break;
-            default:
-                Debug.LogWarning($"{this.name}: Unhandled action '{actionName}'");
-                break;
+            foreach (Selectable button in buttons)
+            {
+                if (button == null || !button.gameObject.activeInHierarchy || !button.interactable)
+                {
+                    continue;
+                }
+                RectTransform rect = (RectTransform)button.transform;
+                if (RectTransformUtility.RectangleContainsScreenPoint(rect, lastPoint))
+                {
+                    selectedButton = button;
+                    break;
+                }
+            }
+
+            if (selectedButton == null)
+            {
+                selectedButton = buttons[0];
+            }
         }
-        OnSubmit();
+        
+        if (actionName == "Click")
+        {
+            isDragging = selectedButton is Slider;
+            clickAction = ctx.action;
+            return;
+        }
+
+        if (ctx.performed)
+        {
+            switch (actionName)
+            {
+                case "Point":
+                    {
+                        HandlePoint(ctx);
+                    
+                        bool isHolding = isDragging && clickAction != null && clickAction.IsPressed();
+
+                        if (!isHolding)
+                        {
+                            isDragging = false;
+                            clickAction = null;
+                            (widget as SliderWidget)?.ResetPrevPoint();
+                            break;
+                        }
+
+                        if (isDragging)
+                        {
+                            SliderWidget sw = widget as SliderWidget;
+                            if (sw != null)
+                            {
+                                sw.HandleSlider(lastPoint);
+                            }
+                        }
+                        break;
+                    }
+                case "Click":
+                    if (isDragging && selectedButton is Slider)
+                    {
+                        break;
+                    }
+
+                    foreach (Selectable button in buttons)
+                    {
+                        if (button == null || !button.gameObject.activeInHierarchy || !button.interactable)
+                        {
+                            continue;
+                        }
+                        RectTransform rect = (RectTransform)button.transform;
+                        if (RectTransformUtility.RectangleContainsScreenPoint(rect, lastPoint))
+                        {
+                            selectedButton = button;
+                            break;
+                        }
+                    }
+                    break;
+                case "Navigate":
+                case "ScrollWheel":
+                    HandleNavigate(ctx);
+                    break;
+                case "Submit":
+                case "RightClick":
+                    break;
+                default:
+                    Debug.LogWarning($"{this.name}: Unhandled action '{actionName}'");
+                    break;
+            }
+        }
+        widget.OnSubmit();
     }
 
     protected override void OnSubmit()
@@ -123,8 +187,6 @@ public class Widget : InteractiveUIBehaviour
 
     /// <summary>
     /// base와는 다르게 버튼그룹을 순회하지 않음
-    /// 대신 인덱스를 증감시키거나 인덱스가 1개인 경우 flaotvalue를 1 또는 -1로 변경함
-    /// 이걸 다시 하위 위젯에게 전파
     /// </summary>
     /// <param name="ctx"></param>
     protected override void HandleNavigate(InputAction.CallbackContext ctx)
@@ -141,9 +203,15 @@ public class Widget : InteractiveUIBehaviour
             return;
         }
         
-        if (selectedButton == null)
+        // 슬라이더라면 네비게이션도 적용한다
+        if (selectedButton is Slider)
         {
-            selectedButton = buttons[0];
+            SliderWidget sw = widget as SliderWidget;
+            if (sw != null)
+            {
+                sw.HandleSlider(navigation, true);
+            }
+            return;
         }
 
         int currentIndex = -1;
@@ -162,7 +230,6 @@ public class Widget : InteractiveUIBehaviour
         }
         currentIndex = Mathf.Clamp(currentIndex, 0, buttons.Count - 1);
         selectedButton = buttons[currentIndex];
-        Debug.Log(currentIndex);
         selectedButton.Select();
     }
 }
@@ -184,9 +251,62 @@ public class StepperWidget : IWidget
 public class SliderWidget : IWidget
 {
     public Slider slider;
+    public float sliderSpeed = 0.8f;
+
+    private Vector2 prevPoint;   // 이전 프레임 좌표
+    private bool hasPrev;        // 초기화 여부
 
     public void OnSubmit()
     {
+    }
+
+    public void HandleSlider(Vector2 point, bool isNav = false)
+    {
+        if (slider == null)
+        {
+            return;
+        }
+
+        float newValue = slider.value;
+
+        if (isNav)
+        {
+            // 네비게이션은 프레임 보정 + 속도 기반
+            float delta = (point.x + point.y) * sliderSpeed * Time.deltaTime;
+            newValue += delta;
+        }
+        else
+        {
+            RectTransform track = slider.fillRect != null
+            ? slider.fillRect
+            : slider.transform as RectTransform;
+
+            if (track == null)
+            {
+                return;
+            }
+
+            if (hasPrev)
+            {
+                float delta = point.x - prevPoint.x;
+                float trackWidth = track.rect.width;
+
+                // 슬라이더 트랙 폭을 기준으로 이동 비율 계산
+                float normalizedDelta = (delta / trackWidth);
+
+                newValue += normalizedDelta * (slider.maxValue - slider.minValue);
+            }
+
+            prevPoint = point;
+            hasPrev = true;
+        }
+
+        slider.value = Mathf.Clamp(newValue, slider.minValue, slider.maxValue);
+    }
+
+    public void ResetPrevPoint()
+    {
+        hasPrev = false;
     }
 }
 
