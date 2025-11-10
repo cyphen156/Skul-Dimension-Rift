@@ -7,11 +7,6 @@ public class GraphicManager : MonoBehaviour
     public static GraphicManager instance;
     [SerializeField] private Graphic userGraphicData;
 
-    internal void ApplyOption(Widget widget)
-    {
-        throw new NotImplementedException();
-    }
-
     private void Awake()
     {
         if (instance == null)
@@ -30,4 +25,9 @@ public class GraphicManager : MonoBehaviour
     {
         userGraphicData = ResourceManager.instance.GetUserOptionsData().graphic;
     }
+
+    public void ApplyOption(Widget widget)
+    {
+    }
+
 }

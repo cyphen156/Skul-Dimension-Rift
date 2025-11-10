@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using static Types;
 
 public class Options : InteractiveUIBehaviour
 {
@@ -107,9 +108,44 @@ public class Options : InteractiveUIBehaviour
                     }
             }
 
-            if (!string.IsNullOrEmpty(widget.buttonName))
+            GameObject parent = widget.transform.parent.gameObject;
+            string parentName = parent.name;
+
+            if (parentName.EndsWith("Button"))
             {
-                widgets[widget.buttonName] = widget;
+                parentName = parentName.Replace("Button", "");
+            }
+            else if (parentName.EndsWith("Slider"))
+            {
+                parentName = parentName.Replace("Slider", "");
+            }
+            GameObject group = parent.transform.parent.gameObject;
+
+            OptionDataType groupKey;
+            switch (group.name.Replace("ButtonGroup", ""))
+            {
+                case "Graphic":
+                    groupKey = OptionDataType.Graphic;
+                    break;
+                case "Data":
+                    groupKey = OptionDataType.Data;
+                    break;
+                case "Audio":
+                    groupKey = OptionDataType.Audio;
+                    break;
+                case "GamePlay":
+                    groupKey = OptionDataType.GamePlay;
+                    break;
+                default:
+                    groupKey = OptionDataType.None;
+                    break;
+            }
+
+            widget.SetWidget(groupKey, parentName);
+
+            if (!string.IsNullOrEmpty(widget.parentName))
+            {
+                widgets[widget.parentName] = widget;
 #if UNITY_EDITOR
                 debugWidgets?.Add(widget);
 #endif

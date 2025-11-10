@@ -183,9 +183,8 @@ public class SoundManager : MonoBehaviour
         SetMasterVolume(masterVolume);
     }
 
-    internal void ApplyOption(Widget widget)
+    public void ApplyOption(Widget widget)
     {
-        throw new NotImplementedException();
     }
     #endregion Custom Methods
 }

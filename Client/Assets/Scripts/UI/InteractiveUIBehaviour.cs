@@ -99,7 +99,7 @@ public class InteractiveUIBehaviour : MonoBehaviour, IInteractive
         }
     }
 
-    protected void HandleNavigate(InputAction.CallbackContext ctx)
+    protected virtual void HandleNavigate(InputAction.CallbackContext ctx)
     {
         if (buttons.Count == 0)
         {

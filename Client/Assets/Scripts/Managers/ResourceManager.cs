@@ -465,9 +465,8 @@ public class ResourceManager : MonoBehaviour
         };
     }
 
-    internal void ApplyOption(Widget widget)
+    public void ApplyOption(Widget widget)
     {
-        throw new NotImplementedException();
     }
     #endregion
 }

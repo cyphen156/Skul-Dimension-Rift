@@ -69,6 +69,7 @@ public static class Types
 
     public enum OptionDataType
     {
+        None,
         Graphic,
         Data,
         Audio,

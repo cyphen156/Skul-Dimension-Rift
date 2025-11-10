@@ -277,22 +277,27 @@ public class GameManager : NetworkBehaviour
     {
         switch (widget.groupKey)
         {
-            case "Graphic":
+            case OptionDataType.Graphic:
                 GraphicManager.instance.ApplyOption(widget);
                 break;
-            case "Audio":
-                SoundManager.instance.ApplyOption(widget);
-                break;
-            case "Data":
+            case OptionDataType.Data:
                 ResourceManager.instance.ApplyOption(widget);
                 break;
-            case "GamePlay":
+            case OptionDataType.Audio:
+                SoundManager.instance.ApplyOption(widget);
+                break;
+            case OptionDataType.GamePlay:
+                ApplyOption(widget);
                 break;
             default:
                 break;
         }
     }
 
+    private void ApplyOption(Widget widget)
+    {
+        
+    }
     /// <summary>
     /// 유저 데이터를 저장하기 위한 외부 공개 API
     /// 추후 상황에 따른 권한과 실행 제어 설정 필요

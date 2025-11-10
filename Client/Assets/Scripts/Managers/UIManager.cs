@@ -1,7 +1,10 @@
 using Assets.Scripts.Interface;
 using System.Collections.Generic;
+using System.Linq;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 using static Types;
 
 /// <summary>
@@ -14,13 +17,14 @@ public class UIManager : MonoBehaviour
     private Stack<IInteractive> uiInputStack = new Stack<IInteractive>();
     private IInteractive focusedUI;
     private Dictionary<string, GameObject> uiObjects = new Dictionary<string, GameObject>();
+    private Dictionary<string, Canvas> canvases = new Dictionary<string, Canvas>();
     private GameObject UIProxyPrefab;   /// 풀링 대상이 될 수 있음 풀대상으로 지정시 현재의 Interactive 캔버스가 아닌 독립 캔버스 사용 권장
-    private Canvas editCanvas;
 
 #if UNITY_EDITOR
     [SerializeField] List<GameObject> _uiInputStack = new List<GameObject>();
     [SerializeField] GameObject _focusedUI;
     [SerializeField] private List<string> uiObjectnames = new List<string>();
+    [SerializeField] List<Canvas> _canvas = new List<Canvas>();
 #endif
 
     #region Unity Methods
@@ -62,13 +66,12 @@ public class UIManager : MonoBehaviour
     /// </summary>
     private void Initialize()
     {
-        Canvas[] canvasList = transform.gameObject.GetComponentsInChildren<Canvas>();
+        canvases.Clear();
+        Canvas[] canvasList = transform.GetComponentsInChildren<Canvas>();
+
         foreach (Canvas canvas in canvasList)
         {
-            if (canvas.name == "InteractiveCanvas")
-            {
-                editCanvas = canvas;
-            }
+            canvases[canvas.name] = canvas;
             foreach (Transform child in canvas.transform)
             {
                 uiObjects.Add(child.name, child.gameObject);
@@ -80,6 +83,11 @@ public class UIManager : MonoBehaviour
             foreach (var key in uiObjects.Keys)
             {
                 uiObjectnames.Add(key);
+            }
+            _canvas.Clear();
+            foreach (var obj in canvases.Values)
+            {
+                _canvas.Add(obj);
             }
 #endif
         }
@@ -171,6 +179,10 @@ public class UIManager : MonoBehaviour
             {
                 uiObjects.Remove(UIName);
                 Destroy(uiObject);
+                foreach (Canvas canvas in canvases.Values)
+                {
+                    canvas.GetComponent<CanvasGroup>().interactable = true;
+                }
             }
         }
         else
@@ -204,9 +216,20 @@ public class UIManager : MonoBehaviour
         string name = UIOrigin.name + "Proxy";
         UIProxyObject.name = name;
         uiObjects.Add(name, UIProxyObject);
-        UIProxyObject.transform.SetParent(editCanvas.transform, false);
+        if (!canvases.TryGetValue("ProxyCanvas", out Canvas parentCanvas))
+        {
+            parentCanvas = canvases.Values.First();
+        }
+        UIProxyObject.transform.SetParent(parentCanvas.transform, false);
         UIProxyObject.GetComponent<UIProxy>().Bind(UIOrigin);
-
+        foreach (Canvas canvas in canvases.Values)
+        {
+            if (canvas == parentCanvas)
+            {
+                continue;
+            }
+            canvas.GetComponent<CanvasGroup>().interactable = true;
+        }
         Show(name);
     }
 
