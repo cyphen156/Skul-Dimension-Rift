@@ -290,8 +290,12 @@ public class UIManager : MonoBehaviour
     {
         if (string.IsNullOrEmpty(targetUI))
         {
-            RefreshAll();
-            return;
+            IInteractive stackTop = uiInputStack.Peek();
+            if (stackTop != null && stackTop is InteractiveUIBehaviour)
+            {
+                var IInteractive = stackTop as InteractiveUIBehaviour;
+                targetUI = IInteractive.gameObject.name;
+            }
         }
 
         // 존재하지 않으면 무시
@@ -303,7 +307,7 @@ public class UIManager : MonoBehaviour
         target.GetComponent<InteractiveUIBehaviour>()?.Refresh(param);
     }
 
-    private void RefreshAll()
+    public void RefreshAll()
     {
         foreach (var ui in uiObjects.Values)
         {

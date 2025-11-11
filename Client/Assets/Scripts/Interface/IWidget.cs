@@ -5,6 +5,6 @@
     /// </summary>
     public interface IWidget
     {
-        void Refresh();
+        void Refresh(string data);
     }
 }

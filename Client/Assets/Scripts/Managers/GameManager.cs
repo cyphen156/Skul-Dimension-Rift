@@ -291,6 +291,7 @@ public class GameManager : NetworkBehaviour
             default:
                 break;
         }
+        UIManager.instance.RefreshUI("", "data");
     }
 
     private void ApplyOption(Widget widget)
@@ -318,6 +319,7 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     public void SaveUserData()
     {
+        GraphicManager.instance.ApplyResolutionSetting();
         ResourceManager.instance.SaveUserData();
     }
     #endregion

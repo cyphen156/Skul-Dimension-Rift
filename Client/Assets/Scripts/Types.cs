@@ -153,6 +153,7 @@ public static class Types
 
         public enum ParticlePerformance
         {
+            Off,
             Low,
             Middle,
             High,
@@ -189,8 +190,8 @@ public static class Types
         public enum ShowUIs
         {
             All,
+            HudOff,
             None,
-            InGame,
         }
     #endregion UserData_Gameplay
     #endregion UserData Section

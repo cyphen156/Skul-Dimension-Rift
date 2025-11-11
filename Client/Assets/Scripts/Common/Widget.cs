@@ -1,5 +1,4 @@
-﻿using Assets.Scripts.Data;
-using Assets.Scripts.Interface;
+﻿using Assets.Scripts.Interface;
 using System;
 using TMPro;
 using UnityEngine;
@@ -132,13 +131,27 @@ public class Widget : InteractiveUIBehaviour
                 selectedButton = buttons[0];
             }
         }
-        
+
         if (actionName == "Click" || actionName == "Navigate")
         {
-            isPressed = selectedButton is Slider;
-            storedAction = ctx.action;
-            storedInput = ctx;
+            bool isSlider = selectedButton is Slider;
+
+            if (isSlider)
+            {
+                isPressed = true;
+                storedAction = ctx.action;
+                storedInput = ctx;
+            }
+            else
+            {
+                isPressed = false;
+                storedAction = null;
+                storedInput = default;
+                (widget as SliderWidget)?.ResetPrevPoint();
+            }
         }
+
+        bool suppressSubmit = false;
 
         if (ctx.performed)
         {
@@ -147,13 +160,24 @@ public class Widget : InteractiveUIBehaviour
                 case "Point":
                     {
                         HandlePoint(ctx);
-                    
+                        if (!(selectedButton is Slider))
+                        {
+                            isPressed = false;
+                            storedAction = null;
+                            storedInput = default;
+                            (widget as SliderWidget)?.ResetPrevPoint();
+
+                            suppressSubmit = true;
+                            break;
+                        }
+
                         bool isHolding = isPressed && storedAction != null && storedAction.IsPressed();
 
                         if (!isHolding)
                         {
                             isPressed = false;
                             storedAction = null;
+                            storedInput = default;
                             (widget as SliderWidget)?.ResetPrevPoint();
                             break;
                         }
@@ -213,15 +237,16 @@ public class Widget : InteractiveUIBehaviour
                     break;
             }
         }
-        OnSubmit();
+        if (!suppressSubmit)
+        {
+            OnSubmit();
+        }
     }
 
     protected override void OnSubmit()
     {
         // 값을 전달하고 내부에서 참조가 있으니 조회할 수 있음
         GameManager.instance.ApplyUserOptionSetting(this);
-        // 그럼 남는건 UI갱신하기
-        widget?.Refresh();
     }
 
     /// <summary>
@@ -285,6 +310,11 @@ public class Widget : InteractiveUIBehaviour
         
         return (float)buttons.IndexOf(selectedButton);
     }
+
+    public override void Refresh(string data)
+    {
+        widget.Refresh(data);
+    }
 }
 
 [Serializable]
@@ -293,15 +323,11 @@ public class StepperWidget : IWidget
     public Button leftArrow;
     public Button rightArrow;
     public TMP_Text optionText;
+    public Enum widgetKey;
 
-    public void Refresh()
+    public void Refresh(string data)
     {
-        UserData userData = ResourceManager.instance.GetUserData();
-
-        if (userData != null)
-        {
-
-        }
+        optionText.text = data;
     }
 }
 
@@ -314,7 +340,7 @@ public class SliderWidget : IWidget
     private Vector2 prevPoint;   // 이전 프레임 좌표
     private bool hasPrev;        // 초기화 여부
 
-    public void Refresh()
+    public void Refresh(string data)
     {
        // 슬라이더의 경우 이미 포인터에 연동되어 처리되고 있으므로 아무것도 하지 않음
     }
@@ -374,7 +400,7 @@ public class OneShotWidget : IWidget
 {
     public Button oneShotButton;
     public TMP_Text optionText;
-    public void Refresh()
+    public void Refresh(string data)
     {
         // oneShotButton의 경우 단발성 클릭 이벤트를 진행하므로 아무것도 적용하지 않음
     }

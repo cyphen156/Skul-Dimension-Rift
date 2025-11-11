@@ -105,7 +105,7 @@ Commit 75021bc
                 Enum의 이름을 문자열로 반환합니다.
 
 
-Commit 
+Commit a9a4549
 [Refactor] EnumUtility 내부 캐시배열 변경
 
 변경 요약
@@ -119,3 +119,55 @@ Commit
                 Array Values 
                 -> 
                 T[] Values 
+
+
+Commit 
+[Refactor] Options – Widget/UIProxy/GraphicManager 리팩터링 및 Refresh 라우팅 통합
+
+상세 변경 내역
+
+    UI 전반 Refresh 체계 단일화
+        IWidget.Refresh() → IWidget.Refresh(string data)로 변경, 데이터 표시 책임만 위젯이 담당
+        Widget.Refresh(string)에서 내부 위젯으로 바로 위임
+        UIProxy.Refresh(string)은 단순 포워더로 변경 (SyncProxyArea() 후 bound.Refresh(key) 호출)
+        UIManager.RefreshUI()가 모든 UI의 Refresh 라우팅을 담당하도록 구조 유지
+        
+    EnumUtility 확장 및 Formatter 추가
+        EnumUtility.Count<T>() 추가 – Enum 요소 개수 반환
+        EnumUtility.TryParseEnum<T>() 주석 및 XML 문서화
+        EnumUtility.ToString<T>()로 이름 반환 함수 명시적 변경
+        Formatter.Vec2Resolution(Vector2) 추가 – 해상도 벡터를 "1920 X 1080" 형식 문자열로 변환
+
+    Widget.cs
+        IWidget.Refresh() → Refresh(string data)로 변경
+        Widget.OnSubmit() 단순화 (GameManager.ApplyUserOptionSetting(this) 호출만 수행)
+        Execute() 내 클릭/네비게이션 입력 상태 관리 안정화
+        suppressSubmit 플래그로 드래그 중 중복 실행 방지
+        GetValue() 결과를 float 반환으로 일원화
+        
+    StepperWidget / SliderWidget / OneShotWidget
+        Refresh(string data) 구현 통일 (optionText.text = data;)
+        실제 데이터 로딩/가공 책임 제거 (외부 매니저에서 문자열 생성 후 전달)
+
+    GraphicManager.cs
+        ApplyResolutionSetting() 추가: 해상도·창모드 동기화 (Screen.SetResolution() 호출)
+        Initialize()에서 ApplyResolutionSetting() 즉시 반영
+        ApplyOption()에서 EnumUtility.ShiftWrap() 활용하여 옵션 순회 처리
+        FullScreenMode 변환 헬퍼 GetFullScreenMode(Window) 정리
+
+    UIManager.cs
+        RefreshUI() 리팩터링:
+            targetUI가 비어 있을 경우 uiInputStack.Peek()에서 자동 추출
+            내부에서 InteractiveUIBehaviour.Refresh(param) 호출
+        RefreshAll() 접근한정자 변경
+            private -> Public
+
+    UIProxy.cs
+        Refresh(key) 수행 시 SyncProxyArea() 후 bound.Refresh(key) 위임
+        프록시 입력 처리 구조 그대로 유지 (포인터·클릭 이벤트는 경계 내에서만 전달)
+
+🧩 추가 메모
+    Widget 및 UIProxy 모두 외부 호출자가 프록시 여부를 몰라도 Refresh 가능
+    UIManager.RefreshUI() 단일 진입점으로 모든 UI 갱신 가능
+    Formatter 및 EnumUtility를 통해 Enum ↔ String 변환 중복 제거
+    실 데이터 리턴/적용 로직(예: UserData → 문자열 포맷)은 후속 커밋 예정

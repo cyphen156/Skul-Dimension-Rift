@@ -1,5 +1,4 @@
 ﻿using System;
-using UnityEngine.UIElements;
 
 namespace Assets.Scripts.Common
 {
@@ -9,6 +8,16 @@ namespace Assets.Scripts.Common
         {
             public static readonly T[] Values = (T[])Enum.GetValues(typeof(T));
             public static readonly int Length = Values.Length;
+        }
+
+        /// <summary>
+        /// Enum의 요소개수를 리턴합니다.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public static int Count<T>() where T : struct, Enum
+        {
+            return EnumCache<T>.Length;
         }
 
         /// <summary>
@@ -81,7 +90,13 @@ namespace Assets.Scripts.Common
             return Convert.ToInt32(value);
         }
 
-
+        /// <summary>
+        /// 문자열에 해당하는 Enum을 조회하여 있으면 반환합니다.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="name"></param>
+        /// <param name="result"></param>
+        /// <returns></returns>
         public static bool TryParseEnum<T>(string name, out T result) where T : struct, Enum
         {
             result = default;
@@ -94,7 +109,13 @@ namespace Assets.Scripts.Common
             return Enum.TryParse(name, true, out result);
         }
 
-        public static string ToName<T>(T value) where T : struct, Enum
+        /// <summary>
+        /// Enum의 요소값 문자열로 반환합니다.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public static string ToString<T>(T value) where T : struct, Enum
         {
             return Enum.GetName(typeof(T), value);
         }

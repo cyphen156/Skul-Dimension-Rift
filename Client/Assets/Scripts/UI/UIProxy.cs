@@ -1,3 +1,4 @@
+using Assets.Scripts.Interface;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -45,6 +46,8 @@ public class UIProxy : InteractiveUIBehaviour
     public override void Refresh(string key)
     {
         SyncProxyArea();
+
+        bound.Refresh(key);
     }
 
     private void SyncProxyArea()
