@@ -71,7 +71,8 @@ Commit c84200c
         현재 그래픽 항목 일부는 값 갱신까지만 연결, 실제 시스템 적용(해상도/창모드 등)은 후속 커밋에서 구현 예정
         "Resoulution" 키는 맵핑상 동작하지만, 후속 커밋에서 "Resolution"로 네이밍 정리 권장
 
-Commit 
+
+Commit 75021bc
 [feat] EnumUtility클래스 추가
 
 변경 요약 
@@ -102,3 +103,19 @@ Commit
 
             Public) string ToName<T>(T) 
                 Enum의 이름을 문자열로 반환합니다.
+
+
+Commit 
+[Refactor] EnumUtility 내부 캐시배열 변경
+
+변경 요약
+    Array가 참조형이기 때문에 값형식인 배열로 EnumCache의 자료형을 변경
+
+    상세 변경 내역
+        
+        EnumUtility.cs
+            내부 클래스의 자료형 변경
+            EnumCache
+                Array Values 
+                -> 
+                T[] Values 

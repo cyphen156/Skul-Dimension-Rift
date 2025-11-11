@@ -7,7 +7,7 @@ namespace Assets.Scripts.Common
     {
         private static class EnumCache<T> where T : struct, Enum
         {
-            public static readonly Array Values = Enum.GetValues(typeof(T));
+            public static readonly T[] Values = (T[])Enum.GetValues(typeof(T));
             public static readonly int Length = Values.Length;
         }
 
@@ -16,7 +16,6 @@ namespace Assets.Scripts.Common
         /// </summary>
         public static T IntToEnum<T>(int value) where T : struct, Enum
         {
-            Array values = EnumCache<T>.Values;
             int length = EnumCache<T>.Length;
 
             if (length <= 0)
@@ -33,7 +32,7 @@ namespace Assets.Scripts.Common
                 value = length - 1;
             }
 
-            return (T)values.GetValue(value);
+            return EnumCache<T>.Values[value];
         }
 
         /// <summary>
@@ -58,7 +57,6 @@ namespace Assets.Scripts.Common
         /// <returns></returns>
         public static T ShiftWrap<T>(T current, int delta) where T : struct, Enum
         {
-            Array values = EnumCache<T>.Values;
             int count = EnumCache<T>.Length;
 
             if (count <= 0)
@@ -69,7 +67,7 @@ namespace Assets.Scripts.Common
             int index = Convert.ToInt32(current);
             int next = ((index + delta) % count + count) % count;
 
-            return (T)values.GetValue(next);
+            return EnumCache<T>.Values[next];
         }
 
         /// <summary>
