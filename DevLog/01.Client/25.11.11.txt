@@ -1,7 +1,7 @@
 Branch
     설정창 UI 개발
 
-Commit 
+Commit c84200c
 [Feat] Options – 위젯/슬라이더 입력 완성 & SoundManager 연동
 
 변경 요약
@@ -70,3 +70,35 @@ Commit
         스크롤 휠은 기존 네비게이션 경로로 전달(슬라이더일 때 가속 3배)
         현재 그래픽 항목 일부는 값 갱신까지만 연결, 실제 시스템 적용(해상도/창모드 등)은 후속 커밋에서 구현 예정
         "Resoulution" 키는 맵핑상 동작하지만, 후속 커밋에서 "Resolution"로 네이밍 정리 권장
+
+Commit 
+[feat] EnumUtility클래스 추가
+
+변경 요약 
+    enum이 증가함에 따라 편의성을 타입 추론 편의성을 제공받기 위해 Utility인 EnumUtility를 추가하였습니다.
+
+    상세 수정 내용
+        Common
+        - EnumUtility.cs추가
+            private) static Class EnumCache<T>
+                Enum 최초 조회시 생성되는 생성자 클래스
+
+            Public) T IntToEnum<T>(value)
+                int 값을 Enum으로 변환합니다.
+
+            Public) T Shift<T>(T, int)
+                Enum 값을 주어진 델타만큼 이동시킵니다. 
+                인덱스 범위를 넘어가는경우 Clamp를 적용합니다.
+
+            Public) T ShiftWrap<T> (T, int)
+                Enum 값을 주어진 델타만큼 이동시킵니다. 
+                인덱스를 범위를 넘어가는 경우 순회합니다.
+
+            Public) int EnumToInt<T>(T)
+                제공받은 Enum의 인덱스를 반환합니다.
+
+            Public) bool TryParseEnum<T> (string, out T)
+                문자열에 해당하는 Enum을 조회하여 있으면 반환합니다.
+
+            Public) string ToName<T>(T) 
+                Enum의 이름을 문자열로 반환합니다.

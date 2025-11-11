@@ -6,6 +6,7 @@ public class GraphicManager : MonoBehaviour
 {
     public static GraphicManager instance;
     [SerializeField] private Graphic userGraphicData;
+    [SerializeField] private Camera mainCamera;
 
     private void Awake()
     {
@@ -24,6 +25,8 @@ public class GraphicManager : MonoBehaviour
     private void Initialize()
     {
         userGraphicData = ResourceManager.instance.GetUserOptionsData().graphic;
+
+        mainCamera = Camera.main;
     }
 
     public void ApplyOption(Widget widget)
@@ -37,12 +40,19 @@ public class GraphicManager : MonoBehaviour
         Types.graphicType.TryGetValue(widget.parentName, out type);
 
         float value = widget.GetValue();
+
         switch (type)
         {
             case GraphicType.Resolution:
-                userGraphicData.resolution += (int)value;
+                {
+                    int currentResolution = userGraphicData.resolution;
+                    int delta = (int)value;
+                    int nextIndex = currentIndex + delta;
+
+                }
                 break;
             case GraphicType.Window:
+                
                 break;
             case GraphicType.LightingEffect:
                 break;
