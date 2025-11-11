@@ -1,4 +1,5 @@
-﻿using Assets.Scripts.Interface;
+﻿using Assets.Scripts.Data;
+using Assets.Scripts.Interface;
 using System;
 using TMPro;
 using UnityEngine;
@@ -28,9 +29,10 @@ public class Widget : InteractiveUIBehaviour
     public string parentName;       // 위젯이 달린 오브젝트 이름 -> 종속성을 가지고 있음
     public WidgetType widgetType;   // 리플렉션 방지용
     public IWidget widget;
-    private InputAction clickAction;
+    private InputAction storedAction;
+    private InputAction.CallbackContext storedInput;
 
-    [SerializeField] private bool isDragging;        // 슬라이더를 위한 드래그
+    [SerializeField] private bool isPressed;        // 슬라이더를 위한 드래그
 #if UNITY_EDITOR
     [SerializeField] private string groupName;
 #endif
@@ -63,9 +65,31 @@ public class Widget : InteractiveUIBehaviour
                     break;
             }
         }
-        isDragging = false;
+        isPressed = false;
     }
 
+    private void Update()
+    {
+        // 슬라이더가 아니면 업데이트를 하지 않음
+        if (!(widget is SliderWidget))
+        {
+            return;
+        }
+
+        if (isPressed && storedAction != null && storedAction.name == "Navigate")
+        {
+            HandleNavigate(storedInput);
+            OnSubmit();
+            return;
+        }
+
+        if (storedAction != null && storedAction.name == "Navigate")
+        {
+            isPressed = false;
+            storedAction = null;
+            storedInput = default;
+        }
+    }
     /// <summary>
     /// 원래 Awake에서 자의적으로 부모에서 자신의 소속 그룹을 선택하던 기능이었지만,
     /// 어떤 부모가 올지 알수 없으므로
@@ -109,11 +133,11 @@ public class Widget : InteractiveUIBehaviour
             }
         }
         
-        if (actionName == "Click")
+        if (actionName == "Click" || actionName == "Navigate")
         {
-            isDragging = selectedButton is Slider;
-            clickAction = ctx.action;
-            return;
+            isPressed = selectedButton is Slider;
+            storedAction = ctx.action;
+            storedInput = ctx;
         }
 
         if (ctx.performed)
@@ -124,17 +148,17 @@ public class Widget : InteractiveUIBehaviour
                     {
                         HandlePoint(ctx);
                     
-                        bool isHolding = isDragging && clickAction != null && clickAction.IsPressed();
+                        bool isHolding = isPressed && storedAction != null && storedAction.IsPressed();
 
                         if (!isHolding)
                         {
-                            isDragging = false;
-                            clickAction = null;
+                            isPressed = false;
+                            storedAction = null;
                             (widget as SliderWidget)?.ResetPrevPoint();
                             break;
                         }
 
-                        if (isDragging)
+                        if (isPressed)
                         {
                             SliderWidget sw = widget as SliderWidget;
                             if (sw != null)
@@ -145,7 +169,7 @@ public class Widget : InteractiveUIBehaviour
                         break;
                     }
                 case "Click":
-                    if (isDragging && selectedButton is Slider)
+                    if (isPressed && selectedButton is Slider)
                     {
                         break;
                     }
@@ -165,9 +189,22 @@ public class Widget : InteractiveUIBehaviour
                     }
                     break;
                 case "Navigate":
-                case "ScrollWheel":
                     HandleNavigate(ctx);
                     break;
+                case "ScrollWheel":
+                    // 슬라이더 스크롤의 경우 3배 적용
+                    {
+                        int value = 1;
+                        if (widget is SliderWidget)
+                        {
+                            value = 3 * value;
+                        }
+                        for (int i = 0; i < value; ++i)
+                        {
+                            HandleNavigate(ctx);
+                        }
+                        break;
+                    }
                 case "Submit":
                 case "RightClick":
                     break;
@@ -176,13 +213,15 @@ public class Widget : InteractiveUIBehaviour
                     break;
             }
         }
-        widget.OnSubmit();
+        OnSubmit();
     }
 
     protected override void OnSubmit()
     {
+        // 값을 전달하고 내부에서 참조가 있으니 조회할 수 있음
         GameManager.instance.ApplyUserOptionSetting(this);
-        widget?.OnSubmit();
+        // 그럼 남는건 UI갱신하기
+        widget?.Refresh();
     }
 
     /// <summary>
@@ -232,6 +271,20 @@ public class Widget : InteractiveUIBehaviour
         selectedButton = buttons[currentIndex];
         selectedButton.Select();
     }
+
+    public float GetValue()
+    {
+        if (selectedButton is Slider)
+        {
+            SliderWidget sw = widget as SliderWidget;
+            if (sw != null)
+            {
+                return sw.slider.value;
+            }
+        }
+        
+        return (float)buttons.IndexOf(selectedButton);
+    }
 }
 
 [Serializable]
@@ -241,9 +294,14 @@ public class StepperWidget : IWidget
     public Button rightArrow;
     public TMP_Text optionText;
 
-    public void OnSubmit()
+    public void Refresh()
     {
+        UserData userData = ResourceManager.instance.GetUserData();
 
+        if (userData != null)
+        {
+
+        }
     }
 }
 
@@ -256,8 +314,9 @@ public class SliderWidget : IWidget
     private Vector2 prevPoint;   // 이전 프레임 좌표
     private bool hasPrev;        // 초기화 여부
 
-    public void OnSubmit()
+    public void Refresh()
     {
+       // 슬라이더의 경우 이미 포인터에 연동되어 처리되고 있으므로 아무것도 하지 않음
     }
 
     public void HandleSlider(Vector2 point, bool isNav = false)
@@ -315,8 +374,8 @@ public class OneShotWidget : IWidget
 {
     public Button oneShotButton;
     public TMP_Text optionText;
-    public void OnSubmit()
+    public void Refresh()
     {
-
+        // oneShotButton의 경우 단발성 클릭 이벤트를 진행하므로 아무것도 적용하지 않음
     }
 }

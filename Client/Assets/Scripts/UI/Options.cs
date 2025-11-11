@@ -7,6 +7,7 @@ using static Types;
 public class Options : InteractiveUIBehaviour
 {
     private readonly Dictionary<string, Widget> widgets = new Dictionary<string, Widget>();
+    private bool isInited;
 
 #if UNITY_EDITOR
     [SerializeField] private List<Widget> debugWidgets = new List<Widget>();
@@ -15,13 +16,24 @@ public class Options : InteractiveUIBehaviour
     private new void Awake()
     {
         base.Awake();
+        isInited = false;
     }
 
     private new void Start()
     {
         AllocateChildren();
+        isInited = true;
     }
 
+    private new void OnDisable()
+    {
+        base.OnDisable();
+        // 옵션 저장은 항상 옵션창이 닫힐때만 호출한다
+        if (isInited)
+        {
+            GameManager.instance.SaveUserData();
+        }
+    }
     private void AllocateChildren()
     {
         widgets.Clear();

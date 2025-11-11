@@ -166,17 +166,6 @@ public class ResourceManager : MonoBehaviour
 
         // 컨트롤 이미지 불러오기
         controlSprites.Clear();
-
-        // 로드된 정보를 다른곳으로 뿌리는 작업 실행
-        // 추후 게임 매니저가 직접 실행 
-        #region refactor Section
-        var options = userData.options;
-        var graphic = options.graphic;
-        var data = options.data;
-        var audioData = options.audio;
-        var gamePlayData = options.gameplay;
-        //SoundManager.instance.SetVolumes(audioData.masterVolume, audioData.BGMVolume, audioData.SFXVolume);
-        #endregion
     }
     #endregion
 
@@ -467,6 +456,23 @@ public class ResourceManager : MonoBehaviour
 
     public void ApplyOption(Widget widget)
     {
+        if (widget == null)
+        {
+            return;
+        }
+
+        switch (widget.parentName)
+        {
+            case "DataReset":
+                // 기존 데이터는 버리고 새 데이터 주입
+                userData.options.data = new Data();
+                break;
+            case "CutScene":
+                // 현재 동작하지 않을 버튼
+                break;
+            default:
+                break;
+        }
     }
     #endregion
 }

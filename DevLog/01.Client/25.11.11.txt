@@ -1,0 +1,72 @@
+Branch
+    설정창 UI 개발
+
+Commit 
+[Feat] Options – 위젯/슬라이더 입력 완성 & SoundManager 연동
+
+변경 요약
+
+    옵션 UI 위젯 입력 흐름 개편: 클릭-드래그/네비게이션(키보드) 홀드 처리 안정화
+    SliderWidget 드래그 튐 현상 제거(트랙 기준 Δx 적용) 및 네비 입력 누적 동작 구현
+    옵션값 적용 라우팅 정리: GameManager → 각 매니저(Sound/Graphic/Resource) 위임
+    사운드 옵션(SFX/BGM/마스터) Slider ↔ SoundManager 실시간 반영 완료
+    타입/키 매핑을 Types로 집약(문자열→Enum 딕셔너리)해 매직스트링 의존 축소
+    UI Proxy 경계 내 입력만 전달하도록 보강
+
+    상세 수정 내용
+
+    Types.cs
+        GraphicType, GamePlayDataType 추가 및 관련 Enum 정리
+        키 매핑 딕셔너리 추가: graphicType, volumeType, gamePlayDataType, resolutionMap
+
+    Widget.cs
+        입력 처리 개편: isPressed, storedAction, storedInput로 클릭/네비 홀드 상태 캐싱
+        Update()에서 Navigate 홀드 시 매 프레임 HandleNavigate 재호출
+        Execute(Point)에서 홀드 여부 확인 후 슬라이더 드래그 진행, 해제 시 ResetPrevPoint()
+        OnSubmit() → GameManager.ApplyUserOptionSetting(this) 호출 후 widget.Refresh()
+        GetValue() 유틸 추가(슬라이더 값/스텝퍼 인덱스 반환)
+
+    SliderWidget
+        드래그 시 트랙 RectTransform 기준으로 이전 프레임 대비 Δx/trackWidth로 정규화 적용 → 값 튐 방지
+        네비게이션은 (x+y) * sliderSpeed * Time.deltaTime로 미세 조정
+        ResetPrevPoint()로 드래그 시작점 초기화
+        StepperWidget / OneShotWidget
+
+    IWidget.Refresh() 구현 스텁 추가
+
+    SoundManager.cs
+        Initialize()에서 ResourceManager.GetUserOptionsData().audio 캐싱
+        SetMaster/BGM/SFXVolume 및 ApplyVolume로 볼륨 반영, SetVolumes() 일괄 적용 지원
+        ApplyOption(Widget)에서 Types.volumeType 매핑으로 대상 판별 후 userAudioData와 실제 볼륨 갱신
+
+    GraphicManager.cs
+        Initialize()에서 그래픽 옵션 캐싱
+        ApplyOption(Widget)에서 Types.graphicType 매핑 사용, widget.GetValue() 기반 갱신(적용기는 후속 구현 Hook)
+
+    ResourceManager.cs
+        GetUserData()(ref readonly) / GetUserOptionsData() 공개로 각 매니저 캐싱 경로 제공
+        Addressables/리소스 로딩 초기화 정리
+
+    Options.cs
+        하위 Widget 자동 탐색/바인딩(버튼/슬라이더/텍스트)
+        Widget.SetWidget(groupKey, parentName) 주입 및 내부 딕셔너리 등록
+        옵션창 비활성화 시 GameManager.SaveUserData() 호출
+        선택 항목에 대해 UIManager.UseProxy(widget)로 프록시 띄우는 흐름 정착
+
+    InteractiveUIBehaviour.cs
+        기본 포인트/클릭/네비 처리 및 선택 순회 로직 정리
+        HandlePoint()에서 히트된 셀렉터 자동 선택
+
+    UIManager.cs
+        포커스 스택 관리(Show/Hide/HideAll), UseProxy() 추가
+        Execute_Internal(ESC)로 상단 UI 토글 및 게임 상태 전환
+        RefreshUI()/RefreshAll() 제공
+
+    UIProxy.cs
+        바운드 UI의 월드 코너→로컬 좌표 변환으로 프록시 영역 동기화
+        포인터/클릭 이벤트는 프록시 경계 내일 때만 bound로 전달
+
+    추가 메모
+        스크롤 휠은 기존 네비게이션 경로로 전달(슬라이더일 때 가속 3배)
+        현재 그래픽 항목 일부는 값 갱신까지만 연결, 실제 시스템 적용(해상도/창모드 등)은 후속 커밋에서 구현 예정
+        "Resoulution" 키는 맵핑상 동작하지만, 후속 커밋에서 "Resolution"로 네이밍 정리 권장

@@ -21,7 +21,6 @@ public class GameManager : NetworkBehaviour
     [SerializeField] private GameDifficulty difficulty;
     [SerializeField] private GameState currentState;
 
-
     #region Unity Methods
     private void Awake()
     {
@@ -296,7 +295,22 @@ public class GameManager : NetworkBehaviour
 
     private void ApplyOption(Widget widget)
     {
-        
+        // 아직 아무 행동도 하지 않습니다.
+        GamePlayDataType type;
+        Types.gamePlayDataType.TryGetValue(widget.parentName, out type);
+        switch (type)
+        {
+            case GamePlayDataType.Languages:
+                break;
+            case GamePlayDataType.RukiMode:
+                break;
+            case GamePlayDataType.ShowTimer:
+                break;
+            case GamePlayDataType.ShowUIs:
+                break;
+            default:
+                break;
+        }
     }
     /// <summary>
     /// 유저 데이터를 저장하기 위한 외부 공개 API

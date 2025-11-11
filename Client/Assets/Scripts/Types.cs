@@ -1,4 +1,5 @@
-﻿using System;
+﻿using System.Collections.Generic;
+using UnityEngine;
 
 /// <summary>
 /// 정적 타입들을 정의하는 클래스
@@ -6,6 +7,45 @@
 /// </summary>
 public static class Types
 {
+    public static readonly Dictionary<string, GraphicType> graphicType =
+        new()
+        {
+            { "Resolution", GraphicType.Resolution },
+            { "Window", GraphicType.Window },
+            { "LightingEffect", GraphicType.LightingEffect },
+            { "ParticlePerformance", GraphicType.ParticlePerformance },
+            { "windowEarthQuakeEffect", GraphicType.windowEarthQuakeEffect },
+            { "shakingEffect", GraphicType.shakingEffect },
+        };
+    
+    public static readonly Dictionary<string, VolumeType> volumeType =
+        new()
+        {
+            { "MasterVolume", VolumeType.Master },
+            { "BGMVolume", VolumeType.BGM },
+            { "SFXVolume", VolumeType.SFX },
+        };
+
+    public static readonly Dictionary<string, GamePlayDataType> gamePlayDataType = new()
+        {
+            { "Language", GamePlayDataType.Languages },
+            { "RukiMode", GamePlayDataType.RukiMode },
+            { "ShowTimer", GamePlayDataType.ShowTimer },
+            { "ShowUIs", GamePlayDataType.ShowUIs },
+        };
+
+    public static Dictionary<Resolution, Vector2> resolutionMap = new()
+    {
+        { Resolution.UHD_4K, new Vector2(4096, 2160) }, // DCI 4K (≈17:9)
+        { Resolution.UHD,    new Vector2(3840, 2160) }, // 4K UHD (16:9)
+        { Resolution.WQHD,   new Vector2(3440, 1440) }, // 울트라와이드 QHD (21:9)
+        { Resolution.QHD,    new Vector2(2560, 1440) }, // QHD (16:9)
+        { Resolution.FHD,    new Vector2(1920, 1080) }, // Full HD (16:9)
+        { Resolution.HD,     new Vector2(1280,  720) }, // HD (16:9)
+        { Resolution.SD,     new Vector2( 640,  480) }, // SD(4:3)
+        { Resolution.Custom, new Vector2(   0,    0) }, // 사용자 지정
+    };
+
     public enum GameMode
     {
         Single,
@@ -77,65 +117,81 @@ public static class Types
     }
 
     #region UserData_Graphic
-    public enum Resolution
+    public enum GraphicType
     {
-        // UHD_4K부터 QHD까지는 기기에 따른 제한 필요
-        UHD_4K,
-        UHD,
-        WQHD,
-        QHD,
-        FHD,
-        HD,
-        SD,
-        Custom
-    }
-    public enum Window
-    {
-        FullScreen, 
+        Resolution,
         Window,
-        BorderlessFullScreen,
+        LightingEffect,
+        ParticlePerformance,
+        windowEarthQuakeEffect,
+        shakingEffect
     }
+        public enum Resolution
+        {
+            // UHD_4K부터 QHD까지는 기기에 따른 제한 필요
+            UHD_4K,
+            UHD,
+            WQHD,
+            QHD,
+            FHD,
+            HD,
+            SD,
+            Custom
+        }
+        public enum Window
+        {
+            FullScreen, 
+            Window,
+            BorderlessFullScreen,
+        }
 
-    public enum LightingEffect
-    {
-        On,
-        Off,
-    }
+        public enum LightingEffect
+        {
+            On,
+            Off,
+        }
 
-    public enum ParticlePerformance
-    {
-        Low,
-        Middle,
-        High,
-    }
+        public enum ParticlePerformance
+        {
+            Low,
+            Middle,
+            High,
+        }
     #endregion UserData_Graphic
 
     #region UserData_Gameplay
-    public enum Languages
+    public enum GamePlayDataType
     {
-        Korean,
-        English,
-        Japanese,
+        Languages,
+        RukiMode,
+        ShowTimer,
+        ShowUIs
     }
+        public enum Languages
+        {
+            Korean,
+            English,
+            Japanese,
+        }
 
-    public enum RukiMode
-    {
-        On,
-        Off,
-    }
+        public enum RukiMode
+        {
+            On,
+            Off,
+        }
 
-    public enum ShowTimer
-    {
-        On,
-        Off,
-    }
+        public enum ShowTimer
+        {
+            On,
+            Off,
+        }
 
-    public enum ShowUIs
-    {
-        All,
-        None,
-        InGame,
-    }
+        public enum ShowUIs
+        {
+            All,
+            None,
+            InGame,
+        }
     #endregion UserData_Gameplay
     #endregion UserData Section
 }

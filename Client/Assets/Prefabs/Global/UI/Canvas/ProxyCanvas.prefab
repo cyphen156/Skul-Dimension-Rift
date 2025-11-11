@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 2453078049095033366}
   - component: {fileID: 4177585367505335006}
   - component: {fileID: 8312570131326250129}
+  - component: {fileID: 8789375536200858634}
   m_Layer: 0
   m_Name: ProxyCanvas
   m_TagString: Untagged
@@ -101,3 +102,15 @@ MonoBehaviour:
   m_BlockingMask:
     serializedVersion: 2
     m_Bits: 4294967295
+--- !u!225 &8789375536200858634
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3819411033674231332}
+  m_Enabled: 1
+  m_Alpha: 1
+  m_Interactable: 1
+  m_BlocksRaycasts: 1
+  m_IgnoreParentGroups: 1

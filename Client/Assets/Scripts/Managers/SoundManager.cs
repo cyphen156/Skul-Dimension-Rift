@@ -1,5 +1,4 @@
 using Assets.Scripts.Data;
-using System;
 using System.Collections.Generic;
 using UnityEngine;
 using static Types;
@@ -81,6 +80,8 @@ public class SoundManager : MonoBehaviour
     private void Initialize()
     {
         userAudioData = ResourceManager.instance.GetUserOptionsData().audio;
+
+        SetVolumes(userAudioData.masterVolume, userAudioData.BGMVolume, userAudioData.SFXVolume);
     }
 
     #region Volume Control
@@ -178,13 +179,48 @@ public class SoundManager : MonoBehaviour
 
     public void SetVolumes(float masterVolume, float BGMVolume, float SFXVolume)
     {
+        SetMasterVolume(masterVolume);
         SetBGMVolume(BGMVolume);
         SetSFXVolume(SFXVolume);
-        SetMasterVolume(masterVolume);
     }
 
     public void ApplyOption(Widget widget)
     {
+        if (widget == null)
+        {
+            return;
+        }
+
+        float value;
+
+        if (widget.widget is SliderWidget)
+        {
+            SliderWidget sw = widget.widget as SliderWidget;
+            if (sw != null)
+            {
+                value = sw.slider.value;
+
+                VolumeType type;
+                Types.volumeType.TryGetValue(widget.parentName, out type);
+                switch (type)
+                {
+                    case VolumeType.Master:
+                        userAudioData.masterVolume = value;
+                        SetMasterVolume(userAudioData.masterVolume);
+                        break;
+                    case VolumeType.BGM:
+                        userAudioData.BGMVolume = value;
+                        SetBGMVolume(userAudioData.BGMVolume);
+                        break;
+                    case VolumeType.SFX:
+                        userAudioData.SFXVolume = value;
+                        SetSFXVolume(userAudioData.SFXVolume);
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
     }
     #endregion Custom Methods
 }
