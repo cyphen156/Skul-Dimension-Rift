@@ -121,8 +121,8 @@ Commit a9a4549
                 T[] Values 
 
 
-Commit 
-[Refactor] Options – Widget/UIProxy/GraphicManager 리팩터링 및 Refresh 라우팅 통합
+Commit bdc4f17
+[Refactor][UI] Widget - Proxy 구조 단일화 및 Refresh 라우팅 단순화
 
 상세 변경 내역
 

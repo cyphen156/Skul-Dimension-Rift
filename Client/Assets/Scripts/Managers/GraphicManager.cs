@@ -44,19 +44,26 @@ public class GraphicManager : MonoBehaviour
         float value = widget.GetValue();
         int delta = ((int)value == 0) ? -1 : +1;
 
+        string data = string.Empty;
+
         switch (type)
         {
             case GraphicType.Resolution:
                 userGraphicData.resolution = EnumUtility.ShiftWrap(userGraphicData.resolution, delta);
+                Vector2 source = Types.resolutionMap[userGraphicData.resolution];
+                data = Formatter.Vec2Resolution(source);
                 break;
             case GraphicType.Window:
                 userGraphicData.window = EnumUtility.ShiftWrap(userGraphicData.window, delta);
+                data = EnumUtility.ToString(userGraphicData.window);
                 break;
             case GraphicType.LightingEffect:
                 userGraphicData.lightingEffect = EnumUtility.ShiftWrap(userGraphicData.lightingEffect, delta);
+                data = EnumUtility.ToString(userGraphicData.lightingEffect);
                 break;
             case GraphicType.ParticlePerformance:
                 userGraphicData.particlePerformance = EnumUtility.ShiftWrap(userGraphicData.particlePerformance, delta);
+                data = EnumUtility.ToString(userGraphicData.particlePerformance);
                 break;
             case GraphicType.windowEarthQuakeEffect:
                 userGraphicData.windowEarthQuakeEffect = value;
@@ -67,6 +74,7 @@ public class GraphicManager : MonoBehaviour
             default:
                 break;
         }
+        GameManager.instance.ReplyOptionResult("", data);
     }
 
     private FullScreenMode GetFullScreenMode(Window window)

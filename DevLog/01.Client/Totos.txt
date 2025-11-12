@@ -15,3 +15,6 @@ GraphicManager
     ParticlePerformance
     windowEarthQuakeEffect
     shakingEffect
+
+    GamePlay
+        Localization

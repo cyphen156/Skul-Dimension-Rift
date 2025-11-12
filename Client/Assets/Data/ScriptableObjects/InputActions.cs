@@ -634,7 +634,7 @@ public partial class @InputActions: IInputActionCollection2, IDisposable
                     ""id"": ""ed75aa5a-a299-4e09-b79c-6948611c42fe"",
                     ""expectedControlType"": ""Vector2"",
                     ""processors"": """",
-                    ""interactions"": """",
+                    ""interactions"": ""Press"",
                     ""initialStateCheck"": false
                 },
                 {

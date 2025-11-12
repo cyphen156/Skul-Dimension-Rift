@@ -291,7 +291,6 @@ public class GameManager : NetworkBehaviour
             default:
                 break;
         }
-        UIManager.instance.RefreshUI("", "data");
     }
 
     private void ApplyOption(Widget widget)
@@ -313,6 +312,17 @@ public class GameManager : NetworkBehaviour
                 break;
         }
     }
+
+    /// <summary>
+    /// 옵션 적용 결과를 다시 UI에 전달하는 외부 공개 API
+    /// </summary>
+    /// <param name="targetUI"></param>
+    /// <param name="data"></param>
+    public void ReplyOptionResult(string targetUI = null, string data = null)
+    {
+        UIManager.instance.RefreshUI(targetUI, data);
+    }
+
     /// <summary>
     /// 유저 데이터를 저장하기 위한 외부 공개 API
     /// 추후 상황에 따른 권한과 실행 제어 설정 필요
