@@ -1,0 +1,20 @@
+GameManager
+    GamePlay관련 옵션 적용 설정
+
+
+Inventory 개발 == Scroll
+
+Player 개발
+
+ResourceManager
+    Addressables 연결
+
+GraphicManager  
+    각 기능 적용하기
+    LightingEffect
+    ParticlePerformance
+    windowEarthQuakeEffect
+    shakingEffect
+
+    GamePlay
+        Localization

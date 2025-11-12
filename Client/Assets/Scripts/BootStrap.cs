@@ -7,11 +7,12 @@ using UnityEngine;
 /// 초기화 순서 명시적 제어
 /// 1. NetworkManager
 /// 2. ResourceManager
-/// 3. SceneLoadManager
-/// 4. UIManager
-/// 5. SoundManager
-/// 6. InputManager
-/// 7. GameManager
+/// 3. GraphicManager
+/// 4. SceneLoadManager
+/// 5. UIManager
+/// 6. SoundManager
+/// 7. InputManager
+/// 8. GameManager
 /// </summary>
 public class BootStrap : MonoBehaviour
 {
@@ -66,6 +67,8 @@ public class BootStrap : MonoBehaviour
 
         // ResourceManager 초기화
         PromoteOrCreate<ResourceManager>("ResourceManager");
+        // GraphicManager 초기화
+        PromoteOrCreate<GraphicManager>("GraphicManager");
         // SceneLoadManager 초기화
         PromoteOrCreate<SceneLoadManager>("SceneLoadManager");
         // UIManager 초기화

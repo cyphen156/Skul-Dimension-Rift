@@ -1,6 +1,5 @@
 using System.Collections;
 using Unity.Netcode;
-using UnityEditor.Build.Pipeline.Tasks;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -21,7 +20,6 @@ public class GameManager : NetworkBehaviour
     [SerializeField] private string currentSceneName;
     [SerializeField] private GameDifficulty difficulty;
     [SerializeField] private GameState currentState;
-
 
     #region Unity Methods
     private void Awake()
@@ -271,6 +269,67 @@ public class GameManager : NetworkBehaviour
             UIManager.instance.RefreshUI("Control", switchButton);
         }
         InputManager.instance.ChangeInputMode(InputMode.UIOnly);
+        ResourceManager.instance.SaveUserData();
+    }
+
+    public void ApplyUserOptionSetting(Widget widget)
+    {
+        switch (widget.groupKey)
+        {
+            case OptionDataType.Graphic:
+                GraphicManager.instance.ApplyOption(widget);
+                break;
+            case OptionDataType.Data:
+                ResourceManager.instance.ApplyOption(widget);
+                break;
+            case OptionDataType.Audio:
+                SoundManager.instance.ApplyOption(widget);
+                break;
+            case OptionDataType.GamePlay:
+                ApplyOption(widget);
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void ApplyOption(Widget widget)
+    {
+        // 아직 아무 행동도 하지 않습니다.
+        GamePlayDataType type;
+        Types.gamePlayDataType.TryGetValue(widget.parentName, out type);
+        switch (type)
+        {
+            case GamePlayDataType.Languages:
+                break;
+            case GamePlayDataType.RukiMode:
+                break;
+            case GamePlayDataType.ShowTimer:
+                break;
+            case GamePlayDataType.ShowUIs:
+                break;
+            default:
+                break;
+        }
+    }
+
+    /// <summary>
+    /// 옵션 적용 결과를 다시 UI에 전달하는 외부 공개 API
+    /// </summary>
+    /// <param name="targetUI"></param>
+    /// <param name="data"></param>
+    public void ReplyOptionResult(string targetUI = null, string data = null)
+    {
+        UIManager.instance.RefreshUI(targetUI, data);
+    }
+
+    /// <summary>
+    /// 유저 데이터를 저장하기 위한 외부 공개 API
+    /// 추후 상황에 따른 권한과 실행 제어 설정 필요
+    /// </summary>
+    public void SaveUserData()
+    {
+        GraphicManager.instance.ApplyResolutionSetting();
         ResourceManager.instance.SaveUserData();
     }
     #endregion

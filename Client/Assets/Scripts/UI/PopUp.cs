@@ -1,6 +1,4 @@
-using Assets.Scripts.Interface;
 using TMPro;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -8,7 +6,7 @@ using UnityEngine.InputSystem;
 /// 인풋 필드에 입력된 키를 해당 액션에 바인딩하는 팝업 UI
 /// </summary>
 /// 
-public class PopUp : InteractiveUIBehaviour, IInteractive
+public class PopUp : InteractiveUIBehaviour
 {
     [SerializeField] private string inputKey;
     [SerializeField] private InputControl bindingControl;
@@ -36,7 +34,7 @@ public class PopUp : InteractiveUIBehaviour, IInteractive
     /// <summary>
     /// 전달받은 입력을 화면에 갱신합니다.
     /// </summary>
-    void IInteractive.Execute(InputAction.CallbackContext ctx)
+    public override void Execute(InputAction.CallbackContext ctx)
     {
         if (!ctx.performed)
         {

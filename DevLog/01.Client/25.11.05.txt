@@ -1,0 +1,76 @@
+Branch
+    설정창 UI 개발
+
+Commit ccb95d1
+[Feat][UI] 설정창 위젯-프록시 구조 도입 및 입력 스택 안정화
+
+변경 요약
+    설정창(Options) UI 전반을 재설계했습니다.
+    위젯(Widget)과 프록시(UIProxy) 구조를 도입하여, 입력 포커스와 실행 위임이 분리되었습니다.
+    UIManager에 UseProxy() 기능을 추가하여 동적 UI 인스턴싱 및 입력 전달을 가능하게 했습니다.
+    모든 하위 위젯(StepperWidget, SliderWidget, OneShotWidget)은 IWidget 인터페이스 기반으로 정규화되었습니다.
+    ResourceManager는 Prefab 캐싱 및 안전한 폴백 로딩 구조로 확장되었습니다.
+    InteractiveUIBehaviour는 Selectable 기반으로 개선되어 버튼 및 슬라이더 입력 흐름을 통합 처리합니다.
+
+    상세 수정 내용
+
+    InteractiveUIBehaviour.cs
+        - IInteractive 인터페이스 구현 유지, 입력 라우팅 구조 통합 (Execute)
+        - 버튼/슬라이더 공통 입력 처리 구조 확립 (HandlePoint, HandleNavigate)
+        - OnSubmit() 가상 메서드 유지로 하위 클래스 확장 가능
+
+    Widget.cs
+        - Widget : InteractiveUIBehaviour로 전환
+        - widgetType을 오브젝트 이름으로 자동 판별 (StepperWidget, SliderWidget, OneShotWidget)
+        - 부모/조부모 이름 규칙을 기반으로 buttonName, groupKey 자동 추출
+            · *Button / *Slider → buttonName
+            · *ButtonGroup → groupKey
+        - 각 타입에 대응하는 IWidget 구현체를 런타임 생성 (StepperWidget, SliderWidget, OneShotWidget)      
+    Options.cs
+        - 옵션 메뉴 하위 Widget 컴포넌트를 전수 스캔 (ComponentRegistrar)
+        - widgetType에 따라 내부 구성요소(Button, Slider, Text 등) 자동 결선
+        - OnSubmit()에서 선택 버튼명 기반으로 대응되는 Widget 탐색
+            · UIManager.UseProxy(widget) 호출로 입력 포커스 전환 및 Proxy 생성     
+    UIManager.cs
+        - uiInputStack<IInteractive> + focusedUI 스택 구조 유지
+        - Show() / Hide()
+            · UI 활성화/비활성화 시 포커스 스택 및 focusedUI 동기화
+            · Proxy 오브젝트(*Proxy)는 Hide 시 자동 제거 및 파괴 처리
+        - 신규: UseProxy(InteractiveUIBehaviour origin)
+            · UIProxy 프리팹 인스턴스 생성 → InteractiveCanvas 하위에 부착
+            · UIProxy.Bind(origin)으로 원본 위젯과 연결
+            · Show(name) 호출을 통해 Proxy를 스택에 등록
+        - Execute_Internal()
+            · ESC 입력 시 UI 열기/닫기 후 GameState를 자동 전환        
+    UIProxy.cs
+        - InteractiveUIBehaviour 상속
+        - Bind(InteractiveUIBehaviour bindTargetUI) 메서드로 원본 위젯과 연결
+        - Execute()에서 입력 이벤트를 bound.Execute()로 위임
+
+    ResourceManager.cs
+        - prefabs 캐시 추가 및 Resources/Prefab 경로 전체 로드
+        - GetGameObject(string)
+            · 캐시 미스 시 Resources.Load() 1회 폴백
+            · null-safe 반환 처리
+
+    테스트 항목
+        - Options UI에서 위젯 선택 시 Proxy가 정상 생성 및 표시됨
+        - Proxy에서 입력 시 원본 위젯에 정상 위임됨
+        - ESC 입력 시 Proxy가 닫히고 포커스가 이전 UI로 복귀함
+        - Slider/Stepper/OneShot 모두 버튼/슬라이더 입력 정상 작동
+        - ResourceManager Prefab 캐시/로드 정상
+
+    TODO / Next Step        
+        - HighlightKeeper(Animator Bool) 적용으로 프록시 진입 중 하이라이트 유지
+        - SettingsStore 추가 및 IWidget.Load/Apply 연결 (데이터 반영 기능)
+        - UIProxy 풀링 및 독립 캔버스화 고려
+        - Slider step 및 세부 값 반영 로직 추가
+
+    파일 변경 목록      
+        Assets/Scripts/UI/InteractiveUIBehaviour.cs
+        Assets/Scripts/UI/Options.cs
+        Assets/Scripts/UI/Widget.cs
+        Assets/Scripts/UI/UIProxy.cs
+        Assets/Scripts/Managers/UIManager.cs
+        Assets/Scripts/Managers/ResourceManager.cs
+        Resources/Prefab/UIProxy.prefab

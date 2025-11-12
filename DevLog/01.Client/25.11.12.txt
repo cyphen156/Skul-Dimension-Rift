@@ -1,0 +1,26 @@
+Branch
+    설정창 UI 개발
+
+Commit 
+[feat] 옵션 설정값 UI 동기화
+
+변경 요약
+    이제 GraphicManager가 게임의 스크린 모드와 화면 해상도를 변경할 수 있습니다.
+    적용된 변경사항은 Options UI의 위젯에 재적용됩니다.
+
+상세 변경 내역
+    Data/Localization
+        현지화 관련 메타 데이터용 파일 추가
+        en.json
+        ko.json
+
+    Common
+        Localizer.cs
+            추후 추가될 GamePlayData 설정 관련하여
+            현지화 데이터 조회를 담당할 Utility 클래스 추가
+
+        GameManager.cs
+            Public) void ReplyOptionResult(string, string)
+                각 매니저에서 옵션이 변경되었을 때 UI에 재적용하기 위한 데이터를 GameManager에게 위임호출
+
+        

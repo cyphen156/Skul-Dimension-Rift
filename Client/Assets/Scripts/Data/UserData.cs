@@ -1,4 +1,5 @@
 ﻿using System;
+using T = Types;
 
 namespace Assets.Scripts.Data
 {
@@ -31,11 +32,11 @@ namespace Assets.Scripts.Data
     [Serializable]
     public class Graphic
     {
-        public string resolution = "1920x1080";
-        public string window = "FullScreen";
-        public bool lightingEffect = false;
-        public string particlePerformance = "High";
-        public float windowEarthQuaqingEffect = 0.5f;
+        public T.Resolution resolution = T.Resolution.FHD;
+        public T.Window window = T.Window.FullScreen;
+        public T.LightingEffect lightingEffect = T.LightingEffect.Off;
+        public T.ParticlePerformance particlePerformance = T.ParticlePerformance.High;
+        public float windowEarthQuakeEffect = 0.5f;
         public float shakingEffect = 0.5f;
     }
 
@@ -58,9 +59,9 @@ namespace Assets.Scripts.Data
     [Serializable]
     public class GamePlay
     {
-        public string language = "ko";
-        public bool rukiMode = false;
-        public bool showTimer = false;
-        public string ShowUIs = "All";
+        public T.Languages language = T.Languages.Korean;
+        public T.RukiMode rukiMode = T.RukiMode.Off;
+        public T.ShowTimer showTimer = T.ShowTimer.Off;
+        public T.ShowUIs showUIs = T.ShowUIs.All;
     }
 }

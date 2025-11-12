@@ -5,6 +5,7 @@ using System.IO;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.InputSystem;
+using static Types;
 using Object = UnityEngine.Object;
 
 /// <summary>
@@ -23,7 +24,7 @@ public class ResourceManager : MonoBehaviour
     [SerializeField] private string defaultInputActionPath = "Input/InputActions";
     private const string userDataFileName = "UserData.json";
     private string userDataPath => Path.Combine(Application.persistentDataPath, userDataFileName);
-  
+
     private readonly Dictionary<string, string> controlPaths = new()
     {
         { "Keyboard&Mouse", "Control/Keyboard&Mouse" },
@@ -34,16 +35,17 @@ public class ResourceManager : MonoBehaviour
         { "Gamepad_Switch", "Control/GamePad/NintendoSwitch" },
     };
 
-
     [Header("Optional DLC Catalogs")]
     [SerializeField] private List<string> dlcCatalogUrls = new List<string>();
 
     [Header("Resources")]
+    private Dictionary<string, GameObject> prefabs = new Dictionary<string, GameObject>();
     private Dictionary<string, AudioClip> bgmClips = new Dictionary<string, AudioClip>();
     private Dictionary<string, AudioClip> sfxClips = new Dictionary<string, AudioClip>();
-    private readonly Dictionary<string, string> controlBindings = new();
-    private readonly Dictionary<string, Sprite> controlSprites = new();
+    private readonly Dictionary<string, string> controlBindings = new Dictionary<string, string>();
+    private readonly Dictionary<string, Sprite> controlSprites = new Dictionary<string, Sprite>();
     private Sprite placeHolderSprite;
+
     [Header("Runtime System Data")]
     [SerializeField] private string controlDeviceInfo;
 
@@ -53,11 +55,12 @@ public class ResourceManager : MonoBehaviour
 
 #if UNITY_EDITOR
     [Header("DEBUG")]
-    [SerializeField] private List<string> bgmKeys = new();
-    [SerializeField] private List<string> sfxKeys = new();
-    [SerializeField] private List<string> ControlSprites = new();
-    [SerializeField] private List<string> ControlNames = new();
-    [SerializeField] private List<string> spriteKeys = new();
+    [SerializeField] private List<string> prefabKeys = new List<string>();
+    [SerializeField] private List<string> bgmKeys = new List<string>();
+    [SerializeField] private List<string> sfxKeys = new List<string>();
+    [SerializeField] private List<string> ControlSprites = new List<string>();
+    [SerializeField] private List<string> ControlNames = new List<string>();
+    [SerializeField] private List<string> spriteKeys = new List<string>();
 #endif
 
     #region Unity Methods
@@ -86,6 +89,13 @@ public class ResourceManager : MonoBehaviour
         // 어드레서블 초기화
         Addressables.InitializeAsync().WaitForCompletion();
 
+        prefabs.Clear();
+        var Prefabs = Resources.LoadAll<GameObject>("Prefab");
+        foreach (var pref in Prefabs)
+        {
+            prefabs[pref.name] = pref;
+        }
+
         bgmClips.Clear();
         sfxClips.Clear();
 
@@ -105,6 +115,8 @@ public class ResourceManager : MonoBehaviour
 
         placeHolderSprite = Resources.Load<Sprite>("Sprite/PlaceHolder");
 #if UNITY_EDITOR
+        prefabKeys.Clear();
+        prefabKeys.AddRange(prefabs.Keys);
         bgmKeys.Clear();
         sfxKeys.Clear();
         bgmKeys.AddRange(bgmClips.Keys);
@@ -154,26 +166,10 @@ public class ResourceManager : MonoBehaviour
 
         // 컨트롤 이미지 불러오기
         controlSprites.Clear();
-
-        // 로드된 정보를 다른곳으로 뿌리는 작업 실행
-        // 추후 게임 매니저가 직접 실행 
-        #region refactor Section
-        var options = userData.options;
-        var graphic = options.graphic;
-        var data = options.data;
-        var audioData = options.audio;
-        var gamePlayData = options.gameplay;
-        //SoundManager.instance.SetVolumes(audioData.masterVolume, audioData.BGMVolume, audioData.SFXVolume);
-        #endregion
     }
-
     #endregion
 
     #region Resource Accessors
-    public void SetBindingInfo()
-    {
-
-    }
     public T GetResource<T>(string resourceName) where T : Object
     {
         // how to Resource??
@@ -187,11 +183,28 @@ public class ResourceManager : MonoBehaviour
             return (T)Resources.Load<T>(resourceName);
         }
     }
+
     public InputActionAsset GetUserInputActions()
     {
         return userInputAsset;
     }
 
+    public GameObject GetGameObject(string objectName)
+    {
+        GameObject gameObject;
+
+        if (string.IsNullOrEmpty(objectName))
+        {
+            return null;
+        }
+
+        if (!prefabs.TryGetValue(objectName, out gameObject))
+        {
+            gameObject = Resources.Load<GameObject>(objectName);
+        }
+
+        return gameObject;
+    }
     public Sprite GetControlSprite(string controlName, bool isHighlight = false)
     {
         if (string.IsNullOrEmpty(controlName))
@@ -234,6 +247,16 @@ public class ResourceManager : MonoBehaviour
     {
         return sfxClips.ContainsKey(sfxClipName) ? sfxClips[sfxClipName] : null;
     }
+
+    public ref readonly UserData GetUserData()
+    {
+        return ref userData;
+    }
+
+    public OptionsData GetUserOptionsData()
+    {
+        return userData.options;
+    }
     #endregion
 
     #region Resource Management
@@ -246,7 +269,6 @@ public class ResourceManager : MonoBehaviour
             InputActionMap playerMap = userInputAsset.FindActionMap("Player");
 
             userData.control.bindings = playerMap != null ? playerMap.SaveBindingOverridesAsJson() : "";
-
             var dir = Path.GetDirectoryName(userDataPath);
             if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
             {
@@ -430,6 +452,27 @@ public class ResourceManager : MonoBehaviour
             RuntimePlatform.WebGLPlayer => "WEB",
             _ => Application.platform.ToString()
         };
+    }
+
+    public void ApplyOption(Widget widget)
+    {
+        if (widget == null)
+        {
+            return;
+        }
+
+        switch (widget.parentName)
+        {
+            case "DataReset":
+                // 기존 데이터는 버리고 새 데이터 주입
+                userData.options.data = new Data();
+                break;
+            case "CutScene":
+                // 현재 동작하지 않을 버튼
+                break;
+            default:
+                break;
+        }
     }
     #endregion
 }
