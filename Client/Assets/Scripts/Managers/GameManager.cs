@@ -272,7 +272,7 @@ public class GameManager : NetworkBehaviour
         ResourceManager.instance.SaveUserData();
     }
 
-    public void ApplyUserOptionSetting(Widget widget)
+    public void ApplyUserOptionSetting(UIWidgetContainer widget)
     {
         switch (widget.groupKey)
         {
@@ -293,7 +293,7 @@ public class GameManager : NetworkBehaviour
         }
     }
 
-    private void ApplyOption(Widget widget)
+    private void ApplyOption(UIWidgetContainer widget)
     {
         // 아직 아무 행동도 하지 않습니다.
         GamePlayDataType type;

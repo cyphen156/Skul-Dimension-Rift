@@ -1,4 +1,5 @@
 using Assets.Scripts.Interface;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -232,8 +233,6 @@ public class UIManager : MonoBehaviour
     }
 
     #endregion Custom Methods
-
-    #region Input Methods
     public void Execute(InputAction.CallbackContext ctx)
     {
         // 현재 입력 처리를 위한 UI가 없으면 입력 무시
@@ -322,5 +321,4 @@ public class UIManager : MonoBehaviour
     {
         return uiObjects.ContainsKey(UIName) ? uiObjects[UIName] : null;
     }
-    #endregion Input Methods
 }

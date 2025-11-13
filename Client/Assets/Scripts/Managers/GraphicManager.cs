@@ -31,7 +31,7 @@ public class GraphicManager : MonoBehaviour
         ApplyResolutionSetting();
     }
 
-    public void ApplyOption(Widget widget)
+    public void ApplyOption(UIWidgetContainer widget)
     {
         if (widget == null)
         {

@@ -6,30 +6,29 @@ using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using static Types;
 
-public enum WidgetType
-{
-    None, // set as default
-    StepperWidget,
-    SliderWidget,
-    OneShotWidget
-}
-
-/// <summary>
 /// 위젯 클래스에 대한 기본 전제
 /// 부모는 자식의 이름과 소속을 지정할 수 있다.
 /// 다만 생성되는 자식의 타입은 자식 스스로가 이름규약에 의해 정한다.
 /// 인간에 빗대어 보아 부모는 
 /// 태아의 성별을 초음파 검사를 하기 전까지 알 수 없다는 점에서 착안한다.
+/// 
+/// <summary>
+/// UI 위젯 컨테이너:
+/// - 입력/포커스/버튼 그룹 관리 (InteractiveUIBehaviour)
+/// - 내부 IWidget 구현체에 자식 컴포넌트 바인딩
+/// - 메타데이터(groupKey, parentName)를 외부에서 주입받음
 /// </summary>
 [Serializable]
-public class Widget : InteractiveUIBehaviour
+public class UIWidgetContainer : InteractiveUIBehaviour, IContainer
 {
     public Enum groupKey;
-    public string parentName;       // 위젯이 달린 오브젝트 이름 -> 종속성을 가지고 있음
-    public WidgetType widgetType;   // 리플렉션 방지용
+    public string parentName;
+    public WidgetType widgetType;
     public IWidget widget;
     private InputAction storedAction;
     private InputAction.CallbackContext storedInput;
+    private IContainerEventHandler ownerHandler;
+
 
     [SerializeField] private bool isPressed;        // 슬라이더를 위한 드래그
 #if UNITY_EDITOR
@@ -39,31 +38,13 @@ public class Widget : InteractiveUIBehaviour
     {
         base.Awake();
 
+        InitializeWidgetType();
+        InitializeWidgetComponents();
+        InitializeOwnerHandler();
         /// 위젯이 자신에 대한 타입 결정권은 부모가 아닌 
         /// 스스로 결정한다. 
         /// 부모는 자식의 타입을 알지 못한다는 원칙을 적용
-        //if (widgetType == WidgetType.None)    /// 인스펙터상에서 설정할 수 있도록 할지는 추후 고민대상
-        {
-            string type = gameObject.name;
-            switch (type)
-            {
-                case "StepperWidget":
-                    widgetType = WidgetType.StepperWidget;
-                    widget = new StepperWidget();
-                    break;
-                case "SliderWidget":
-                    widgetType = WidgetType.SliderWidget;
-                    widget = new SliderWidget();
-                    break;
-                case "OneShotWidget":
-                    widgetType = WidgetType.OneShotWidget;
-                    widget = new OneShotWidget();
-                    break;
-                default:
-                    Debug.Log("object Name missMatch with WidgetType");
-                    break;
-            }
-        }
+
         isPressed = false;
     }
 
@@ -87,6 +68,128 @@ public class Widget : InteractiveUIBehaviour
             isPressed = false;
             storedAction = null;
             storedInput = default;
+        }
+    }
+
+    private void InitializeWidgetType()
+    {
+        if (widget != null)
+        {
+            return;
+        }
+        //if (widgetType == WidgetType.None)    /// 인스펙터상에서 설정할 수 있도록 할지는 추후 고민대상
+        {
+            string type = gameObject.name;
+
+            switch (type)
+            {
+                case "StepperWidget":
+                    widgetType = WidgetType.StepperWidget;
+                    widget = new StepperWidget();
+                    break;
+                case "SliderWidget":
+                    widgetType = WidgetType.SliderWidget;
+                    widget = new SliderWidget();
+                    break;
+                case "OneShotWidget":
+                    widgetType = WidgetType.OneShotWidget;
+                    widget = new OneShotWidget();
+                    break;
+                default:
+                    Debug.Log("object Name missMatch with WidgetType");
+                    break;
+            }
+        }
+    }
+
+    private void InitializeOwnerHandler()
+    {
+        Transform current = transform.parent;
+
+        while (current != null)
+        {
+            IContainerEventHandler handler = current.GetComponent<IContainerEventHandler>();
+
+            if (handler != null)
+            {
+                ownerHandler = handler;
+                return;
+            }
+
+            current = current.parent;
+        }
+
+        ownerHandler = null;
+    }
+    private void InitializeWidgetComponents()
+    {
+        switch (widgetType)
+        {
+            case WidgetType.StepperWidget:
+                {
+                    StepperWidget stepper = widget as StepperWidget;
+                    if (stepper == null)
+                    {
+                        return;
+                    }
+
+                    Transform leftArrowButton = transform.Find("LeftArrowButton");
+                    Transform rightArrowButton = transform.Find("RightArrowButton");
+                    Transform text = transform.Find("OptionText");
+
+                    if (leftArrowButton != null)
+                    {
+                        stepper.leftArrow = leftArrowButton.GetComponent<Button>();
+                    }
+
+                    if (rightArrowButton != null)
+                    {
+                        stepper.rightArrow = rightArrowButton.GetComponent<Button>();
+                    }
+
+                    if (text != null)
+                    {
+                        stepper.optionText = text.GetComponent<TMP_Text>();
+                    }
+                    return;
+                }
+            case WidgetType.SliderWidget:
+                {
+                    SliderWidget sliderWidget = widget as SliderWidget;
+                    if (sliderWidget == null)
+                    {
+                        return;
+                    }
+
+                    sliderWidget.slider = GetComponentInChildren<Slider>(true);
+                    return;
+                }
+            case WidgetType.OneShotWidget:
+                {
+                    OneShotWidget oneShot = widget as OneShotWidget;
+                    if (oneShot == null)
+                    {
+                        return;
+                    }
+
+                    Transform button = transform.Find("OneShotButton");
+                    Transform text = transform.Find("OptionText");
+
+                    if (button != null)
+                    {
+                        oneShot.oneShotButton = button.GetComponent<Button>();
+                    }
+
+                    if (text != null)
+                    {
+                        oneShot.optionText = text.GetComponent<TMP_Text>();
+                    }
+                    return;
+                }
+            default:
+                {
+                    return;
+                }
         }
     }
     /// <summary>
@@ -246,7 +349,11 @@ public class Widget : InteractiveUIBehaviour
     protected override void OnSubmit()
     {
         // 값을 전달하고 내부에서 참조가 있으니 조회할 수 있음
-        GameManager.instance.ApplyUserOptionSetting(this);
+        if (ownerHandler != null)
+        {
+            ownerHandler.HandleContainerEvent(this, ContainerEventType.Submit);
+            return;
+        }
     }
 
     /// <summary>
@@ -323,7 +430,6 @@ public class StepperWidget : IWidget
     public Button leftArrow;
     public Button rightArrow;
     public TMP_Text optionText;
-    public Enum widgetKey;
 
     public void Refresh(string data)
     {

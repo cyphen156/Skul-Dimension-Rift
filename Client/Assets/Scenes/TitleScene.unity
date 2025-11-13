@@ -1139,6 +1139,10 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3308621375873645737, guid: ec6698e08937707478caa58471391cdc, type: 3}
+      propertyPath: m_Name
+      value: StepperWidget
+      objectReference: {fileID: 0}
     - target: {fileID: 3313532168385412745, guid: ec6698e08937707478caa58471391cdc, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0
@@ -1555,7 +1559,8 @@ PrefabInstance:
       propertyPath: m_AnchorMin.x
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 6891664138666585218, guid: ec6698e08937707478caa58471391cdc, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []

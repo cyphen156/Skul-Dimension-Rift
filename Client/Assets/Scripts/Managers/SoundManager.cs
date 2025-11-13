@@ -184,7 +184,7 @@ public class SoundManager : MonoBehaviour
         SetSFXVolume(SFXVolume);
     }
 
-    public void ApplyOption(Widget widget)
+    public void ApplyOption(UIWidgetContainer widget)
     {
         if (widget == null)
         {
