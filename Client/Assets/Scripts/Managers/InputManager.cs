@@ -208,8 +208,8 @@ public class InputManager : NetworkBehaviour
                                 }
                                 else
                                 {
-                                    action.performed -= playerController.Execute;
-                                    action.performed += playerController.Execute;
+                                    //action.performed -= playerController.Execute;
+                                    //action.performed += playerController.Execute;
                                 }
                             }
                         }

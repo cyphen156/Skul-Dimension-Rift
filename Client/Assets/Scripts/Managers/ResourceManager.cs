@@ -454,7 +454,7 @@ public class ResourceManager : MonoBehaviour
         };
     }
 
-    public void ApplyOption(Widget widget)
+    public void ApplyOption(UIWidgetContainer widget)
     {
         if (widget == null)
         {

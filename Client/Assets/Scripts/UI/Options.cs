@@ -1,16 +1,17 @@
+using Assets.Scripts.Interface;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using static Types;
 
-public class Options : InteractiveUIBehaviour
+public class Options : InteractiveUIBehaviour, IContainerEventHandler
 {
-    private readonly Dictionary<string, Widget> widgets = new Dictionary<string, Widget>();
+    private readonly Dictionary<string, UIWidgetContainer> widgets = new Dictionary<string, UIWidgetContainer>();
     private bool isInited;
 
 #if UNITY_EDITOR
-    [SerializeField] private List<Widget> debugWidgets = new List<Widget>();
+    [SerializeField] private List<UIWidgetContainer> debugWidgets = new List<UIWidgetContainer>();
 #endif
 
     private new void Awake()
@@ -42,7 +43,7 @@ public class Options : InteractiveUIBehaviour
 #endif
 
         // Option 하위 모든 Widget 컴포넌트를 수집
-        var foundWidgets = ComponentRegistrar.RegisterComponentsInChildren<Widget>(
+        var foundWidgets = ComponentRegistrar.RegisterComponentsInChildren<UIWidgetContainer>(
             transform, 0, 0, 0, true, true
         );
 
@@ -52,74 +53,6 @@ public class Options : InteractiveUIBehaviour
             { 
                 continue; 
             }
-
-            // 위젯 내부 구성 요소 연결
-            switch (widget.widgetType)
-            {
-                case WidgetType.StepperWidget:
-                    {
-                        var stepper = widget.widget as StepperWidget;
-                        if (stepper == null) 
-                        { 
-                            break; 
-                        }
-
-                        var leftArrowButton = widget.transform.Find("LeftArrowButton");
-                        var rightArrowButton = widget.transform.Find("RightArrowButton");
-                        var text = widget.transform.Find("OptionText");
-
-                        if (leftArrowButton != null) 
-                        {
-                            stepper.leftArrow = leftArrowButton.GetComponent<Button>(); 
-                        }
-
-                        if (rightArrowButton != null) 
-                        { 
-                            stepper.rightArrow = rightArrowButton.GetComponent<Button>(); 
-                        }
-                        if (text != null) 
-                        {
-                            stepper.optionText = text.GetComponent<TMP_Text>(); 
-                        }
-                        break;
-                    }
-
-                case WidgetType.SliderWidget:
-                    {
-                        var slider = widget.widget as SliderWidget;
-                        if (slider == null) 
-                        { 
-                            break; 
-                        }
-
-                        slider.slider = widget.GetComponentInChildren<Slider>(true);
-                        selectedButton = slider.slider;
-                        break;
-                    }
-
-                case WidgetType.OneShotWidget:
-                    {
-                        var oneShot = widget.widget as OneShotWidget;
-                        if (oneShot == null) 
-                        { 
-                            break;
-                        }
-
-                        var button = widget.transform.Find("OneShotButton");
-                        var text = widget.transform.Find("OptionText");
-
-                        if (button != null) 
-                        { 
-                            oneShot.oneShotButton = button.GetComponent<Button>(); 
-                        }
-                        if (text != null) 
-                        { 
-                            oneShot.optionText = text.GetComponent<TMP_Text>(); 
-                        }
-                        break;
-                    }
-            }
-
             GameObject parent = widget.transform.parent.gameObject;
             string parentName = parent.name;
 
@@ -169,7 +102,22 @@ public class Options : InteractiveUIBehaviour
             }
         }
     }
-
+    public void HandleContainerEvent(UIWidgetContainer container, ContainerEventType type)
+    {
+        // 옵션 위젯에서 이벤트가 발생했을 때 처리
+        switch (type)
+        {
+            case ContainerEventType.Submit:
+                {
+                    GameManager.instance.ApplyUserOptionSetting(container);
+                    break;
+                }
+            default:
+                {
+                    break;
+                }
+        }
+    }
     protected override void OnSubmit()
     {
         // 메인에서 아무것도 선택 안 된 상태라면 자기 자신 닫기
@@ -190,7 +138,7 @@ public class Options : InteractiveUIBehaviour
                 }
             default:
                 {
-                    Widget widget;
+                    UIWidgetContainer widget;
                     if (!widgets.TryGetValue(name, out widget))
                     {
                         return;

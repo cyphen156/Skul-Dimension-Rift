@@ -1,7 +1,7 @@
 Branch
     설정창 UI 개발
 
-Commit 
+Commit 0e2c0f4
 [feat] 옵션 설정값 UI 동기화
 
 변경 요약
