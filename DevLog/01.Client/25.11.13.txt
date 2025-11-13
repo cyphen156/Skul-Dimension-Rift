@@ -1,5 +1,5 @@
 Branch
-    유저 플레이어블 캐릭터 개발
+    Container 도입 및 이벤트 버블링 구조 도입
 
 Commit
   [Refactor] UIWidget → UIWidgetContainer 전환 및 이벤트 버블링 구조 도입
