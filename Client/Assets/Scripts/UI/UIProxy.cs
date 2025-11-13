@@ -1,4 +1,3 @@
-using Assets.Scripts.Interface;
 using UnityEngine;
 using UnityEngine.InputSystem;
 

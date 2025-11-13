@@ -1,0 +1,64 @@
+Branch
+    유저 플레이어블 캐릭터 개발
+
+Commit
+  [Refactor] UIWidget → UIWidgetContainer 전환 및 이벤트 버블링 구조 도입
+
+변경 요약
+
+    Options UI 구조 전반에서 Widget이 도메인 로직을 직접 호출하던 구조를 제거하고,
+    UI 요소들은 Dumb하게 유지되도록 UIWidgetContainer 기반의 컨테이너 아키텍처로 전환하였습니다.
+    또한, 위젯 컨테이너가 부모 UI로 이벤트를 전달할 수 있도록
+    IContainerEventHandler 인터페이스 기반 이벤트 버블링 시스템을 도입했습니다.
+
+상세 수정 내용
+    UIWidgetContainer.cs
+        Widget → UIWidgetContainer로 구조 개편
+        Widget이 내부에서 도메인 로직 호출하던 구조 제거
+        “입력 처리 + UI 하위 요소 보관 + IWidget 바인딩” 역할만 수행하도록 축소
+        InitializeOwnerHandler() 추가
+            부모 방향으로 탐색하여 IContainerEventHandler를 자동 연결하는 구조 도입
+            상위 UI를 컴파일 의존 없이 탐색 가능
+        OnSubmit() 수정
+            GameManager 직접 호출 제거
+            대신 발견한 ownerHandler에게 ContainerEventType.Submit 전달
+        InitializeWidgetType() / InitializeWidgetComponents() 분리 구현
+            컨테이너는 UIWidget의 타입만 결정
+            실제 UI 구성 요소(Button, Slider 등)는 내부에서 자동 바인딩
+
+    IContainerEventHandler.cs 추가
+        하위 컨테이너의 이벤트를 상위 UI에 전달하기 위한 인터페이스
+        public) interface IContainerEventHandler 
+            HandleContainerEvent(UIWidgetContainer, ContainerEventType);
+
+
+        이벤트 타입은 Submit, ValueChanged, Click, Drag 등 확장 가능하도록 enum 구성
+
+    IContainer.cs
+        컨테이너 역할을 수행하는 컴포넌트를 식별하기 위한 마커 인터페이스
+        체적인 필드/행위는 강제하지 않음
+
+    Options.cs
+        Options UI가 IContainerEventHandler를 구현하도록 수정
+        하위 위젯(컨테이너)에서 발생하는 Submit 이벤트를 처리하도록 구조 정비
+        Public) void HandleContainerEvent(UIWidgetContainer, ContainerEventType)
+            Option 하위 모든 UIWidgetContainer를 수집하고
+            groupKey, parentName를 주입하는 역할만 유지되도록 정리
+
+        IWidget.cs
+            UI 렌더링 전담 객체로 역할 정리
+            위젯이 더 이상 도메인 로직을 갖지 않도록 단순화
+
+        StepperWidget / SliderWidget / OneShotWidget은
+            순수 렌더링 및 값 처리만 담당
+
+    구조적 개선 효과 요약
+        UI가 완전히 Dumb해짐
+        내부에서 GameManager, Options 등 도메인 호출 제거
+        UIWidgetContainer는 역할이 명확한 UI 컨테이너로 재정립
+        입력 처리 + 하위 UI 요소 보관 + IWidget 바인딩 담당
+        상위 UI 탐색 방식 정립
+        계층 구조에 의존하지 않고 부모 방향 탐색만으로 연결 완료
+        Options 외에도 Control, Inventory 등 어디에서든 재사용 가능
+        UIManager가 모든 이벤트를 감당해야 하는 구조 제거
+        상위 UI 단에서 이벤트를 직접 해석 가능
