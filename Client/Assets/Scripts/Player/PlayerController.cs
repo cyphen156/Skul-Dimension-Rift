@@ -9,7 +9,7 @@ using UnityEngine.InputSystem;
 public class PlayerController : NetworkBehaviour
 {
     [SerializeField] private Vector2 velocity;
-    [SerializeField] IMoveable playerMoter;
+    [SerializeField] private IMoveable playerMoter;
 
     #region Unity Methods
     private void Awake()

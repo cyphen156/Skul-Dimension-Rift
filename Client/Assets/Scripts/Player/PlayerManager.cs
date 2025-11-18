@@ -25,17 +25,4 @@ public class PlayerManager : MonoBehaviour
             defense = 5f
         };
     }
-    public void TakeDamage(float damage)
-    {
-        playerStat.currentHealth -= damage - playerStat.defense;
-        if (playerStat.currentHealth <= 0)
-        {
-            Die();
-        }
-    }
-    private void Die()
-    {
-        // 플레이어 사망 처리 로직
-        Debug.Log("Player has died.");
-    }
 }
