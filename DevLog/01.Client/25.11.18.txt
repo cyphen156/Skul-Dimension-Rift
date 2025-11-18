@@ -1,0 +1,78 @@
+Branch 
+    유저 플레이어블 캐릭터 개발
+
+Commit 33db982, 
+    [DeskTop -> Labtop] 개발환경 이전 푸시
+    [Feat] 플레이어 컨트롤러 Input 연결, Move기능 동작
+
+변경 요약
+    플레이어의 입력을 처리하는 기본 구성 작업을 완료하였습니다.
+    이제 플레이어는 스스로 처음 스폰되었을 때 
+    스스로의 입력 처리 함수를 로컬 싱글턴 인풋매니저에게 연결합니다. 
+    플레이어의 기본 동작중 Move함수가 이제 제 기능을 수행합니다.
+    일부 유틸리티성 클래스가 Common에서 독립되어 디렉토리 Utility로 이관되었습니다.
+
+상세 수정 내용
+    InputManager.cs
+        - AllocateInputActions()
+            Player ActionMap 관련 등록 로직을 분리했습니다.
+        - public void RegisterPlayerInputAction(PlayerController controller)
+            플레이어 컨트롤러가 처음 생성(렌더링)되었을 때 호출하는
+            명시적 입력 바인딩용 함수를 추가했습니다.
+
+    PlayerController.cs
+        Field
+            - private IMoveable playerMotor
+                입력에 따라 실제 GameObject의 Transform을 변경하는 이동 컴포넌트입니다.
+
+        Function
+            - private void Start()
+                InputManager.RegisterPlayerInputAction(this)를 호출하여
+                자신의 입력 콜백을 InputManager에 명시적으로 등록합니다.
+
+            - private void Update()
+                매 프레임 playerMotor.Move(...)를 호출하여 이동을 처리합니다.
+                (추후 필요 시 FixedUpdate로 이동할 수 있습니다.)
+
+            - 입력 정책 변경
+                네트워크 확장을 고려해 Execute 래핑을 제거하고,
+                각 입력 콜백(OnMove, OnJump, OnDash, OnAttack, OnSkill1, OnSkill2,
+                OnSpirit, OnSwitch, OnInteraction, OnScroll, OnArrowButton)을
+                Public 메서드로 노출하여 InputAction에 직접 바인딩하도록 변경했습니다.
+
+    PlayerManager.cs
+        Field
+            - private Stat playerStat
+                플레이어 스탯 데이터 필드입니다.
+
+        Function
+            - private void InitializePlayer()
+                기본 플레이어 스탯을 설정합니다.
+
+    Interface / IMoveable.cs
+        이동 가능한 오브젝트에 부착되는 인터페이스입니다.
+        Function
+            - void Move(Vector2 direction)
+            - void Move(Vector3 direction)
+            - void Jump(float power)
+
+    Movement.cs
+        IMoveable의 구현체 컴포넌트입니다.
+        전달받은 인자를 기반으로 GameObject의 Transform에 이동을 적용합니다.
+
+    Data/Stat.cs
+        히트박스를 가지는 게임 오브젝트가 공통으로 사용하는 기본 스탯 클래스입니다.
+        Field
+            - float maxHealth
+            - float currentHealth
+            - float moveSpeed
+            - float attackDamage
+            - float attackSpeed
+            - float defense
+
+    Utility/
+        Common에서 분리된 유틸리티 클래스 목록
+            - ComponentRegistrar.cs
+            - EnumUtility.cs
+            - Formatter.cs
+            - Localizer.cs

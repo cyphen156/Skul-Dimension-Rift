@@ -102,6 +102,7 @@ GameObject:
   - component: {fileID: 5807782946385115235}
   - component: {fileID: 4334981349602461559}
   - component: {fileID: 7552477111992581297}
+  - component: {fileID: 2261814777178229412}
   - component: {fileID: 5701733074300097577}
   - component: {fileID: 7024470854884985535}
   - component: {fileID: 5364784989145500877}
@@ -140,7 +141,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 4292528827
+  GlobalObjectIdHash: 1646632764
   InScenePlacedSourceGlobalObjectIdHash: 1646632764
   DeferredDespawnTick: 0
   Ownership: 1
@@ -166,8 +167,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerController
   ShowTopMostFoldoutHeaderGroup: 1
-  moveSpeed: 5
   velocity: {x: 0, y: 0}
+--- !u!114 &2261814777178229412
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7600135587762344979}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b25ba912de3786941b03923b10b1099f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Assets.Scripts.Common.Movement
 --- !u!114 &5701733074300097577
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -180,6 +192,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2e0cbc47f9af7b349a91242ca6de99ae, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerManager
+  playerStat:
+    maxHealth: 0
+    currentHealth: 0
+    moveSpeed: 0
+    attackDamage: 0
+    attackSpeed: 0
+    defense: 0
 --- !u!50 &7024470854884985535
 Rigidbody2D:
   serializedVersion: 5

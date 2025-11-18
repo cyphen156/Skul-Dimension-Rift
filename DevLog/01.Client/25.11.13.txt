@@ -1,7 +1,10 @@
 Branch
     Container 도입 및 이벤트 버블링 구조 도입
 
-Commit
+PR #4
+Merged At 3853cc3 into Main
+
+Commit 5c127f2
   [Refactor] UIWidget → UIWidgetContainer 전환 및 이벤트 버블링 구조 도입
 
 변경 요약

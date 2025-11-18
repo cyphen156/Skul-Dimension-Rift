@@ -190,30 +190,6 @@ public class InputManager : NetworkBehaviour
             switch (map.name)
             {
                 case "Player":
-                    {
-                        PlayerController playerController = FindAnyObjectByType<PlayerController>(FindObjectsInactive.Include);
-
-                        // 플레이어 컨트롤러가 존재하는 경우에만 액션을 할당
-                        // 액션에 해당하는 행위를 리플렉션으로 연결
-                        if (playerController != null)
-                        {
-                            foreach (var action in map.actions)
-                            {
-                                string actionName = action.name;
-                                // Menu와 Scroll은 UIManager에 연결
-                                if (actionName == "Menu" || actionName == "Interaction")
-                                {
-                                    action.performed -= UIManager.instance.Execute_Internal;
-                                    action.performed += UIManager.instance.Execute_Internal;
-                                }
-                                else
-                                {
-                                    //action.performed -= playerController.Execute;
-                                    //action.performed += playerController.Execute;
-                                }
-                            }
-                        }
-                    }
                     break;
                 case "UI":
                     {
@@ -279,6 +255,75 @@ public class InputManager : NetworkBehaviour
         ChangeActionMap("Locked");
     }
 
+    public void RegisterPlayerInputAction(PlayerController targetController)
+    {
+        // 플레이어 컨트롤러가 존재하는 경우에만 액션을 할당
+        // 액션에 해당하는 행위를 리플렉션으로 연결
+        if (targetController != null)
+        {
+            foreach (var action in playerMap.actions)
+            {
+                string actionName = action.name;
+                switch (actionName)
+                {
+                    case "Move":
+                        action.performed -= targetController.OnMove;
+                        action.performed += targetController.OnMove;
+                        action.canceled -= targetController.OnMove;
+                        action.canceled += targetController.OnMove;
+                        break;
+                    case "Jump":
+                        action.performed -= targetController.OnJump;
+                        action.performed += targetController.OnJump;
+                        break;
+                    case "Dash":
+                        action.performed -= targetController.OnDash;
+                        action.performed += targetController.OnDash;
+                        break;
+                    case "Attack":
+                        action.performed -= targetController.OnAttack;
+                        action.performed += targetController.OnAttack;
+                        break;
+                    case "Skill1":
+                        action.performed -= targetController.OnSkill1;
+                        action.performed += targetController.OnSkill1;
+                        break;
+                    case "Skill2":
+                        action.performed -= targetController.OnSkill2;
+                        action.performed += targetController.OnSkill2;
+                        break;
+                    case "Spirit":
+                        action.performed -= targetController.OnSpirit;
+                        action.performed += targetController.OnSpirit;
+                        break;
+                    case "Switch":
+                        action.performed -= targetController.OnSwitch;
+                        action.performed += targetController.OnSwitch;
+                        break;
+                    case "Interaction":
+                        action.performed -= targetController.OnInteraction;
+                        action.performed += targetController.OnInteraction;
+                        break;
+                    case "Scroll":
+                        action.performed -= targetController.OnScroll;
+                        action.performed += targetController.OnScroll;
+                        break;
+                    case "ArrowDash":
+                        action.performed -= targetController.OnArrowButton;
+                        action.performed += targetController.OnArrowButton;
+                        break;
+                    case "Menu":
+                        action.performed -= UIManager.instance.Execute_Internal;
+                        action.performed += UIManager.instance.Execute_Internal;
+                        break; 
+                    default:
+                        Debug.LogWarning($"InputManager: Unhandled Player Action '{action.name}'");
+                        break;
+                }
+                // Menu와 Scroll은 UIManager에 연결
+            }
+        }
+    }
     /// <summary>
     /// Input ActionMap을 전환합니다.
     /// </summary>

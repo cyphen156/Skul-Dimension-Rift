@@ -6,45 +6,137 @@ using UnityEngine.InputSystem;
 /// <summary>
 /// 플레이어의 입력을 처리하는 클래스
 /// </summary>
-public class PlayerController : NetworkBehaviour, IInteractive
+public class PlayerController : NetworkBehaviour
 {
-    [SerializeField] private float moveSpeed = 5f;
     [SerializeField] private Vector2 velocity;
+    [SerializeField] private IMoveable playerMoter;
 
     #region Unity Methods
+    private void Awake()
+    {
+        playerMoter = GetComponent<IMoveable>();
+    }
 
+    private void Start()
+    {
+        InputManager.instance.RegisterPlayerInputAction(this);
+    }
     private void Update()
     {
-        Vector3 move = new Vector3(velocity.x, 0) * moveSpeed * Time.deltaTime;
-        transform.Translate(move, Space.World);
+        //if (!IsOwner)
+        //{
+        //    return;
+        //}
+
+        playerMoter.Move(velocity);
     }
+
     #endregion Unity Methods
 
     #region Input Methods
-    public void Execute(InputAction.CallbackContext ctx)
+    public void OnMove(InputAction.CallbackContext ctx)
     {
         if (!ctx.performed)
         {
+            velocity = Vector2.zero;
             return;
         }
-
-        string actionName = ctx.action.name;
-        switch (actionName)
+        
+        if (ctx.performed)
         {
-            case "Move":
-                {
-                    OnMove(ctx);
-                }
-                break;
-
-            default:
-                break;
+            velocity = ctx.ReadValue<Vector2>();
+            return;
         }
     }
 
-    private void OnMove(InputAction.CallbackContext ctx)
+    public void OnJump(InputAction.CallbackContext ctx)
     {
-        velocity = ctx.ReadValue<Vector2>();
+        if (ctx.performed == false)
+        {
+            return;
+        }
+        // TODO
+    }
+
+    public void OnDash(InputAction.CallbackContext ctx)
+    {
+        if (ctx.performed == false)
+        {
+            return;
+        }
+        // TODO
+    }
+
+    public void OnAttack(InputAction.CallbackContext ctx)
+    {
+        if (ctx.performed == false)
+        {
+            return;
+        }
+        // TODO
+    }
+
+    public void OnSkill1(InputAction.CallbackContext ctx)
+    {
+        if (ctx.performed == false)
+        {
+            return;
+        }
+        // TODO
+    }
+
+    public void OnSkill2(InputAction.CallbackContext ctx)
+    {
+        if (ctx.performed == false)
+        {
+            return;
+        }
+        // TODO
+    }
+
+    public void OnSpirit(InputAction.CallbackContext ctx)
+    {
+        if (ctx.performed == false)
+        {
+            return;
+        }
+        // TODO
+    }
+
+    public void OnSwitch(InputAction.CallbackContext ctx)
+    {
+        if (ctx.performed == false)
+        {
+            return;
+        }
+        // TODO
+    }
+
+    public void OnInteraction(InputAction.CallbackContext ctx)
+    {
+        if (ctx.performed == false)
+        {
+            return;
+        }
+        // TODO
+    }
+
+    public void OnScroll(InputAction.CallbackContext ctx)
+    {
+        if (ctx.performed == false)
+        {
+            return;
+        }
+        // TODO
+    }
+
+    public void OnArrowButton(InputAction.CallbackContext ctx)
+    {
+        if (ctx.performed == false)
+        {
+            return;
+        }
+        // TODO
     }
     #endregion Input Methods
 }

@@ -1,3 +1,4 @@
+using Assets.Scripts.Player;
 using UnityEngine;
 
 /// <summary>
@@ -6,5 +7,22 @@ using UnityEngine;
 /// </summary>
 public class PlayerManager : MonoBehaviour
 {
-
+    [SerializeField] private Stat playerStat;
+    private void Awake()
+    {
+        // 플레이어 초기화 로직
+        InitializePlayer();
+    }
+    private void InitializePlayer()
+    {
+        playerStat = new Stat
+        {
+            maxHealth = 100f,
+            currentHealth = 100f,
+            moveSpeed = 5f,
+            attackDamage = 10f,
+            attackSpeed = 1f,
+            defense = 5f
+        };
+    }
 }
