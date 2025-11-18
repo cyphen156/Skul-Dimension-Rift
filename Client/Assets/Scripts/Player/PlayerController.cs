@@ -8,24 +8,33 @@ using UnityEngine.InputSystem;
 /// </summary>
 public class PlayerController : NetworkBehaviour
 {
-    [SerializeField] private float moveSpeed = 5f;
     [SerializeField] private Vector2 velocity;
+    [SerializeField] IMoveable playerMoter;
 
     #region Unity Methods
     private void Awake()
     {
+        playerMoter = GetComponent<IMoveable>();
     }
 
+    private void Start()
+    {
+        InputManager.instance.RegisterPlayerInputAction(this);
+    }
     private void Update()
     {
-        Vector3 move = new Vector3(velocity.x, 0) * moveSpeed * Time.deltaTime;
-        transform.Translate(move, Space.World);
+        //if (!IsOwner)
+        //{
+        //    return;
+        //}
+
+        playerMoter.Move(velocity);
     }
 
     #endregion Unity Methods
 
     #region Input Methods
-    private void OnMove(InputAction.CallbackContext ctx)
+    public void OnMove(InputAction.CallbackContext ctx)
     {
         if (!ctx.performed)
         {
@@ -33,15 +42,14 @@ public class PlayerController : NetworkBehaviour
             return;
         }
         
-        if (ctx.performed == true)
+        if (ctx.performed)
         {
             velocity = ctx.ReadValue<Vector2>();
             return;
         }
-
     }
 
-    private void OnJump(InputAction.CallbackContext ctx)
+    public void OnJump(InputAction.CallbackContext ctx)
     {
         if (ctx.performed == false)
         {
@@ -50,7 +58,7 @@ public class PlayerController : NetworkBehaviour
         // TODO
     }
 
-    private void OnDash(InputAction.CallbackContext ctx)
+    public void OnDash(InputAction.CallbackContext ctx)
     {
         if (ctx.performed == false)
         {
@@ -59,7 +67,7 @@ public class PlayerController : NetworkBehaviour
         // TODO
     }
 
-    private void OnAttack(InputAction.CallbackContext ctx)
+    public void OnAttack(InputAction.CallbackContext ctx)
     {
         if (ctx.performed == false)
         {
@@ -68,7 +76,7 @@ public class PlayerController : NetworkBehaviour
         // TODO
     }
 
-    private void OnSkill1(InputAction.CallbackContext ctx)
+    public void OnSkill1(InputAction.CallbackContext ctx)
     {
         if (ctx.performed == false)
         {
@@ -77,7 +85,7 @@ public class PlayerController : NetworkBehaviour
         // TODO
     }
 
-    private void OnSkill2(InputAction.CallbackContext ctx)
+    public void OnSkill2(InputAction.CallbackContext ctx)
     {
         if (ctx.performed == false)
         {
@@ -86,7 +94,7 @@ public class PlayerController : NetworkBehaviour
         // TODO
     }
 
-    private void OnSpirit(InputAction.CallbackContext ctx)
+    public void OnSpirit(InputAction.CallbackContext ctx)
     {
         if (ctx.performed == false)
         {
@@ -95,7 +103,7 @@ public class PlayerController : NetworkBehaviour
         // TODO
     }
 
-    private void OnSwitch(InputAction.CallbackContext ctx)
+    public void OnSwitch(InputAction.CallbackContext ctx)
     {
         if (ctx.performed == false)
         {
@@ -104,7 +112,7 @@ public class PlayerController : NetworkBehaviour
         // TODO
     }
 
-    private void OnInteraction(InputAction.CallbackContext ctx)
+    public void OnInteraction(InputAction.CallbackContext ctx)
     {
         if (ctx.performed == false)
         {
@@ -113,7 +121,7 @@ public class PlayerController : NetworkBehaviour
         // TODO
     }
 
-    private void OnScroll(InputAction.CallbackContext ctx)
+    public void OnScroll(InputAction.CallbackContext ctx)
     {
         if (ctx.performed == false)
         {
@@ -122,7 +130,7 @@ public class PlayerController : NetworkBehaviour
         // TODO
     }
 
-    private void OnArrowButton(InputAction.CallbackContext ctx)
+    public void OnArrowButton(InputAction.CallbackContext ctx)
     {
         if (ctx.performed == false)
         {
