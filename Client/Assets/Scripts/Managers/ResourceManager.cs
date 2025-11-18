@@ -205,6 +205,30 @@ public class ResourceManager : MonoBehaviour
 
         return gameObject;
     }
+
+    public Sprite GetItemSprite(int itemID)
+    {
+        if (itemID == -1)
+        {
+            return null;
+        }
+        string uri = $"Sprite/Item/Item_{itemID}";
+        Sprite sprite = GetSprite(uri);
+        return sprite;
+    }
+
+    public Sprite GetSprite(string uri)
+    {
+        if (string.IsNullOrEmpty(uri))
+        {
+            return null;
+        }
+
+        Sprite sprite = Resources.Load<Sprite>(uri);
+        return sprite;
+    }
+
+
     public Sprite GetControlSprite(string controlName, bool isHighlight = false)
     {
         if (string.IsNullOrEmpty(controlName))

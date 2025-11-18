@@ -10,9 +10,15 @@ namespace Assets.Scripts.Common
             transform.Translate(direction * Time.deltaTime);
         }
 
+        public void Move(Vector3 direction)
+        {
+            transform.Translate(direction * Time.deltaTime);
+        }
+        
         public void Jump(float power)
         {
             transform.Translate(Vector2.up * power);
         }
+
     }
 }

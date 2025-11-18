@@ -1,0 +1,63 @@
+Branch
+    아이템 프리팹 개발
+
+Commit
+[Feat] 아이템 프리팹 기초 설계
+
+변경 요약
+    아이템 프리팹에 대한 전반적인 설계를 진행하였습니다.
+
+상세 변경 내역
+
+    Interface/
+    IInteractable.cs 
+        void Interact();
+
+    Item.cs : IInteractable
+
+        아이템 프리팹은 외부에서 생성합니다.
+        생성된 아이템은 내부 필드로 ItemId와 대표 스프라이트 1개를 소유하고있다.
+        플레이어와의 상호작용이 가능함을 명시하기 위해 IInteractable을 상속받습니다.
+    필수 구성 컴포넌트
+    [RequireComponent(typeof(SpriteRenderer))]
+    [RequireComponent(typeof(Rigidbody2D))]
+    [RequireComponent(typeof(BoxCollider2D))]
+
+    Field 
+    - private) int ItemId
+    - private) SpriteRenderer spriteRenderer
+
+    Function
+    - private) void Awake()
+        스프라이트 렌더러를 연결합니다.
+    - private) void OnEnable()
+        아이템 아이디에 따라 리소스매니저에게 대표스프라이트를 요청하여 적용합니다.
+    - private) void OnDisable()
+        아이템 정보를 해제합니다.
+        -> 이 기능은 외부 호출함수로 이관될 가능성이 매우 큽니다.
+    - Public) void SetItemInfo(int, itemName...)
+        아이템 정보를 주입받습니다.
+        현재는 대표 정보만 주입받고 있지만
+        상호작용 틀에 따라 화면에 렌더링 될 가능성이 있으므로 인자가 늘어날 수 있는 함수입니다.
+    - Public) int GetItemID()
+        아이템의 ID를 반환합니다.
+    - Public) void Interact()
+    - private) void OnCollisionEnter2D(Collision2D)
+    - private) void OnCollisionExit2D(Collision2D)
+
+    ResourceManager.cs
+        스프라이트 반환함수 추가
+        - Public) Sprite GetItemSprite(int itemID)
+        - Public) Sprite GetSprite(string uri)
+
+    ItemData.cs
+    아이템 정보를 저장하고 있는 데이터 객체 클래스
+        리소스 매니저가 소유하고 있을 원본 형태입니다.
+        Filed
+            int itemID;
+            string itemKey;
+            string itemName;
+            string itemDescription;
+
+    Prefab/Item
+        Item.prefab 추가
