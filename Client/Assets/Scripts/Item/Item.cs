@@ -18,15 +18,15 @@ public class Item : MonoBehaviour, IInteractable
     }
     private void OnEnable()
     {
-        if (itemId != -1)
-        {
-            Sprite sprite = ResourceManager.instance.GetItemSprite(itemId);
+        //if (itemId != -1)
+        //{
+        //    Sprite sprite = ResourceManager.instance.GetItemSprite(itemId);
 
-            if (spriteRenderer != null)
-            {
-                spriteRenderer.sprite = sprite;
-            }
-        }
+        //    if (spriteRenderer != null)
+        //    {
+        //        spriteRenderer.sprite = sprite;
+        //    }
+        //}
     }
 
     private void OnDisable()
