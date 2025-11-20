@@ -1,7 +1,7 @@
 Branch
     아이템 프리팹 개발
 
-Commit 
+Commit 9e7ac16
     [Feat] 상호작용 대상 탐지 및 HUD 프롬프트 시스템 구축
 
 변경 요약
@@ -43,3 +43,59 @@ Commit
         TriggerEnter/Exit로 목록 관리
         FixedUpdate에서 가장 가까운 대상 계산
         대상 변경 시 OnTargetChanged 이벤트 발행
+
+
+Commit 
+    [Feat] DOD 기반 ObjectSpawner / PoolManager 연동 및 ItemView 디버그 스폰 기능 추가
+    
+변경 요약  
+    ViewObject 기반 구조로 오브젝트 표현 방식을 통일하고,
+    ObjectSpawner에서 도메인별 풀링·스폰이 동작하도록 전체 흐름을 정비했습니다.
+    게임 시작 시(Playing 전환) 에디터 환경에서 자동으로 디버그 아이템을 스폰하여
+    스프라이트 적용·상호작용·프롬프트 연동까지 테스트 가능한 환경을 구축했습니다.
+
+상세 변경 내역  
+
+    ViewObject.cs  
+        objectKey 기반 스프라이트 적용 구조 정식 확립  
+        Awake/Start/SetObjectKey/OnDisable/ApplySprite API 완성  
+        ResourceManager.GetSprite(objectKey) 사용으로 널 처리 자동화  
+        상속 클래스는 스프라이트 로직을 재구현하지 않도록 책임 단일화  
+
+    ItemView.cs  
+        ViewObject 상속 + IInteractable 구현  
+        ItemView는 상호작용 행위만 담당하도록 단순화  
+        컴포넌트 구성 일원화 (SpriteRenderer, Rigidbody2D, BoxCollider2D)  
+
+    ResourceManager.cs  
+        GetSprite(objectKey) 실패 시 placeHolderSprite 반환하도록 통합  
+        도메인/경로/스프라이트 누락 여부와 관계없이 항상 안전한 스프라이트 제공  
+        ViewObject 호출부에서 널 체크 제거 가능해짐  
+
+    ObjectSpawner.cs  
+        SpawnPoolConfig → configMap 초기화 구조 정식 구성  
+        PoolManager.RegisterPool로 도메인별 풀 생성  
+        Spawn(objectKey, position) API 구현  
+            - objectKey → domain 매핑  
+            - 도메인 미등록 시 안전한 에러 메시지 출력  
+            - ViewObject.SetObjectKey(objectKey) 호출  
+
+        #if UNITY_EDITOR  
+            디버그 전용 Spawn() 구현  
+            - 플레이어 주변 X축 간격으로 ItemView 3개 자동 스폰  
+            - 테스트용 objectKey(0x01000001~3) 사용  
+            - 스프라이트는 placeHolderSprite 자동 적용  
+        #endif  
+
+    GameManager.cs  
+        GameState.Playing 진입 시  
+        #if UNITY_EDITOR  
+            ObjectSpawner.instance.Spawn() 자동 실행  
+        #endif  
+        게임 플레이 시작과 동시에 풀·스폰 흐름 검증 가능  
+
+결과  
+    도메인 기반 스폰·풀링 로직이 정상 동작하며,  
+    ItemView가 ViewObject + objectKey 기반 구조로 완전히 전환되었습니다.  
+    플레이어 주변에 자동 스폰되는 디버그 아이템을 통해  
+    스프라이트 적용, 프롬프트 감지, 상호작용 흐름까지 즉시 테스트 가능해졌습니다.

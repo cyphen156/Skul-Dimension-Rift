@@ -20,3 +20,5 @@ GraphicManager
         Localization
 
 Item 개발
+
+DOTS 도메인 시스템 개발

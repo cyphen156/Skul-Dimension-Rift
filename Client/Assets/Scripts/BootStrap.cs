@@ -7,12 +7,14 @@ using UnityEngine;
 /// 초기화 순서 명시적 제어
 /// 1. NetworkManager
 /// 2. ResourceManager
-/// 3. GraphicManager
-/// 4. SceneLoadManager
-/// 5. UIManager
-/// 6. SoundManager
-/// 7. InputManager
-/// 8. GameManager
+/// 3. PoolManager
+/// 4. ObjectSpawner
+/// 5. GraphicManager
+/// 6. SceneLoadManager
+/// 7. UIManager
+/// 8. SoundManager
+/// 9. InputManager
+/// 10. GameManager
 /// </summary>
 public class BootStrap : MonoBehaviour
 {
@@ -30,28 +32,31 @@ public class BootStrap : MonoBehaviour
         else
         {
             Destroy(gameObject);
+            return;
         }
+
         InitializeManagers();
     }
 
     #endregion Unity Methods
 
     #region Custom Methods
+
     /// <summary>
     /// 매니저들을 순서대로 초기화
     /// </summary>
     private void InitializeManagers()
     {
-        // NetworkManager 초기화
-        var ngo = FindFirstObjectByType<NetworkManager>(FindObjectsInactive.Include);
+        // 1. NetworkManager 초기화
+        NetworkManager ngo = FindFirstObjectByType<NetworkManager>(FindObjectsInactive.Include);
         if (ngo == null)
         {
-            var go = new GameObject("NetworkManager");
+            GameObject go = new GameObject("NetworkManager");
             ngo = go.AddComponent<NetworkManager>();
             DontDestroyOnLoad(go);
         }
 
-        var utp = ngo.GetComponent<Unity.Netcode.Transports.UTP.UnityTransport>();
+        UnityTransport utp = ngo.GetComponent<UnityTransport>();
 
         if (utp == null)
         {
@@ -65,33 +70,38 @@ public class BootStrap : MonoBehaviour
 
         ngo.NetworkConfig.NetworkTransport = utp;
 
-        // ResourceManager 초기화
+        // 2. ResourceManager 초기화
         PromoteOrCreate<ResourceManager>("ResourceManager");
-        // GraphicManager 초기화
+        // 3. PoolManager 초기화
+        PromoteOrCreate<PoolManager>("PoolManager");
+        // 4. ObjectSpawner 초기화
+        PromoteOrCreate<ObjectSpawner>("ObjectSpawner");
+        // 5. GraphicManager 초기화
         PromoteOrCreate<GraphicManager>("GraphicManager");
-        // SceneLoadManager 초기화
+        // 6. SceneLoadManager 초기화
         PromoteOrCreate<SceneLoadManager>("SceneLoadManager");
-        // UIManager 초기화
+        // 7. UIManager 초기화
         PromoteOrCreate<UIManager>("UIManager");
-        // SoundManager 초기화
+        // 8. SoundManager 초기화
         PromoteOrCreate<SoundManager>("SoundManager");
-        // InputManager 초기화
+        // 9. InputManager 초기화
         PromoteOrCreate<InputManager>("InputManager");
-        // GameManager 초기화
+        // 10. GameManager 초기화
         PromoteOrCreate<GameManager>("GameManager");
     }
 
     private T PromoteOrCreate<T>(string goName) where T : Component
     {
-        var existing = FindFirstObjectByType<T>(FindObjectsInactive.Include);
+        T existing = FindFirstObjectByType<T>(FindObjectsInactive.Include);
         if (existing != null)
         {
             return existing;
         }
 
-        var go = new GameObject(goName);
+        GameObject go = new GameObject(goName);
         DontDestroyOnLoad(go);
         return go.AddComponent<T>();
     }
+
     #endregion Custom Methods
 }
