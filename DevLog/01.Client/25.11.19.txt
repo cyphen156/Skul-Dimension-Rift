@@ -62,7 +62,7 @@ Commitd 036b77
     Prefab/Item
         Item.prefab 추가
 
-Commitd 
+Commitd 2a9730d
 [Feat] 상호작용 HUD UI프리팹 추가
 
 변경 요약

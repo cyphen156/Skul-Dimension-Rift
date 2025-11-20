@@ -6,22 +6,29 @@ using UnityEngine.UI;
 
 public class PromptWidget : MonoBehaviour, IWidget
 {
-    private TextMeshPro promptText;
-    private Sprite interactionSprite;
+    [SerializeField] private TMP_Text promptText;
+    [SerializeField] private Image promptImage;
+    [SerializeField] private Sprite interactionSprite;
+    [SerializeField] private bool isInteracting;
 
     private void Awake()
     {
-        promptText = GetComponentInChildren<TextMeshPro>(includeInactive:true);
+        promptText = GetComponentInChildren<TMP_Text>(includeInactive:true);
 
         Image[] imgs = GetComponentsInChildren<Image>(includeInactive:true);
         foreach (Image img in imgs)
         {
             if (img.gameObject.name == "PromptImage")
             {
-                interactionSprite = ResourceManager.instance.GetControlSprite("Interaction", false);
-                img.sprite = interactionSprite;
+                promptImage = img;
                 break;
             }
+        }
+
+        if (promptImage != null)
+        {
+            interactionSprite = ResourceManager.instance.GetControlSprite("Interaction", false);
+            promptImage.sprite = interactionSprite;
         }
     }
 
@@ -29,12 +36,16 @@ public class PromptWidget : MonoBehaviour, IWidget
     {
         // Set the interaction sprite when the widget is enabled
         // check if the sprite needs to be updated
-        Sprite newSprite = ResourceManager.instance.GetControlSprite("Interaction", false);
-        if (interactionSprite != newSprite)
-        {
-            interactionSprite = newSprite;
-        }
+        isInteracting = false;
+
+        Refresh("");
     }
+
+    private void OnDisable()
+    {
+        isInteracting = false;
+    }
+
 
     public void SetPrompt(PromptType type)
     {
@@ -44,18 +55,48 @@ public class PromptWidget : MonoBehaviour, IWidget
                 promptText.text = "들어가기";
                 break;
             case PromptType.Interact:
-                promptText.text = $"대화하기";
+                promptText.text = "대화하기";
                 break;
             case PromptType.blessing:
                 promptText.text = "축복받기";
                 break;
             default:
-                promptText.text = "";
+                promptText.text = string.Empty;
                 break;
         }
     }
+
+    public void SetInteracting(bool flag)
+    {
+        if (isInteracting == flag)
+        {
+            return;
+        }
+
+        isInteracting = flag;
+
+        Refresh(null);
+    }
+
     public void Refresh(string data)
     {
-        // No implementation needed for this widget
+        // 유저가 상호작용 중일 때
+        // 이미지 스프라이트를 하이라이트로 변경
+        if (data != null && promptText != null)
+        {
+            promptText.text = data;
+        }
+
+        if (promptImage == null)
+        {
+            return;
+        }
+
+        Sprite newSprite = ResourceManager.instance.GetControlSprite("Interaction", isInteracting);
+
+        if (promptImage.sprite != newSprite)
+        {
+            promptImage.sprite = newSprite;
+        }
     }
 }

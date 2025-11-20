@@ -16,7 +16,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &2068517514895930587
 RectTransform:
   m_ObjectHideFlags: 0
@@ -49,6 +49,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7b899fd1000b73746987c5db9e672e51, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PromptWidget
+  promptText: {fileID: 0}
+  promptImage: {fileID: 0}
+  interactionSprite: {fileID: 0}
+  isInteracting: 0
 --- !u!1 &558517596556738727
 GameObject:
   m_ObjectHideFlags: 0

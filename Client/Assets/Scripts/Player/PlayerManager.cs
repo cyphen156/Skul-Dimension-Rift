@@ -8,6 +8,7 @@ using UnityEngine;
 public class PlayerManager : MonoBehaviour
 {
     [SerializeField] private Stat playerStat;
+
     private void Awake()
     {
         // 플레이어 초기화 로직
@@ -24,5 +25,10 @@ public class PlayerManager : MonoBehaviour
             attackSpeed = 1f,
             defense = 5f
         };
+    }
+
+    public Stat GetStat()
+    {
+        return playerStat;
     }
 }

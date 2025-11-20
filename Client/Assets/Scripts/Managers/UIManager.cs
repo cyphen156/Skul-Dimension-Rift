@@ -17,6 +17,9 @@ public class UIManager : MonoBehaviour
     private Dictionary<string, GameObject> uiObjects = new Dictionary<string, GameObject>();
     private Dictionary<string, Canvas> canvases = new Dictionary<string, Canvas>();
     private GameObject UIProxyPrefab;   /// 풀링 대상이 될 수 있음 풀대상으로 지정시 현재의 Interactive 캔버스가 아닌 독립 캔버스 사용 권장
+    private RectTransform promptRect;
+    private Transform promptTargetTransform;
+    private Canvas HUDCanvas;
 
 #if UNITY_EDITOR
     [SerializeField] List<GameObject> _uiInputStack = new List<GameObject>();
@@ -56,6 +59,44 @@ public class UIManager : MonoBehaviour
         _focusedUI = focusedUI is MonoBehaviour focusedMB ? focusedMB.gameObject : null;
     }
 #endif
+
+    private void LateUpdate()
+    {
+#if UNITY_EDITOR
+        // 기존 디버그용 Update가 있다면 그대로 두셔도 됩니다.
+#endif
+
+        if (promptRect == null)
+        {
+            return;
+        }
+
+        if (promptTargetTransform == null)
+        {
+            return;
+        }
+
+        if (HUDCanvas == null)
+        {
+            return;
+        }
+
+        // 월드 → 스크린 → UI 좌표 변환
+        Vector3 worldPos = promptTargetTransform.position;
+        Vector3 screenPos = Camera.main.WorldToScreenPoint(worldPos);
+
+        Vector2 uiLocalPos;
+        RectTransform hudRect = HUDCanvas.transform as RectTransform;
+
+        if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            hudRect,
+            screenPos,
+            HUDCanvas.worldCamera,
+            out uiLocalPos))
+        {
+            promptRect.anchoredPosition = uiLocalPos;
+        }
+    }
     #endregion Unity Methods
 
     #region Custom Methods
@@ -88,6 +129,21 @@ public class UIManager : MonoBehaviour
                 _canvas.Add(obj);
             }
 #endif
+        }
+
+        if (!canvases.TryGetValue("HUDCanvas", out HUDCanvas))
+        {
+            foreach (Canvas canvas in canvases.Values)
+            {
+                HUDCanvas = canvas;
+                break;
+            }
+        }
+
+        GameObject promptObject = TryGetUI("Prompt");
+        if (promptObject != null)
+        {
+            promptRect = promptObject.GetComponent<RectTransform>();
         }
         uiInputStack.Clear();
         focusedUI = null;
@@ -123,6 +179,11 @@ public class UIManager : MonoBehaviour
         {
             Debug.LogWarning("UIManager: Attempted to remove focus from a UIObject that is not at the top of the stack.");
         }
+    }
+
+    public void SetPromptTarget(Transform target)
+    {
+        promptTargetTransform = target;
     }
 
     /// <summary>
