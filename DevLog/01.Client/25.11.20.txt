@@ -45,7 +45,7 @@ Commit 9e7ac16
         대상 변경 시 OnTargetChanged 이벤트 발행
 
 
-Commit 
+Commit 269bf42
     [Feat] DOD 기반 ObjectSpawner / PoolManager 연동 및 ItemView 디버그 스폰 기능 추가
     
 변경 요약  

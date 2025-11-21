@@ -5,7 +5,7 @@ namespace Assets.Scripts.Common
     [RequireComponent(typeof(SpriteRenderer))]
     public class ViewObject : MonoBehaviour
     {
-        [SerializeField]
+        [SerializeField] [HexView] 
         protected uint objectKey;
 
         protected SpriteRenderer spriteRenderer;

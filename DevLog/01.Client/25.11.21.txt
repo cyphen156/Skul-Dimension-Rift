@@ -1,0 +1,67 @@
+Branch
+    아이템 프리팹 개발
+
+Commit 
+    [Struct] ObjectKey 32bit 레이아웃 도입 및 Domain/Hex 디버그 구조 정리
+
+변경 요약
+    ObjectKey의 내부 구조를 8-8-8-8 기반에서 4-8-4-4-12 구조로 재설계하였습니다.
+    이를 통해 Domain / Role / Grade / Class / Instance가 비트 단위로 정확히 분리되고,
+    StaticId(정적 테이블 ID)와 Instance(런타임 식별 번호)를 독립적으로 관리할 수 있는 기반을 구축했습니다.
+    또한 ViewObject의 objectKey를 16진수(0xXXXXXXXX)로 확인할 수 있도록 HexView Attribute를 추가하여
+    도메인 규약 디버깅 효율을 크게 개선했습니다.
+
+상세 변경 내역
+
+    Domain.cs (신규)
+        - ObjectKey 32bit 비트 레이아웃 공식 문서 및 규약 파일 추가
+        - Domain(4bit) / Role(8bit) / Grade(4bit) / Class(4bit) / Instance(12bit) 구조 명세
+        - ObjectDomain 정의 (Item / Character / Monster / Projectile / WorldObject / Npc)
+        - Role 정의 추가
+            · ItemRole: Weapon, Armor, Consumable, Currency, Skull
+            · MonsterRole: Melee, Ranged, Summoner, Elite, Named, Boss
+            · WorldObjectRole: Destructible, Interactable, Platform, Decoration
+            · NpcRole: Talker, Merchant, QuestGiver
+        - Grade 정의 (Tier1 ~ Tier5)
+        - Class(4bit)에 대한 설계 규약 문서화
+
+    HexViewAttribute.cs / HexViewDrawer.cs (신규)
+        - [HexView] Attribute 추가 (uint/int/long 값을 Inspector에서 Hex로 출력)
+        - CustomPropertyDrawer 구현
+            · Integer 타입을 0xXXXXXXXX 형식으로 고정 렌더링
+            · ObjectKey 디버깅 편의성 대폭 향상
+
+    ViewObject.cs
+        - objectKey 필드에 [HexView] 적용
+        - Inspector에서 ObjectKey가 10진수가 아닌 Hex 8자리로 직관적으로 표시됨
+
+    ObjectKey.cs
+        - 비트 레이아웃을 4-8-4-4-12 구조로 전면 재설계
+            · DomainShift = 28
+            · RoleShift = 20
+            · GradeShift = 16
+            · ClassShift = 12
+            · InstanceMask = 0x0FFF
+        - Make() API 개편
+            · Domain / Role / Grade / Class / Instance 조합으로 키 생성
+        - Getter API 정비
+            · GetDomain / GetRole / GetGrade / GetClass / GetInstance
+        - StaticId API 추가
+            · GetStaticId(key) → Instance 제외한 정적 테이블 ID
+            · WithInstance(staticId, instance) → StaticId + Instance 조합
+
+    ObjectSpawner.cs
+        - 디버그 스폰 키를 16진수 매직 넘버 → ObjectKey.Make() 기반 구조로 전환
+            · Role / Grade / Class / Instance 값을 명시적으로 포함
+        - 디버그 Spawn() 로직 개선
+            · foreach 순회로 X축 간격 배치
+            · 기존 플레이어 중심 복잡 로직 제거
+        - Inspector에서 Decimal Key 섹션 분리
+
+결과
+
+    ObjectKey의 식별 규약이 정식 32bit 구조로 통합되었습니다.
+    모든 디버그 키가 Domain/Role/Grade/Class 레벨에서 명시적으로 표현되며,
+    Inspector에서도 HEX 기반으로 ID 패턴을 바로 확인할 수 있어
+    향후 아이템/몬스터/오브젝트 테이블 구축과 리소스 매핑에 매우 유리한 기반이 마련되었습니다.
+    스폰·풀링·리소스 연결까지 이어지는 전체 흐름의 안정성이 크게 향상되었습니다.

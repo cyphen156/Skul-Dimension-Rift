@@ -3,6 +3,7 @@ using Assets.Scripts.Data;
 using Assets.Scripts.Item;
 using System;
 using System.Collections.Generic;
+using System.Runtime.Remoting.Messaging;
 using UnityEngine;
 
 [Serializable]
@@ -137,40 +138,49 @@ public class ObjectSpawner : MonoBehaviour
     [SerializeField]
     private float debugItemSpacing = 1.5f;
 
+    [Header("Decimal Key")]
+    [SerializeField]
     private static readonly uint[] debugItemKeys =
     {
-        0x01000001u,
-        0x01000002u,
-        0x01000003u
-    };
+        // Item / Weapon / Tier1 / Class0 / Instance0
+        ObjectKey.Make(
+            ObjectDomain.Item,
+            (byte)ItemRole.Weapon,
+            (byte)Grade.Tier1,
+            0x0,
+            0
+        ),
 
+        // Item / Weapon / Tier2 / Class1 / Instance0
+        ObjectKey.Make(
+            ObjectDomain.Item,
+            (byte)ItemRole.Weapon,
+            (byte)Grade.Tier2,
+            0x1,
+            0
+        ),
+
+        // Item / Skull / Tier1 / Class0 / Instance0
+        ObjectKey.Make(
+            ObjectDomain.Item,
+            (byte)ItemRole.Skull,
+            (byte)Grade.Tier1,
+            0x0,
+            0
+        ),
+
+    };
     public void Spawn()
     {
-        if (debugSpawnOnPlay == false)
+        if (debugSpawnOnPlay)
         {
-            return;
+            foreach (var key in debugItemKeys)
+            {
+                int index = Array.IndexOf(debugItemKeys, key);
+                Vector3 position = new Vector3(index * debugItemSpacing, 0f, 0f);
+                Spawn<ItemView>(key, position);
+            }
         }
-
-        Vector3 center = Vector3.zero;
-
-        PlayerController player = FindFirstObjectByType<PlayerController>();
-
-        if (player != null)
-        {
-            center = player.transform.position;
-        }
-
-        int length = debugItemKeys.Length;
-
-        for (int i = 0; i < length; i++)
-        {
-            float offsetX = (i - (length - 1) * 0.5f) * debugItemSpacing;
-            Vector3 spawnPosition = center + new Vector3(offsetX, 0.0f, 0.0f);
-
-            Spawn<ItemView>(debugItemKeys[i], spawnPosition);
-        }
-
-        Debug.Log("[ObjectSpawner] DEBUG items spawned.");
     }
 #endif
 }
