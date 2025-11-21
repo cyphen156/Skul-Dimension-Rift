@@ -238,10 +238,10 @@ public class UIManager : MonoBehaviour
             {
                 uiObjects.Remove(UIName);
                 Destroy(uiObject);
-                foreach (Canvas canvas in canvases.Values)
-                {
-                    canvas.GetComponent<CanvasGroup>().interactable = true;
-                }
+                //foreach (Canvas canvas in canvases.Values)
+                //{
+                //    canvas.GetComponent<CanvasGroup>().interactable = true;
+                //}
             }
         }
         else
@@ -281,14 +281,14 @@ public class UIManager : MonoBehaviour
         }
         UIProxyObject.transform.SetParent(parentCanvas.transform, false);
         UIProxyObject.GetComponent<UIProxy>().Bind(UIOrigin);
-        foreach (Canvas canvas in canvases.Values)
-        {
-            if (canvas == parentCanvas)
-            {
-                continue;
-            }
-            canvas.GetComponent<CanvasGroup>().interactable = true;
-        }
+        //foreach (Canvas canvas in canvases.Values)
+        //{
+        //    if (canvas == parentCanvas)
+        //    {
+        //        continue;
+        //    }
+        //    canvas.GetComponent<CanvasGroup>().interactable = true;
+        //}
         Show(name);
     }
 

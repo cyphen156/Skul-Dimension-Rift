@@ -36,14 +36,14 @@ public static class Types
 
     public static Dictionary<Resolution, Vector2> resolutionMap = new()
     {
-        { Resolution.UHD_4K, new Vector2(4096, 2160) }, // DCI 4K (≈17:9)
-        { Resolution.UHD,    new Vector2(3840, 2160) }, // 4K UHD (16:9)
-        { Resolution.WQHD,   new Vector2(3440, 1440) }, // 울트라와이드 QHD (21:9)
-        { Resolution.QHD,    new Vector2(2560, 1440) }, // QHD (16:9)
-        { Resolution.FHD,    new Vector2(1920, 1080) }, // Full HD (16:9)
-        { Resolution.HD,     new Vector2(1280,  720) }, // HD (16:9)
-        { Resolution.SD,     new Vector2( 640,  480) }, // SD(4:3)
         { Resolution.Custom, new Vector2(   0,    0) }, // 사용자 지정
+        { Resolution.SD,     new Vector2( 640,  480) }, // SD(4:3)
+        { Resolution.HD,     new Vector2(1280,  720) }, // HD (16:9)
+        { Resolution.FHD,    new Vector2(1920, 1080) }, // Full HD (16:9)
+        { Resolution.QHD,    new Vector2(2560, 1440) }, // QHD (16:9)
+        { Resolution.WQHD,   new Vector2(3440, 1440) }, // 울트라와이드 QHD (21:9)
+        { Resolution.UHD,    new Vector2(3840, 2160) }, // 4K UHD (16:9)
+        { Resolution.UHD_4K, new Vector2(4096, 2160) }, // DCI 4K (≈17:9)
     };
 
     public enum GameMode
@@ -129,26 +129,26 @@ public static class Types
         public enum Resolution
         {
             // UHD_4K부터 QHD까지는 기기에 따른 제한 필요
-            UHD_4K,
-            UHD,
-            WQHD,
-            QHD,
-            FHD,
-            HD,
+            Custom,
             SD,
-            Custom
+            HD,
+            FHD,
+            QHD,
+            WQHD,
+            UHD,
+            UHD_4K,
         }
         public enum Window
         {
-            FullScreen, 
             Window,
             BorderlessFullScreen,
+            FullScreen, 
         }
 
         public enum LightingEffect
         {
-            On,
             Off,
+            On,
         }
 
         public enum ParticlePerformance
@@ -177,21 +177,21 @@ public static class Types
 
         public enum RukiMode
         {
-            On,
             Off,
+            On,
         }
 
         public enum ShowTimer
         {
-            On,
             Off,
+            On,
         }
 
         public enum ShowUIs
         {
-            All,
-            HudOff,
             None,
+            HudOff,
+            All,
         }
     #endregion UserData_Gameplay
     #endregion UserData Section
