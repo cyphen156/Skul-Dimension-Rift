@@ -8,8 +8,10 @@ namespace Assets.Scripts.Player
         public float maxHealth;
         public float currentHealth;
         public float moveSpeed;
+        public float jumpPower;
         public float attackDamage;
         public float attackSpeed;
         public float defense;
+        public int maxJumpCount;
     }
 }

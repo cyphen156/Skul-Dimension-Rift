@@ -8,9 +8,11 @@ using UnityEngine;
 public class PlayerManager : MonoBehaviour
 {
     [SerializeField] private Stat playerStat;
+    [SerializeField] private Animator animator;
 
     private void Awake()
     {
+        animator = GetComponent<Animator>();
         // 플레이어 초기화 로직
         InitializePlayer();
     }
@@ -21,14 +23,21 @@ public class PlayerManager : MonoBehaviour
             maxHealth = 100f,
             currentHealth = 100f,
             moveSpeed = 5f,
+            jumpPower = 7f,
             attackDamage = 10f,
             attackSpeed = 1f,
-            defense = 5f
+            defense = 5f,
+            maxJumpCount = 2,
         };
     }
 
     public Stat GetStat()
     {
         return playerStat;
+    }
+
+    public Animator GetAnimator()
+    {
+        return animator;
     }
 }

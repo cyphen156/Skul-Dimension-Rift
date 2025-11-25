@@ -5,20 +5,26 @@ namespace Assets.Scripts.Common
 {
     public class Movement : MonoBehaviour, IMoveable
     {
+        private Rigidbody2D rb;
+
+        private void Awake()
+        {
+            rb = GetComponent<Rigidbody2D>();
+        }
+
         public void Move(Vector2 direction)
         {
-            transform.Translate(direction * Time.deltaTime);
+            rb.linearVelocityX = direction.x;
         }
 
         public void Move(Vector3 direction)
         {
-            transform.Translate(direction * Time.deltaTime);
-        }
-        
-        public void Jump(float power)
-        {
-            transform.Translate(Vector2.up * power);
+            rb.linearVelocityX = direction.x;
         }
 
+        public void Jump(Vector2 jumpDirection, float jumpForce)
+        {
+            rb.AddForce(jumpDirection.normalized * jumpForce, ForceMode2D.Impulse);
+        }
     }
 }

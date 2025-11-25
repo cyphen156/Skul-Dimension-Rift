@@ -10,7 +10,13 @@ public class PlayerController : NetworkBehaviour
 {
     [SerializeField] private Vector2 velocity;
     [SerializeField] private InteractableDetector detector;
+    [SerializeField] private GroundDetector groundDetector;
     [SerializeField] private PlayerManager playerManager;
+    [SerializeField] private Animator animator;
+    [SerializeField] private bool isFlipped;
+
+    // 스테이트 머신으로 넘길 수 있는 영역
+    [SerializeField] private int jumpCount;
 
     private IMoveable playerMoter;
     private IInteractable currentTarget;
@@ -20,7 +26,10 @@ public class PlayerController : NetworkBehaviour
     {
         playerMoter = GetComponent<IMoveable>();
         playerManager = GetComponent<PlayerManager>();
+        animator = GetComponent<Animator>();
         detector = GetComponentInChildren<InteractableDetector>();
+
+        isFlipped = false;
 
         if (detector != null)
         {
@@ -28,9 +37,25 @@ public class PlayerController : NetworkBehaviour
         }
     }
 
+    private void OnEnable()
+    {
+        if (groundDetector != null)
+        {
+            groundDetector.isGroundedChanged += (isGrounded) =>
+            {
+                if (isGrounded)
+                {
+                    jumpCount = 0;
+                }
+            };
+        }
+}
     private void Start()
     {
-        InputManager.instance.RegisterPlayerInputAction(this);
+        if (InputManager.instance != null)
+        {
+            InputManager.instance.RegisterPlayerInputAction(this);
+        }
     }
     private void Update()
     {
@@ -50,82 +75,110 @@ public class PlayerController : NetworkBehaviour
         if (!ctx.performed)
         {
             velocity = Vector2.zero;
+            animator.SetBool("IsWalking", false);
             return;
         }
 
-        velocity = ctx.ReadValue<Vector2>() * playerManager.GetStat().moveSpeed;
+        Vector2 input = ctx.ReadValue<Vector2>();
+        velocity = input * playerManager.GetStat().moveSpeed;
+
+        if (velocity.x != 0)
+        {
+            bool currentFlip = input.x < 0;
+            if (isFlipped != currentFlip)
+            {
+                isFlipped = currentFlip;
+                transform.localScale = new Vector3(isFlipped ? -1 : 1, 1, 1);
+            }   
+        }
+
+        animator.SetBool("IsWalking", velocity.x != 0);
     }
 
     public void OnJump(InputAction.CallbackContext ctx)
     {
-        if (ctx.performed == false)
+        if (!ctx.performed)
         {
             return;
         }
-        // TODO
+
+        if (velocity.y < 0)
+        {
+            // TODO : fall animation
+            return;
+        }
+
+        if (jumpCount < playerManager.GetStat().maxJumpCount)
+        {
+            playerMoter.Jump(velocity, playerManager.GetStat().jumpPower);
+            animator.SetTrigger("Jump");
+            jumpCount++;
+        }
     }
 
     public void OnDash(InputAction.CallbackContext ctx)
     {
-        if (ctx.performed == false)
+        if (!ctx.performed)
         {
             return;
         }
-        // TODO
+
+        animator.SetTrigger("Dash");
     }
 
     public void OnAttack(InputAction.CallbackContext ctx)
     {
-        if (ctx.performed == false)
+        if (!ctx.performed)
         {
             return;
         }
-        // TODO
+
+        animator.SetTrigger("Attack");
     }
 
     public void OnSkill1(InputAction.CallbackContext ctx)
     {
-        if (ctx.performed == false)
+        if (!ctx.performed)
         {
             return;
         }
-        // TODO
+
     }
 
     public void OnSkill2(InputAction.CallbackContext ctx)
     {
-        if (ctx.performed == false)
+        if (!ctx.performed)
         {
             return;
         }
-        // TODO
+
     }
 
     public void OnSpirit(InputAction.CallbackContext ctx)
     {
-        if (ctx.performed == false)
+        if (!ctx.performed)
         {
             return;
         }
-        // TODO
+
     }
 
     public void OnSwitch(InputAction.CallbackContext ctx)
     {
-        if (ctx.performed == false)
+        if (!ctx.performed)
         {
             return;
         }
-        // TODO
+
     }
 
     public void OnInteraction(InputAction.CallbackContext ctx)
     {
-        if (ctx.performed == false)
+        if (!ctx.performed)
         {
             return;
         }
-        // TODO
+
     }
 
     public void OnScroll(InputAction.CallbackContext ctx)
