@@ -1,4 +1,5 @@
 using Assets.Scripts.Interface;
+using System;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -10,13 +11,19 @@ public class PlayerController : NetworkBehaviour
 {
     [SerializeField] private Vector2 velocity;
     [SerializeField] private InteractableDetector detector;
-    [SerializeField] private GroundDetector groundDetector;
+    [SerializeField] private GroundChecker groundChecker;
     [SerializeField] private PlayerManager playerManager;
     [SerializeField] private Animator animator;
+
+    [SerializeField] private Vector3 baseScale;
     [SerializeField] private bool isFlipped;
 
-    // 스테이트 머신으로 넘길 수 있는 영역
+
     [SerializeField] private int jumpCount;
+    [SerializeField] private float coyoteTime;
+    [SerializeField] private float lastGroundedTime;
+    [SerializeField] private bool isGrounded;
+    [SerializeField] private bool rawGrounded;
 
     private IMoveable playerMoter;
     private IInteractable currentTarget;
@@ -28,28 +35,31 @@ public class PlayerController : NetworkBehaviour
         playerManager = GetComponent<PlayerManager>();
         animator = GetComponent<Animator>();
         detector = GetComponentInChildren<InteractableDetector>();
+        groundChecker = GetComponentInChildren<GroundChecker>();
 
+        baseScale = transform.localScale;
         isFlipped = false;
 
+        jumpCount = 0;
+        coyoteTime = 0.1f;
+    }
+
+    private void OnEnable()
+    {
         if (detector != null)
         {
             detector.OnTargetChanged += HandleTargetChanged;
         }
     }
 
-    private void OnEnable()
+    
+    private void OnDisable()
     {
-        if (groundDetector != null)
+        if (detector != null)
         {
-            groundDetector.isGroundedChanged += (isGrounded) =>
-            {
-                if (isGrounded)
-                {
-                    jumpCount = 0;
-                }
-            };
+            detector.OnTargetChanged -= HandleTargetChanged;
         }
-}
+    }
     private void Start()
     {
         if (InputManager.instance != null)
@@ -67,6 +77,10 @@ public class PlayerController : NetworkBehaviour
         playerMoter.Move(velocity);
     }
 
+    private void FixedUpdate()
+    {
+        UpdateGroundState();
+    }
     #endregion Unity Methods
 
     #region Input Methods
@@ -85,11 +99,17 @@ public class PlayerController : NetworkBehaviour
         if (velocity.x != 0)
         {
             bool currentFlip = input.x < 0;
+
             if (isFlipped != currentFlip)
             {
                 isFlipped = currentFlip;
-                transform.localScale = new Vector3(isFlipped ? -1 : 1, 1, 1);
-            }   
+                float sign = isFlipped ? -1f : 1f;
+                transform.localScale = new Vector3(
+                    baseScale.x * sign,
+                    baseScale.y,
+                    baseScale.z
+                );
+            }
         }
 
         animator.SetBool("IsWalking", velocity.x != 0);
@@ -108,7 +128,7 @@ public class PlayerController : NetworkBehaviour
             return;
         }
 
-        if (jumpCount < playerManager.GetStat().maxJumpCount)
+        if (CanJump())
         {
             playerMoter.Jump(velocity, playerManager.GetStat().jumpPower);
             animator.SetTrigger("Jump");
@@ -212,6 +232,44 @@ public class PlayerController : NetworkBehaviour
         // TODO
     }
     #endregion Input Methods
+    private void UpdateGroundState()
+    {
+        if (groundChecker == null)
+        {
+            return;
+        }
+
+        rawGrounded = groundChecker.CheckGround();
+
+        if (rawGrounded)
+        {
+            lastGroundedTime = Time.time;
+
+            if (isGrounded == false)
+            {
+                jumpCount = 0;
+            }
+        }
+
+        bool bufferedGround = (Time.time - lastGroundedTime) <= coyoteTime;
+
+        if (bufferedGround != isGrounded)
+        {
+            isGrounded = bufferedGround;
+            animator.SetBool("IsGrounded", isGrounded);
+        }
+    }
+
+    private bool CanJump()
+    {
+        var stat = playerManager.GetStat();
+
+        bool hasJumpSlot = jumpCount < stat.maxJumpCount;
+        bool coyoteAvailable =
+            (Time.time - lastGroundedTime) <= coyoteTime;
+
+        return hasJumpSlot || coyoteAvailable;
+    }
 
     private void HandleTargetChanged(IInteractable target)
     {

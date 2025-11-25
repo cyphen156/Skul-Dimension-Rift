@@ -3,16 +3,24 @@
 namespace Assets.Scripts.Common
 {
     [RequireComponent(typeof(SpriteRenderer))]
+    [RequireComponent(typeof(Rigidbody2D))]
+    [RequireComponent(typeof(BoxCollider2D))]
     public class ViewObject : MonoBehaviour
     {
         [SerializeField] [HexView] 
         protected uint objectKey;
 
         protected SpriteRenderer spriteRenderer;
+        protected Rigidbody2D rb;
+        protected BoxCollider2D boxCollider;
 
         protected virtual void Awake()
         {
             spriteRenderer = GetComponent<SpriteRenderer>();
+            rb = GetComponent<Rigidbody2D>();
+            rb.gravityScale = 0f;
+            boxCollider = GetComponent<BoxCollider2D>();
+
         }
 
         protected virtual void Start()

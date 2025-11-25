@@ -263,14 +263,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 287774096118208603, guid: 9f543e82509c22e40b056a78f9964177, type: 3}
-      propertyPath: m_Controller
-      value: 
-      objectReference: {fileID: 9100000, guid: ffaa039b54245184599e34e57045b04e, type: 2}
-    - target: {fileID: 1705839957471426144, guid: 9f543e82509c22e40b056a78f9964177, type: 3}
-      propertyPath: m_Sprite
-      value: 
-      objectReference: {fileID: 21300000, guid: e4ab16180fe5dea4fbbc3c17eaa4ab20, type: 3}
     - target: {fileID: 4334981349602461559, guid: 9f543e82509c22e40b056a78f9964177, type: 3}
       propertyPath: GlobalObjectIdHash
       value: 1389661034
@@ -285,7 +277,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5807782946385115235, guid: 9f543e82509c22e40b056a78f9964177, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0
+      value: -1
       objectReference: {fileID: 0}
     - target: {fileID: 5807782946385115235, guid: 9f543e82509c22e40b056a78f9964177, type: 3}
       propertyPath: m_LocalRotation.w
@@ -315,14 +307,38 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5846909483348963671, guid: 9f543e82509c22e40b056a78f9964177, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6349638210191267297, guid: 9f543e82509c22e40b056a78f9964177, type: 3}
+      propertyPath: m_Size.y
+      value: 0.68086433
+      objectReference: {fileID: 0}
+    - target: {fileID: 6349638210191267297, guid: 9f543e82509c22e40b056a78f9964177, type: 3}
+      propertyPath: m_Offset.y
+      value: 0.15956783
+      objectReference: {fileID: 0}
+    - target: {fileID: 6349638210191267297, guid: 9f543e82509c22e40b056a78f9964177, type: 3}
+      propertyPath: m_IsTrigger
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 7600135587762344979, guid: 9f543e82509c22e40b056a78f9964177, type: 3}
       propertyPath: m_Name
       value: Player
       objectReference: {fileID: 0}
+    - target: {fileID: 9107135993705058412, guid: 9f543e82509c22e40b056a78f9964177, type: 3}
+      propertyPath: groundMask.m_Bits
+      value: 64
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
-    m_RemovedGameObjects: []
+    m_RemovedGameObjects:
+    - {fileID: 8697242044916298920, guid: 9f543e82509c22e40b056a78f9964177, type: 3}
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 7600135587762344979, guid: 9f543e82509c22e40b056a78f9964177, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 928810244}
   m_SourcePrefab: {fileID: 100100000, guid: 9f543e82509c22e40b056a78f9964177, type: 3}
 --- !u!1 &519420028
 GameObject:
@@ -735,7 +751,7 @@ Transform:
   m_GameObject: {fileID: 862205229}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2.77758, y: -1.23818, z: 0}
+  m_LocalPosition: {x: 2.77758, y: -1.23818, z: -1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -827,6 +843,27 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 8192006617575554361, guid: ec6698e08937707478caa58471391cdc, type: 3}
   m_PrefabInstance: {fileID: 395768763437067731}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &928810231 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 7600135587762344979, guid: 9f543e82509c22e40b056a78f9964177, type: 3}
+  m_PrefabInstance: {fileID: 515451084}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &928810244
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 928810231}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f46e52609d7712c48899721ced67fba8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GroundChecker
+  groundCheckDistance: 0
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 0
 --- !u!1001 &1118682746
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1016,7 +1053,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1784605775}
   - component: {fileID: 1784605774}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Collider
   m_TagString: Untagged
   m_Icon: {fileID: 0}
