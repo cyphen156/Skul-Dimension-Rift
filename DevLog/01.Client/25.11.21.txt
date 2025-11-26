@@ -1,7 +1,7 @@
 Branch
     아이템 프리팹 개발
 
-Commit 
+Commit 152f3a5
     [Struct] ObjectKey 32bit 레이아웃 도입 및 Domain/Hex 디버그 구조 정리
 
 변경 요약

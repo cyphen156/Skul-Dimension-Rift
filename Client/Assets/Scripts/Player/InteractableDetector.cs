@@ -6,7 +6,6 @@ using UnityEngine;
 public class InteractableDetector : MonoBehaviour
 {
     public event Action<IInteractable> OnTargetChanged;
-
     private List<IInteractable> detectedObjects = new List<IInteractable>();
     private IInteractable currentTarget;
 
@@ -43,6 +42,21 @@ public class InteractableDetector : MonoBehaviour
     }
 #endif
 
+    private void Awake()
+    {
+        Transform parentTransform = transform.parent;
+        BoxCollider2D parent = parentTransform.GetComponent<BoxCollider2D>();
+        BoxCollider2D self = GetComponent<BoxCollider2D>();
+
+        self.size = new Vector2(parent.size.x * 1.2f, parent.size.y);
+        self.offset = parent.offset;
+        self.isTrigger = true;
+
+        if (parent != null && self != null)
+        {
+            Physics2D.IgnoreCollision(parent, self);
+        }
+    }
     private void OnTriggerEnter2D(Collider2D other)
     {
         IInteractable interactable;

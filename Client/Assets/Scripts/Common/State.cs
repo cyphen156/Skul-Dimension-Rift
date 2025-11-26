@@ -1,24 +1,29 @@
-using UnityEngine;
+using System;
 
+[Serializable]
 public class State
 {
-    public enum PlayerState
+    [Serializable]
+    public enum LifeState
     {
-        None = 0,
-
-        Idle,
-        Move,
-
-        Jump,
-        Fall,
-        JumpAttack,
-
-        Attack,
-        Dash,
-
-        Skill1,
-        Skill2,
-
+        Alive,
         Dead,
+        Invincible
+    }
+
+    [Serializable]
+    public enum MovementState
+    {
+        Idle,
+        Waiting,
+        Moving,
+    }
+
+    [Serializable]
+    public enum ActionState
+    {
+        Idle,       // No action
+        Movement,   
+        Combat, 
     }
 }

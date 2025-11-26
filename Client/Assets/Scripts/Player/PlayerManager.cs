@@ -9,7 +9,7 @@ public class PlayerManager : MonoBehaviour
 {
     [SerializeField] private Stat playerStat;
     [SerializeField] private Animator animator;
-
+    [SerializeField] private PlayerStateMachine stateMachine;
     private void Awake()
     {
         animator = GetComponent<Animator>();
@@ -29,6 +29,13 @@ public class PlayerManager : MonoBehaviour
             defense = 5f,
             maxJumpCount = 2,
         };
+
+        stateMachine = new PlayerStateMachine();
+    }
+
+    public PlayerStateMachine GetStateMachine()
+    {
+        return stateMachine;
     }
 
     public Stat GetStat()
