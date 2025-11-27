@@ -92,6 +92,7 @@
     <Compile Include="Assets\Scripts\Data\Stat.cs" />
     <Compile Include="Assets\Scripts\Interface\IInteractive.cs" />
     <Compile Include="Assets\Scripts\UI\Loading\LoadingText.cs" />
+    <Compile Include="Assets\Scripts\Common\Locker.cs" />
     <Compile Include="Assets\Scripts\Utility\Serializer.cs" />
     <Compile Include="Assets\Scripts\Managers\ResourceManager.cs" />
     <Compile Include="Assets\TextMesh Pro\Examples &amp; Extras\Scripts\ObjectSpin.cs" />

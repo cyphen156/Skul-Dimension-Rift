@@ -6,11 +6,7 @@ namespace Assets.Scripts.Common
     public class StateMachine<TState> : IStateMachine<TState>
         where TState : struct, Enum
     {
-        public TState State
-        {
-            get;
-            private set;
-        }
+        public TState State { get; private set; }
 
         public StateMachine(TState initialState)
         {

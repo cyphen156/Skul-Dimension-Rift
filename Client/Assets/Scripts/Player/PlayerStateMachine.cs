@@ -9,6 +9,7 @@ namespace Assets.Scripts.Player
     public class PlayerStateMachine : IContainer
     {
         private readonly Dictionary<Type, object> _machines;
+        private Locker<IStateMachine> locker = new Locker<IStateMachine>();
 
         public StateMachine<LifeState> Life
         {
@@ -34,7 +35,7 @@ namespace Assets.Scripts.Player
             _machines[typeof(MovementState)] = new StateMachine<MovementState>(MovementState.Idle);
         }
 
-        public bool ChangeState<TState>(TState next) where TState : struct, Enum
+        public bool ChangeState<TState>(TState next, bool lockFlag = false, float duration = 0.0f) where TState : struct, Enum
         {
             object machineObject;
 
@@ -44,7 +45,27 @@ namespace Assets.Scripts.Player
             }
 
             StateMachine<TState> machine = (StateMachine<TState>)machineObject;
-            return machine.ChangeState(next);
+            
+            // 먼저 락커에 있는지 확인
+            if (locker.IsLocked(machine))
+            {
+                return false;
+            }
+
+            // 잠금 플래그가 왔을 경우 락킹
+            bool changed = machine.ChangeState(next);
+
+            if (!changed)
+            {
+                return false;
+            }
+
+            if (lockFlag == true)
+            {
+                locker.Lock(machine, duration);
+            }
+
+            return true;
         }
 
         // Get the current state of the specified state machine

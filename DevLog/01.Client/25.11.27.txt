@@ -1,0 +1,61 @@
+Branch 
+    #7 FSM 개발
+
+Commit 
+    [Feat][Player] FSM 컨테이너 & Locker 도입
+
+변경 요약
+    플레이어 상태 전이를 일관되게 관리하기 위해 범용 FSM 인프라를 도입했습니다.
+    PSM(PlayerStateMachine)은 Life / Movement 등의 서브 상태머신을 보관하는 컨테이너가 되었으며,
+    Locker 클래스를 통해 특정 상태머신에 대해 시간 기반/영구 잠금을 설정할 수 있습니다.
+    PlayerController는 더 이상 애니메이터 파라미터를 직접 제어하기보다,
+    PSM에 상태 전이 요청을 보내는 형태로 점진적으로 전환될 예정입니다.
+
+상세 수정 내용
+    State.cs
+        - LifeState / MovementState / ActionState enum 정의
+        - 논리적인 도메인 상태(생존, 이동, 액션)를 Animator 파라미터와 분리된 독립 축으로 분리
+
+    IStateMachine.cs
+        - IStateMachine (비제네릭) / IStateMachine<TState> (제네릭) 인터페이스 추가
+        - 모든 상태머신을 Locker에서 공통으로 다룰 수 있도록 상위 인터페이스 계층 정리
+        - ChangeState(TState) / State 프로퍼티를 통해 최소한의 공통 API 규약 제공
+
+    StateMachine<TState>.cs
+        - 제네릭 상태머신 구현
+        - 동일 상태 재요청 시 무시하는 ChangeState(TState next) 기본 정책 정의
+        - 순수 C# 객체로 설계하여, MonoBehaviour에 의존하지 않는 도메인 로직으로 유지
+
+    Locker<T>.cs
+        - 특정 타겟(T)에 대해 상태 전이를 잠그는 범용 Locker 구현
+        - duration > 0.0f : 타이머 기반 잠금 (Time.time + duration 이후 자동 해제)
+        - duration <= 0.0f : hasTimer = false 로 설정된 영구 잠금
+        - IsLocked(target) 호출 시, 타이머가 만료된 잠금은 그 시점에 Unlock(target) 처리
+        - ForceUnlock(target) 제공으로, 타이머와 무관하게 강제 해제 가능
+
+    PlayerStateMachine.cs
+        - Life / Movement용 StateMachine<TState> 인스턴스를 관리하는 컨테이너 역할로 전환
+        - 내부 딕셔너리(Dictionary<Type, object>)로 상태 축별 서브 상태머신을 보관
+        - ChangeState<TState>(TState next, bool lockFlag, float duration) 제공
+        · 상태 타입(TState) 기반으로 해당 서브 상태머신 조회
+        · Locker<IStateMachine>를 통해 먼저 잠금 여부 검사
+        · 상태 전이가 성공했을 때에만 lockFlag/duration에 따라 Locker에 등록
+        - GetState<TState>()로 각 축의 현재 상태 조회 지원
+        - 에디터 전용 GetAllCurrentStates() 제공 (LifeState / MovementState 문자열 맵 반환)
+
+    Serializer.cs
+        - Dictionary<string, string> → SerializableKeyValuePair 리스트 변환 유틸 추가
+        - 인스펙터에서 상태 디버깅 용도로 사용 (Key/Value 쌍 확인)
+
+    PlayerController.cs
+        - PlayerManager에서 PlayerStateMachine 참조를 주입받도록 변경
+        - Update()에서 PSM의 MovementState를 조회해 대기 상태(Idle → Waiting) 전환 코루틴과 연동
+        - 에디터 전용 currentStates 리스트를 통해 PSM 상태를 직렬화해 인스펙터에서 확인 가능하도록 처리
+        - 향후 입력 처리(이동, 점프, 대쉬 등)를 직접 애니메이터에 전달하는 대신
+        PSM.ChangeState(...) 호출로 위임하도록 리팩터링할 기반 마련
+
+    향후 계획
+        - VerticalState / AttackState 등 추가 축을 PlayerStateMachine에 편입하여,
+            애니메이션 파라미터를 전부 FSM에서 계산한 결과만으로 동기화하도록 구조 통합
+        - Locker를 대쉬, 피격 무적, 스킬 사용 등 “일시적으로 상태 전이를 막아야 하는 구간” 전반에 적용
+        - Animator 파라미터 세트(Trigger/Bool)를 PSM에서 일괄 관리하는 Sync 레이어 추가 검토 (AnimationSync 등)
