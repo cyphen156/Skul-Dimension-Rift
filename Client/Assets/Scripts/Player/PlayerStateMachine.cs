@@ -27,49 +27,44 @@ namespace Assets.Scripts.Player
             }
         }
 
+        public StateMachine<GroundState> Ground
+        {
+            get
+            {
+                return (StateMachine<GroundState>)_machines[typeof(GroundState)];
+            }
+        }
+
         public PlayerStateMachine()
         {
             _machines = new Dictionary<Type, object>();
 
             _machines[typeof(LifeState)] = new StateMachine<LifeState>(LifeState.Alive);
             _machines[typeof(MovementState)] = new StateMachine<MovementState>(MovementState.Idle);
+            _machines[typeof(GroundState)] = new StateMachine<GroundState>(GroundState.Ground);
         }
 
-        public bool ChangeState<TState>(TState next, bool lockFlag = false, float duration = 0.0f) where TState : struct, Enum
+        public bool ChangeState<TState>(TState next) where TState : struct, Enum
         {
-            object machineObject;
+            StateMachine<TState> machine = GetMachine<TState>();
 
-            if (_machines.TryGetValue(typeof(TState), out machineObject) == false)
-            {
-                throw new ArgumentException("Unsupported state type: " + typeof(TState).Name);
-            }
-
-            StateMachine<TState> machine = (StateMachine<TState>)machineObject;
-            
             // 먼저 락커에 있는지 확인
             if (locker.IsLocked(machine))
             {
                 return false;
             }
 
-            // 잠금 플래그가 왔을 경우 락킹
-            bool changed = machine.ChangeState(next);
-
-            if (!changed)
-            {
-                return false;
-            }
-
-            if (lockFlag == true)
-            {
-                locker.Lock(machine, duration);
-            }
-
-            return true;
+            return machine.ChangeState(next);
         }
 
         // Get the current state of the specified state machine
         public TState GetState<TState>() where TState : struct, Enum
+        {
+            StateMachine<TState> machine = GetMachine<TState>();
+            return machine.State;
+        }
+
+        private StateMachine<TState> GetMachine<TState>() where TState : struct, Enum
         {
             object machineObject;
 
@@ -78,8 +73,19 @@ namespace Assets.Scripts.Player
                 throw new ArgumentException("Unsupported state type: " + typeof(TState).Name);
             }
 
-            StateMachine<TState> machine = (StateMachine<TState>)machineObject;
-            return machine.State;
+            return (StateMachine<TState>)machineObject;
+        }
+
+        public void LockStateMachine<TState>(float duration = 0f) where TState : struct, Enum
+        {
+            StateMachine<TState> machine = GetMachine<TState>();
+            locker.Lock(machine, duration);
+        }
+
+        public void UnLockState<TState>() where TState : struct, Enum
+        {
+            StateMachine<TState> machine = GetMachine<TState>();
+            locker.ForceUnlock(machine);
         }
 
 #if UNITY_EDITOR
@@ -90,7 +96,7 @@ namespace Assets.Scripts.Player
 
             states["LifeState"] = Life.State.ToString();
             states["MovementState"] = Movement.State.ToString();
-
+            states["GroundState"] = Ground.State.ToString();
             return states;
         }
 #endif

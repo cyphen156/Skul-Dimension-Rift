@@ -15,8 +15,16 @@ public class State
     public enum MovementState
     {
         Idle,
-        Waiting,
-        Moving,
+        Wait,
+        Move,
+    }
+
+    [Serializable]
+    public enum GroundState
+    {
+        Ground,
+        Jump,
+        Fall,
     }
 
     [Serializable]

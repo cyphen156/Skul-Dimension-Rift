@@ -1,9 +1,4 @@
-using Assets.Scripts.Common;
 using Assets.Scripts.Interface;
-using Assets.Scripts.Player;
-using Assets.Scripts.Utility;
-using System.Collections;
-using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -18,46 +13,29 @@ public class PlayerController : NetworkBehaviour
     [SerializeField] private InteractableDetector detector;
     [SerializeField] private GroundChecker groundChecker;
     [SerializeField] private PlayerManager playerManager;
-    [SerializeField] private PlayerStateMachine stateMachine;
-    [SerializeField] private Animator animator;
 
     [SerializeField] private Vector3 baseScale;
     [SerializeField] private bool isFlipped;
 
 
-    [SerializeField] private int jumpCount;
-    [SerializeField] private float waitingTime;
     [SerializeField] private float coyoteTime;
     [SerializeField] private float lastGroundedTime;
-    [SerializeField] private bool isGrounded;
     [SerializeField] private bool rawGrounded;
-
-    private Coroutine waitingCoroutine;
+    [SerializeField] private bool isGrounded;
 
     private IMoveable playerMoter;
     private IInteractable currentTarget;
 
-#if UNITY_EDITOR
-    [SerializeField] private List<SerializableKeyValuePair> currentStates = new List<SerializableKeyValuePair>();
-#endif
     #region Unity Methods
     private void Awake()
     {
         playerMoter = GetComponent<IMoveable>();
         playerManager = GetComponent<PlayerManager>();
-        animator = GetComponent<Animator>();
         detector = GetComponentInChildren<InteractableDetector>();
         groundChecker = GetComponentInChildren<GroundChecker>();
 
-        if (playerManager != null)
-        {
-            stateMachine = playerManager.GetStateMachine();
-        }
-
         baseScale = transform.localScale;
         isFlipped = false;
-        waitingTime = 5f;
-        jumpCount = 0;
         coyoteTime = 0.1f;
     }
 
@@ -88,13 +66,9 @@ public class PlayerController : NetworkBehaviour
     {
         //if (!IsOwner)
         //{
-        //    return;
+        //    return;   
         //}
         playerMoter.Move(velocity);
-#if UNITY_EDITOR
-        // Debugging code can be placed here
-        currentStates = Serializer.ToDebugList(stateMachine.GetAllCurrentStates());
-#endif
     }
 
     private void FixedUpdate()
@@ -110,12 +84,7 @@ public class PlayerController : NetworkBehaviour
         if (!ctx.performed)
         {
             velocity = Vector2.zero;
-            stateMachine.ChangeState(MovementState.Idle);
-            animator.SetBool("IsWalking", false);
-            if (waitingCoroutine == null)
-            {
-                waitingCoroutine = StartCoroutine(C_WaitingCounter());
-            }
+            playerManager.TryChangeState(MovementState.Idle);
             return;
         }
 
@@ -139,10 +108,11 @@ public class PlayerController : NetworkBehaviour
                 );
             }
         }
+        MovementState nextMovement = Mathf.Approximately(velocity.x, 0.0f)
+                ? MovementState.Idle
+                : MovementState.Move;
 
-        stateMachine.ChangeState(MovementState.Moving);
-
-        animator.SetBool("IsWalking", velocity.x != 0.0f);
+        playerManager.TryChangeState(nextMovement);
     }
 
     public void OnJump(InputAction.CallbackContext ctx)
@@ -152,17 +122,16 @@ public class PlayerController : NetworkBehaviour
             return;
         }
 
-
-        if (CanJump())
+        if (velocity.y < 0)
         {
-            if (velocity.y < 0)
-            {
-                DownJump();
-                return;
-            }
+            DownJump();
+            return;
+        }
+
+        if (playerManager.CanJump() && playerManager.TryChangeState(GroundState.Jump))
+        {
+            playerManager.UseJump();
             playerMoter.Jump(velocity, playerManager.GetStat().jumpPower);
-            animator.SetTrigger("Jump");
-            jumpCount++;
         }
     }
 
@@ -172,8 +141,6 @@ public class PlayerController : NetworkBehaviour
         {
             return;
         }
-
-        animator.SetTrigger("Dash");
     }
 
     public void OnAttack(InputAction.CallbackContext ctx)
@@ -182,8 +149,6 @@ public class PlayerController : NetworkBehaviour
         {
             return;
         }
-
-        animator.SetTrigger("Attack");
     }
 
     public void OnSkill1(InputAction.CallbackContext ctx)
@@ -275,12 +240,11 @@ public class PlayerController : NetworkBehaviour
         {
             lastGroundedTime = coyoteTime;
 
-            if (!isGrounded)
+            if (isGrounded == false)
             {
-                jumpCount = 0;
+                playerManager.ResetJump();
             }
         }
-
         else
         {
             if (lastGroundedTime > 0f)
@@ -289,18 +253,21 @@ public class PlayerController : NetworkBehaviour
             }
         }
 
-        bool bufferedGround = rawGrounded || (lastGroundedTime > 0f);
+        bool bufferedGround = rawGrounded || (lastGroundedTime > 0.0f);
 
         if (bufferedGround != isGrounded)
         {
             isGrounded = bufferedGround;
-            animator.SetBool("IsGrounded", isGrounded);
-        }
-    }
 
-    private bool CanJump()
-    {
-        return isGrounded && jumpCount < playerManager.GetStat().maxJumpCount;
+            if (isGrounded == true)
+            {
+                playerManager.TryChangeState(GroundState.Ground);
+            }
+            else
+            {
+                playerManager.TryChangeState(GroundState.Fall);
+            }
+        }
     }
 
     private void DownJump()
@@ -309,6 +276,7 @@ public class PlayerController : NetworkBehaviour
         {
             return;
         }
+        playerManager.TryChangeState(GroundState.Fall);
     }
 
     private void HandleTargetChanged(IInteractable target)
@@ -375,24 +343,5 @@ public class PlayerController : NetworkBehaviour
         {
             widget.SetInteracting(flag);
         }
-    }
-
-    private IEnumerator C_WaitingCounter()
-    {
-        float duration = waitingTime;
-
-        while (duration > 0.0f)
-        {
-            if (stateMachine.GetState<MovementState>() != MovementState.Idle)
-            {
-                yield break;
-            }
-
-            duration -= Time.deltaTime;
-            yield return null;
-        }
-
-        stateMachine.ChangeState(MovementState.Waiting);
-        animator.SetTrigger("Wait");
     }
 }
