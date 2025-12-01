@@ -130,7 +130,6 @@ public class PlayerController : NetworkBehaviour
 
         if (playerManager.CanJump() && playerManager.TryChangeState(GroundState.Jump))
         {
-            playerManager.UseJump();
             playerMoter.Jump(velocity, playerManager.GetStat().jumpPower);
         }
     }
@@ -239,11 +238,6 @@ public class PlayerController : NetworkBehaviour
         if (rawGrounded)
         {
             lastGroundedTime = coyoteTime;
-
-            if (isGrounded == false)
-            {
-                playerManager.ResetJump();
-            }
         }
         else
         {
@@ -259,7 +253,7 @@ public class PlayerController : NetworkBehaviour
         {
             isGrounded = bufferedGround;
 
-            if (isGrounded == true)
+            if (isGrounded)
             {
                 playerManager.TryChangeState(GroundState.Ground);
             }

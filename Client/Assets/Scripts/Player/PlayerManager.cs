@@ -83,34 +83,82 @@ public class PlayerManager : MonoBehaviour
     }
 
     // use this if animation Param is trigger
-    public bool TryChangeState<T>(T state, string paramName = null) where T : struct, Enum
+    public bool TryChangeState<T>(T next) where T : struct, Enum
     {
-        bool accept = stateMachine.ChangeState(state);
+        T current = stateMachine.GetState<T>();
 
-        if (!accept)
+        if (stateMachine.ChangeState(next) == false)
         {
             return false;
         }
 
+        OnStateChanged(current, next);
         return true;
+    }
+
+    private void OnStateChanged<T>(T prev, T next) where T : struct, Enum
+    {
+        Type type = typeof(T);
+
+        if (type == typeof(GroundState))
+        {
+            HandleGroundStateChanged(
+                (GroundState)(object)prev,
+                (GroundState)(object)next
+            );
+        }
+        else if (type == typeof(MovementState))
+        {
+            HandleMovementStateChanged(
+                (MovementState)(object)prev,
+                (MovementState)(object)next
+            );
+        }
+    }
+
+    private void HandleGroundStateChanged(GroundState prev, GroundState next)
+    {
+        switch (next)
+        {
+            case GroundState.Jump:
+                {
+                    jumpCount++;
+
+                    animator.SetBool("IsGrounded", false);
+                    animator.SetTrigger("Jump");
+
+                    float duration;
+                    if (clipDurations.TryGetValue("Jump", out duration) == true)
+                    {
+                        stateMachine.LockStateMachine<GroundState>(duration);
+                    }
+
+                    break;
+                }
+
+            case GroundState.Ground:
+                {
+                    jumpCount = 0;
+                    animator.SetBool("IsGrounded", true);
+                    break;
+                }
+
+            case GroundState.Fall:
+                {
+                    animator.SetBool("IsGrounded", false);
+                    break;
+                }
+        }
+    }
+
+    private void HandleMovementStateChanged(MovementState prev, MovementState next)
+    {
+        bool walking = next == MovementState.Move;
+        animator.SetBool("IsWalking", walking);
     }
 
     public bool CanJump()
     {
         return jumpCount < playerStat.maxJumpCount;
-    }
-
-    public void ResetJump()
-    {
-        jumpCount = 0;
-    }
-
-    public void UseJump()
-    {
-        jumpCount++;
-        animator.SetTrigger("Jump");
-
-        clipDurations.TryGetValue("Jump", out float duration);
-        stateMachine.LockStateMachine<GroundState>(duration);
     }
 }

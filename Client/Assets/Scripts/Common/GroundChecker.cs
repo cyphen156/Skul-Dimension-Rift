@@ -40,6 +40,14 @@ public class GroundChecker : MonoBehaviour
 
         transform.position = pivotAnchor.position;
     }
+
+    private void FixedUpdate()
+    {
+        if (selfCollider != null)
+        {
+
+        }
+    }
     public bool CheckGround()
     {
         Vector3 origin = transform.position;

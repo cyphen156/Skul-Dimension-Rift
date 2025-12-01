@@ -6,6 +6,7 @@ public class State
     [Serializable]
     public enum LifeState
     {
+        None,
         Alive,
         Dead,
         Invincible
@@ -14,6 +15,7 @@ public class State
     [Serializable]
     public enum MovementState
     {
+        None,
         Idle,
         Wait,
         Move,
@@ -22,6 +24,7 @@ public class State
     [Serializable]
     public enum GroundState
     {
+        None,
         Ground,
         Jump,
         Fall,
@@ -30,7 +33,8 @@ public class State
     [Serializable]
     public enum ActionState
     {
-        Idle,       // No action
+        None,
+        Idle,
         Movement,   
         Combat, 
     }

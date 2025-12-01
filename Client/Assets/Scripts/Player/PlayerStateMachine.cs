@@ -39,9 +39,9 @@ namespace Assets.Scripts.Player
         {
             _machines = new Dictionary<Type, object>();
 
-            _machines[typeof(LifeState)] = new StateMachine<LifeState>(LifeState.Alive);
-            _machines[typeof(MovementState)] = new StateMachine<MovementState>(MovementState.Idle);
-            _machines[typeof(GroundState)] = new StateMachine<GroundState>(GroundState.Ground);
+            _machines[typeof(LifeState)] = new StateMachine<LifeState>(LifeState.None);
+            _machines[typeof(MovementState)] = new StateMachine<MovementState>(MovementState.None);
+            _machines[typeof(GroundState)] = new StateMachine<GroundState>(GroundState.None);
         }
 
         public bool ChangeState<TState>(TState next) where TState : struct, Enum
