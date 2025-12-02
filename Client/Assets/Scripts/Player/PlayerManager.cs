@@ -82,18 +82,26 @@ public class PlayerManager : MonoBehaviour
         return stateMachine.GetState<T>();
     }
 
-    // use this if animation Param is trigger
-    public bool TryChangeState<T>(T next) where T : struct, Enum
+    public bool TryChangeState<T>(T next, bool isForceChange = false) where T : struct, Enum
     {
         T current = stateMachine.GetState<T>();
 
-        if (stateMachine.ChangeState(next) == false)
+        bool result;
+        if (isForceChange)
         {
-            return false;
+            result = stateMachine.ForceChangeState(next);
+        }
+        else
+        {
+            result = stateMachine.ChangeState(next);
         }
 
-        OnStateChanged(current, next);
-        return true;
+        if (result)
+        {
+            OnStateChanged(current, next);
+        }
+
+        return result;
     }
 
     private void OnStateChanged<T>(T prev, T next) where T : struct, Enum

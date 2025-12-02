@@ -57,6 +57,19 @@ namespace Assets.Scripts.Player
             return machine.ChangeState(next);
         }
 
+        public bool ForceChangeState<TState>(TState next) where TState : struct, Enum
+        {
+            StateMachine<TState> machine = GetMachine<TState>();
+
+            // 상태가 잠겨있다면 해제
+            if (locker.IsLocked(machine))
+            {
+                UnLockState<TState>();
+            }
+
+            return machine.ForceChageState(next);
+        }
+
         // Get the current state of the specified state machine
         public TState GetState<TState>() where TState : struct, Enum
         {

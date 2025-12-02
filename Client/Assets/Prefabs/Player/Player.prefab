@@ -87,7 +87,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 1646632764
+  GlobalObjectIdHash: 1389661034
   InScenePlacedSourceGlobalObjectIdHash: 1646632764
   DeferredDespawnTick: 0
   Ownership: 1
@@ -117,14 +117,12 @@ MonoBehaviour:
   detector: {fileID: 0}
   groundChecker: {fileID: 0}
   playerManager: {fileID: 0}
-  animator: {fileID: 0}
   baseScale: {x: 0, y: 0, z: 0}
   isFlipped: 0
-  jumpCount: 0
   coyoteTime: 0
   lastGroundedTime: 0
-  isGrounded: 0
   rawGrounded: 0
+  isGrounded: 0
 --- !u!114 &2261814777178229412
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -158,7 +156,10 @@ MonoBehaviour:
     attackSpeed: 0
     defense: 0
     maxJumpCount: 0
+    currentJumpCount: 0
   animator: {fileID: 0}
+  jumpCount: 0
+  currentStates: []
 --- !u!114 &5364784989145500877
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -542,11 +543,69 @@ PrefabInstance:
       propertyPath: m_Name
       value: GroundChecker
       objectReference: {fileID: 0}
+    - target: {fileID: 6215862386937785194, guid: e5a9e26c0ea4fc444bff912f28981d93, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 6215862386937785194, guid: e5a9e26c0ea4fc444bff912f28981d93, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7227628156490389352}
   m_SourcePrefab: {fileID: 100100000, guid: e5a9e26c0ea4fc444bff912f28981d93, type: 3}
+--- !u!1 &2956002896183147289 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6215862386937785194, guid: e5a9e26c0ea4fc444bff912f28981d93, type: 3}
+  m_PrefabInstance: {fileID: 9171291540921176179}
+  m_PrefabAsset: {fileID: 0}
+--- !u!61 &7227628156490389352
+BoxCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2956002896183147289}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0, y: 0}
+    oldSize: {x: 0, y: 0}
+    newSize: {x: 0, y: 0}
+    adaptiveTilingThreshold: 0
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Size: {x: 0.4, y: 0.01}
+  m_EdgeRadius: 0
 --- !u!4 &3108999982320882096 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6080873330905727427, guid: e5a9e26c0ea4fc444bff912f28981d93, type: 3}

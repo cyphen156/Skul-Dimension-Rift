@@ -62,17 +62,10 @@ public class PlayerController : NetworkBehaviour
             InputManager.instance.RegisterPlayerInputAction(this);
         }
     }
-    private void Update()
-    {
-        //if (!IsOwner)
-        //{
-        //    return;   
-        //}
-        playerMoter.Move(velocity);
-    }
 
     private void FixedUpdate()
     {
+        playerMoter.Move(velocity);
         UpdateGroundState();
     }
 
@@ -128,9 +121,10 @@ public class PlayerController : NetworkBehaviour
             return;
         }
 
-        if (playerManager.CanJump() && playerManager.TryChangeState(GroundState.Jump))
+        bool canJump = playerManager.CanJump();
+        if (canJump && playerManager.TryChangeState(GroundState.Jump, canJump))
         {
-            playerMoter.Jump(velocity, playerManager.GetStat().jumpPower);
+            playerMoter.Jump(playerManager.GetStat().jumpPower);
         }
     }
 
@@ -270,7 +264,10 @@ public class PlayerController : NetworkBehaviour
         {
             return;
         }
-        playerManager.TryChangeState(GroundState.Fall);
+        if(playerManager.TryChangeState(GroundState.Fall))
+        {
+            groundChecker.IgnoreCollider();
+        }
     }
 
     private void HandleTargetChanged(IInteractable target)

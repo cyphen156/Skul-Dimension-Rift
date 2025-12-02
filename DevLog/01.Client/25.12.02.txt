@@ -1,0 +1,61 @@
+Branch 
+    #7 FSM 개발
+
+Commit 
+    [Feat][Refactor][Player] GroundChecker 충돌 기반 전환 및 Movement 점프 로직 정비, GroundState 상태 완성
+
+변경 요약
+    기존의 레이캐스트 기반 지면 감지 로직을 완전히 제거하고,
+    충돌 이벤트(OnCollisionEnter/Exit) 를 활용한 충돌 기반 GroundChecker로 재구성했습니다.
+
+    Movement 컴포넌트에서는 점프 로직을 정리하여 Y 속도를 직접 제어하는 즉각 반응형 점프로 전환하였고,
+    중력 최소 가속도(minGravityAcc) 보정을 추가하여 일관된 낙하 속도를 유지합니다.
+
+    GroundState 역시 Idle / Move / Fall / Jump / DownJump 간 전이 흐름이
+    컨트롤러와 FSM 양쪽에서 자연스럽게 연동되도록 정리되어
+    플레이어 이동 축의 상태 시스템이 사실상 완성되었습니다.
+
+상세 수정 내용
+    GroundChecker.cs
+        레이캐스트 기반 지면 판정 제거 
+         → 충돌 기반(currentCollision != null) 판정으로 단일화
+        OnCollisionEnter2D에서 지면 레이어 충돌 시 currentCollision 갱신
+        다운점프 시 IgnoreCollider()로 IgnoreCollision 적용
+         → 다음 충돌 시 자동 복구되도록 정리
+        isInactive 플래그로 다운점프 상태와 정상 상태를 명확히 분리
+        pivotAnchor 초기 설정 및 selfCollider 크기 보정 기능 유지
+        CheckGround()는 레이 묘사 없이 즉시 반환하는 고성능 구조로 변경
+
+    Movement.cs
+        minGravityAcc = gravity.y * 0.6 적용
+         → 낙하 가속 과도 증가 방지
+        linearVelocityY < minGravityAcc 시 자동 클램프
+        점프 로직 변경:
+            기존 AddForce(Impulse) 제거
+            rb.linearVelocityY = jumpForce 방식으로 즉각적인 상승 구현
+
+    IMoveable
+        Jump(Vector2 dir, float force) → Jump(float force) 단일화
+        점프 방향 제거 및 플레이어의 상향 점프만을 허용하도록 정리
+
+    PlayerController.cs
+        Move 처리: 
+            FixedUpdate에서 Movement.Move 호출로 통일
+        Jump 처리 흐름 정비:
+            CanJump() 체크 후 TryChangeState(Jump, canJump)
+            Movement.Jump(jumpPower) 호출
+        다운점프 처리:
+            Fall 전이 성공 시 groundChecker.IgnoreCollider() 호출
+            CheckGround 로직 변경 사항을 그대로 반영하여 지면 판정 안정화
+        
+        PlayerManager / StateMachine
+            TryChangeState<T>(T next, bool isForceChange) 추가
+             → 필요 시 강제 상태 전이 허용
+            ForceChangeState<T>() 제공
+             → Jump/Fall 등 즉시 전이가 필요한 경우에 적용 가능
+            전이 성공 시에만 OnStateChanged(prev, next) 호출로 정합성 확보
+
+    GroundState 상태 완성
+        Idle / Move / Jump / Fall / DownJump 간 전이 규칙이 정리됨
+        실제 이동 로직(Movement)과 상태 전이(PlayerManager)가 충돌하지 않는 형태로 통합됨
+        Controller의 입력 흐름과 연동되며, Jump/Fall/DownJump가 정확하게 분리됨

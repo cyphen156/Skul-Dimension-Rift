@@ -251,7 +251,6 @@ public class ResourceManager : MonoBehaviour
         }
 
         // 파일 네이밍 규칙은 프로젝트에 맞게 조정
-        // 예) Sprite/Item/Item_FF000001 형태
         string hex = ObjectKey.ToHex8(objectKey);
         string path = "Sprite/Item/Item_" + hex;
 

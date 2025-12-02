@@ -44,4 +44,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 88f27761b5efcb247a7e556ce51962df, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ObjectSpawner
-  configs: []
+  configs:
+  - domain: 1
+    poolKey: 1
+    prefab: {fileID: 3129844904460987302, guid: 1fb570512952d57429dfef5f5de845bd, type: 3}
+    initialSize: 10
+  debugSpawnOnPlay: 1
+  debugItemSpacing: 1.5

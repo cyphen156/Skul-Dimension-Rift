@@ -23,5 +23,11 @@ namespace Assets.Scripts.Common
             State = next;
             return true;
         }
+
+        public bool ForceChageState(TState nextState)
+        {
+            State = nextState;
+            return true;
+        }
     }
 }
