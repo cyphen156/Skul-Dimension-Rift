@@ -5,14 +5,36 @@ namespace Assets.Scripts.Common
 {
     public class Movement : MonoBehaviour, IMoveable
     {
-        public void Move(Vector2 direction)
+        private Rigidbody2D rb;
+        [SerializeField] private float maxGravityAcc;
+
+        private void Awake()
         {
-            transform.Translate(direction * Time.deltaTime);
+            rb = GetComponent<Rigidbody2D>();
+            maxGravityAcc = Physics2D.gravity.y * 0.6f;
+        }
+        private void FixedUpdate()
+        {
+            if (rb.linearVelocityY < maxGravityAcc)
+            {
+                rb.linearVelocityY = maxGravityAcc;
+            }
         }
 
-        public void Jump(float power)
+        public void Move(Vector2 direction)
         {
-            transform.Translate(Vector2.up * power);
+            rb.linearVelocityX = direction.x;
+        }
+
+        public void Move(Vector3 direction)
+        {
+            rb.linearVelocityX = direction.x;
+        }
+
+        public void Jump(float jumpForce)
+        {
+            rb.linearVelocityY = jumpForce;
+            //rb.AddForce(jumpDirection.normalized * jumpForce, ForceMode2D.Impulse);
         }
     }
 }

@@ -5,6 +5,7 @@ namespace Assets.Scripts.Interface
     public interface IMoveable
     {
         void Move(Vector2 direction);
-        void Jump(float power);
+        void Move(Vector3 direction);
+        void Jump(float jumpForce);
     }
 }

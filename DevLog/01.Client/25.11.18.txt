@@ -1,7 +1,10 @@
 Branch 
     유저 플레이어블 캐릭터 개발
 
-Commit 33db982, 
+PR #5
+Merged At fa2aba7 into Main
+
+Commit 33db982, a30aa13
     [DeskTop -> Labtop] 개발환경 이전 푸시
     [Feat] 플레이어 컨트롤러 Input 연결, Move기능 동작
 

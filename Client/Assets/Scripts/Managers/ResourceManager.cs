@@ -46,6 +46,11 @@ public class ResourceManager : MonoBehaviour
     private readonly Dictionary<string, Sprite> controlSprites = new Dictionary<string, Sprite>();
     private Sprite placeHolderSprite;
 
+    // ObjectKey 기반 스프라이트 캐시
+    private readonly Dictionary<uint, Sprite> itemSprites = new Dictionary<uint, Sprite>();
+    private readonly Dictionary<uint, Sprite> monsterSprites = new Dictionary<uint, Sprite>();
+    private readonly Dictionary<uint, Sprite> worldObjectSprites = new Dictionary<uint, Sprite>();
+
     [Header("Runtime System Data")]
     [SerializeField] private string controlDeviceInfo;
 
@@ -205,6 +210,121 @@ public class ResourceManager : MonoBehaviour
 
         return gameObject;
     }
+
+    public Sprite GetSprite(uint objectKey)
+    {
+        if (objectKey == 0u)
+        {
+            return null;
+        }
+
+        ObjectDomain domain = ObjectKey.GetDomain(objectKey);
+
+        switch (domain)
+        {
+            case ObjectDomain.Item:
+                {
+                    return GetItemSprite(objectKey);
+                }
+            case ObjectDomain.Monster:
+                {
+                    return GetMonsterSprite(objectKey);
+                }
+            case ObjectDomain.WorldObject:
+                {
+                    return GetWorldObjectSprite(objectKey);
+                }
+            default:
+                {
+                    return placeHolderSprite;
+                }
+        }
+    }
+
+    private Sprite GetItemSprite(uint objectKey)
+    {
+        Sprite sprite;
+
+        if (itemSprites.TryGetValue(objectKey, out sprite) == true)
+        {
+            return sprite;
+        }
+
+        // 파일 네이밍 규칙은 프로젝트에 맞게 조정
+        string hex = ObjectKey.ToHex8(objectKey);
+        string path = "Sprite/Item/Item_" + hex;
+
+        sprite = Resources.Load<Sprite>(path);
+
+        if (sprite != null)
+        {
+            itemSprites[objectKey] = sprite;
+        }
+#if UNITY_EDITOR
+        else
+        {
+            Debug.LogWarning("[ResourceManager] Item sprite not found at path: " + path + " (key: " + hex + ")");
+        }
+#endif
+        return sprite;
+    }
+
+    private Sprite GetMonsterSprite(uint objectKey)
+    {
+        Sprite sprite;
+
+        if (monsterSprites.TryGetValue(objectKey, out sprite) == true)
+        {
+            return sprite;
+        }
+
+        // 예) Sprite/Monster/Monster_FF000001
+        string hex = ObjectKey.ToHex8(objectKey);
+        string path = "Sprite/Monster/Monster_" + hex;
+
+        sprite = Resources.Load<Sprite>(path);
+
+        if (sprite != null)
+        {
+            monsterSprites[objectKey] = sprite;
+        }
+#if UNITY_EDITOR
+        else
+        {
+            Debug.LogWarning("[ResourceManager] Monster sprite not found at path: " + path + " (key: " + hex + ")");
+        }
+#endif
+        return sprite;
+    }
+
+    private Sprite GetWorldObjectSprite(uint objectKey)
+    {
+        Sprite sprite;
+
+        if (worldObjectSprites.TryGetValue(objectKey, out sprite) == true)
+        {
+            return sprite;
+        }
+
+        // 예) Sprite/WorldObject/WorldObject_FF000001
+        string hex = ObjectKey.ToHex8(objectKey);
+        string path = "Sprite/WorldObject/WorldObject_" + hex;
+
+        sprite = Resources.Load<Sprite>(path);
+
+        if (sprite != null)
+        {
+            worldObjectSprites[objectKey] = sprite;
+        }
+#if UNITY_EDITOR
+        else
+        {
+            Debug.LogWarning("[ResourceManager] WorldObject sprite not found at path: " + path + " (key: " + hex + ")");
+        }
+#endif
+        return sprite;
+    }
+
     public Sprite GetControlSprite(string controlName, bool isHighlight = false)
     {
         if (string.IsNullOrEmpty(controlName))

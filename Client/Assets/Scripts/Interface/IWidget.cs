@@ -5,7 +5,8 @@
         None, // set as default
         StepperWidget,
         SliderWidget,
-        OneShotWidget
+        OneShotWidget,
+        PromptWidget,
     }
 
     /// <summary>
