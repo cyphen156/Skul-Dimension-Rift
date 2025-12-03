@@ -62,6 +62,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\Scripts\Editor\HexViewDrawer.cs" />
+    <Compile Include="Assets\Editor\SpriteNormalizer.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">
