@@ -103,6 +103,8 @@ InitTestScene*.unity*
 /Client/[Bb]uilds/
 /Client/[Ll]ogs/
 /Client/[Uu]ser[Ss]ettings/
+/Client/Assets/RemoteDatas/
+/Client/Assets/RemoteDatas.meta
 
 # DatabaseServer 무시
 /DatabaseServer/[Bb]in/
