@@ -15,6 +15,7 @@ using UnityEngine;
 /// 8. SoundManager
 /// 9. InputManager
 /// 10. GameManager
+/// 11. CameraManager
 /// </summary>
 public class BootStrap : MonoBehaviour
 {
@@ -88,9 +89,10 @@ public class BootStrap : MonoBehaviour
         PromoteOrCreate<InputManager>("InputManager");
         // 10. GameManager 초기화
         PromoteOrCreate<GameManager>("GameManager");
+        // 11. CameraManager 초기화
+        PromoteOrCreate<CameraManager>("CameraManager");
     }
-
-    private T PromoteOrCreate<T>(string goName) where T : Component
+   private T PromoteOrCreate<T>(string goName) where T : Component
     {
         T existing = FindFirstObjectByType<T>(FindObjectsInactive.Include);
         if (existing != null)
@@ -102,6 +104,7 @@ public class BootStrap : MonoBehaviour
         DontDestroyOnLoad(go);
         return go.AddComponent<T>();
     }
+ 
 
     #endregion Custom Methods
 }

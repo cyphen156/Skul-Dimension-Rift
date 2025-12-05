@@ -37,6 +37,10 @@ public class PlayerController : NetworkBehaviour
         baseScale = transform.localScale;
         isFlipped = false;
         coyoteTime = 0.1f;
+        if (CameraManager.instance != null)
+        {
+            CameraManager.instance.SetPlayerFollow(transform);
+        }
     }
 
     private void OnEnable()

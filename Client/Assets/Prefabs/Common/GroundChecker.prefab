@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6080873330905727427}
   - component: {fileID: 5992905578217888491}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: GroundChecker
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -48,4 +48,7 @@ MonoBehaviour:
   groundMask:
     serializedVersion: 2
     m_Bits: 0
+  selfCollider: {fileID: 0}
+  currentCollision: {fileID: 0}
+  isInactive: 0
   pivotAnchor: {fileID: 0}
