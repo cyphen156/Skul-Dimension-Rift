@@ -1,6 +1,9 @@
 Branch 
     #7 FSM 개발
 
+PR #6
+Merged At cf14929 into Main
+
 Commit 
     [Feat][Refactor][Player] GroundChecker 충돌 기반 전환 및 Movement 점프 로직 정비, GroundState 상태 완성
 

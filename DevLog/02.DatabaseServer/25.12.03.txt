@@ -1,6 +1,9 @@
 Branch
     #11 DataServer 개발
 
+PR #7
+Merged At 9e6e77d into Main
+
 Commit 
     [Feat] Client - Server 공유 폴더 구성
 
