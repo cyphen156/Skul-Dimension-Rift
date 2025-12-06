@@ -11,10 +11,10 @@ public class CameraManager : MonoBehaviour
 
     [SerializeField] private Camera mainCamera;
     [SerializeField] private CinemachineBrain brain;
-    private string playerFollowCameraName = "VCam_PlayerFollow";
+    [SerializeField] private string playerFollowCameraName = "VCam_PlayerFollow";
 
-    private Transform playerTransform;
-    private PolygonCollider2D currentBounds;
+    [SerializeField] private Transform playerTransform;
+    [SerializeField] private PolygonCollider2D currentBounds;
 
     private void Awake()
     {

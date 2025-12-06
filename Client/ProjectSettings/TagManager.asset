@@ -45,11 +45,26 @@ TagManager:
   - name: Background
     uniqueID: 3450402503
     locked: 0
-  - name: Ground
+  - name: Background_Override
+    uniqueID: 154925515
+    locked: 0
+  - name: Wall
+    uniqueID: 2036979247
+    locked: 0
+  - name: Ground_UnMove
     uniqueID: 6465017
+    locked: 0
+  - name: Ground
+    uniqueID: 4073950247
+    locked: 0
+  - name: Platform
+    uniqueID: 71182609
     locked: 0
   - name: Default
     uniqueID: 0
+    locked: 0
+  - name: Foreground_UnMove
+    uniqueID: 40202185
     locked: 0
   - name: Foreground
     uniqueID: 2733762659
