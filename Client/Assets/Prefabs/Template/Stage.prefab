@@ -2790,7 +2790,6 @@ GameObject:
   - component: {fileID: 7708502295795316804}
   - component: {fileID: 8021382013706028997}
   - component: {fileID: 299511433814439766}
-  - component: {fileID: 4962758724056152897}
   m_Layer: 0
   m_Name: Tilemap_Background
   m_TagString: Untagged
@@ -2912,20 +2911,6 @@ TilemapRenderer:
   m_SortOrder: 0
   m_Mode: 0
   m_DetectChunkCullingBounds: 0
---- !u!114 &4962758724056152897
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8077070090604591519}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c19421963d279cd46a1323fb5098d5de, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Assets.Scripts.Stage.PharallexScroller
-  followTransform: {fileID: 0}
-  followerList: []
 --- !u!1 &8244288867615954598
 GameObject:
   m_ObjectHideFlags: 0

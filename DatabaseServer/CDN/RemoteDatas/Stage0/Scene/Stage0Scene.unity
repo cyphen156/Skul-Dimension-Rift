@@ -119,6 +119,11 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &347889423 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 9161758221836615946, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
+  m_PrefabInstance: {fileID: 828174790}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &500392953
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -392,6 +397,10 @@ PrefabInstance:
       propertyPath: m_StaticEditorFlags
       value: 2147483647
       objectReference: {fileID: 0}
+    - target: {fileID: 4124275230671878302, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
+      propertyPath: m_StaticEditorFlags
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 4194933192116631380, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
       propertyPath: m_StaticEditorFlags
       value: 2147483647
@@ -607,8 +616,51 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 4124275230671878302, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 828174792}
   m_SourcePrefab: {fileID: 100100000, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
+--- !u!1 &828174791 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4124275230671878302, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
+  m_PrefabInstance: {fileID: 828174790}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &828174792
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 828174791}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7518875ede9f0b444894cbb3bca2f791, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::InfinityScroller
+  follow: {fileID: 1423318703}
+  scrollObjects:
+  - scrollObject: {fileID: 828174794}
+    weight: 0.2
+    isParallax: 1
+    scrollMode: 0
+  - scrollObject: {fileID: 1862681954}
+    weight: 0.4
+    isParallax: 1
+    scrollMode: 0
+  - scrollObject: {fileID: 1732439276}
+    weight: 0.6
+    isParallax: 1
+    scrollMode: 0
+  - scrollObject: {fileID: 347889423}
+    weight: 0.8
+    isParallax: 1
+    scrollMode: 0
+--- !u!1 &828174794 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6775861618892940311, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
+  m_PrefabInstance: {fileID: 828174790}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1423318702
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -682,6 +734,16 @@ Transform:
 --- !u!60 &1568025982 stripped
 PolygonCollider2D:
   m_CorrespondingSourceObject: {fileID: 6452719144784450148, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
+  m_PrefabInstance: {fileID: 828174790}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1732439276 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 507819389493836617, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
+  m_PrefabInstance: {fileID: 828174790}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1862681954 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8246285777024536265, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
   m_PrefabInstance: {fileID: 828174790}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &2100405738
