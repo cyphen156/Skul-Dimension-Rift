@@ -20,3 +20,14 @@ GraphicManager
         Localization
 
 Item 개발
+
+SubSystem_
+    ScrollSystem
+    메타데이터 & 내부 자료 연산 시 
+        구조체 배열 사용 연산
+        -> 
+        개별 인스턴스 레퍼런스에 트랜스폼 적용 역레퍼런스 도입하기
+
+    오브젝트 Domain에서 불러오기,
+    내부 인스턴스 배치 풀링화
+

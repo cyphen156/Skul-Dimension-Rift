@@ -119,11 +119,6 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &494550142 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 8792056495272327939, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
-  m_PrefabInstance: {fileID: 828174790}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &500392953
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -205,11 +200,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: f418877adc41d534982cbf111a6db3ac, type: 3}
---- !u!1 &728267692 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 2326772396434936926, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
-  m_PrefabInstance: {fileID: 828174790}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &828174790
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -218,77 +208,45 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1245922918153236256, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 12
+      objectReference: {fileID: 0}
     - target: {fileID: 4800849984967606697, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
       propertyPath: follow
       value: 
       objectReference: {fileID: 1936336310}
     - target: {fileID: 4800849984967606697, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
-      propertyPath: scrollObjects.Array.size
-      value: 6
-      objectReference: {fileID: 0}
-    - target: {fileID: 4800849984967606697, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
-      propertyPath: scrollObjects.Array.data[4].weightX
-      value: 0.75
-      objectReference: {fileID: 0}
-    - target: {fileID: 4800849984967606697, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
-      propertyPath: scrollObjects.Array.data[4].weightY
-      value: 1.4
-      objectReference: {fileID: 0}
-    - target: {fileID: 4800849984967606697, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
-      propertyPath: scrollObjects.Array.data[5].weightX
-      value: 0.75
-      objectReference: {fileID: 0}
-    - target: {fileID: 4800849984967606697, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
-      propertyPath: scrollObjects.Array.data[5].weightY
-      value: 1.4
-      objectReference: {fileID: 0}
-    - target: {fileID: 4800849984967606697, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
-      propertyPath: scrollObjects.Array.data[4].isParallax
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4800849984967606697, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
-      propertyPath: scrollObjects.Array.data[4].scrollMode
+      propertyPath: scrollObjects.Array.data[0].weightX
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4800849984967606697, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
-      propertyPath: scrollObjects.Array.data[5].isParallax
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4800849984967606697, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
-      propertyPath: scrollObjects.Array.data[5].scrollMode
+      propertyPath: scrollObjects.Array.data[0].weightY
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4800849984967606697, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
-      propertyPath: scrollObjects.Array.data[4].parallaxMode
+      propertyPath: scrollObjects.Array.data[2].useFollow
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4800849984967606697, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
-      propertyPath: scrollObjects.Array.data[4].scrollObject
-      value: 
-      objectReference: {fileID: 728267692}
-    - target: {fileID: 4800849984967606697, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
-      propertyPath: scrollObjects.Array.data[5].parallaxMode
+      propertyPath: scrollObjects.Array.data[3].useFollow
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4800849984967606697, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
-      propertyPath: scrollObjects.Array.data[5].scrollObject
-      value: 
-      objectReference: {fileID: 494550142}
-    - target: {fileID: 4800849984967606697, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
-      propertyPath: scrollObjects.Array.data[4].useAutoScroll
-      value: 1
+      propertyPath: scrollObjects.Array.data[4].useFollow
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4800849984967606697, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
-      propertyPath: scrollObjects.Array.data[5].useAutoScroll
-      value: 1
+      propertyPath: scrollObjects.Array.data[2].scrollMode
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4800849984967606697, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
-      propertyPath: scrollObjects.Array.data[4].autoScrollSpeed.x
-      value: 0.25
+      propertyPath: scrollObjects.Array.data[3].scrollMode
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4800849984967606697, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
-      propertyPath: scrollObjects.Array.data[5].autoScrollSpeed.x
-      value: 0.25
+      propertyPath: scrollObjects.Array.data[0].parallaxMode
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 4884791451476237395, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
       propertyPath: m_Name
