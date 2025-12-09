@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 20c2b277b30b56741ba2386794b14bf2
+guid: 5de8d8943c9250b4bad1f0db4b10a353
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 8657228921854407362
-    second: FinalEnding_Cliff_Fore_0
+      213: -913190762987332006
+    second: 3-4_Wall03_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -139,13 +139,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: FinalEnding_Cliff_Fore_0
+      name: 3-4_Wall03_0
       rect:
         serializedVersion: 2
         x: 0
-        y: 0
-        width: 140
-        height: 148
+        y: 1
+        width: 83
+        height: 283
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -154,8 +154,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 2c2be5226d7a42870800000000000000
-      internalID: 8657228921854407362
+      spriteID: a5ed8ffd6d1b353f0800000000000000
+      internalID: -913190762987332006
       vertices: []
       indices: 
       edges: []
@@ -174,7 +174,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      FinalEnding_Cliff_Fore_0: 8657228921854407362
+      3-4_Wall03_0: -913190762987332006
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

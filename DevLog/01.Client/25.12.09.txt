@@ -1,7 +1,7 @@
 Branch
     #9 마왕성 씬 구성
 
-Commit 
+Commit 0fb944a
     [Feat] SubSystem_ScrollSystem 구현
 
 변경 요약
@@ -59,8 +59,18 @@ Commit
     ScrollSystem을 CameraManager와 연동하여 스테이지 기반 패럴랙스 계층 자동 구성 검토
 
 
-Commit 
+Commit 044cb29
     [Package] Cinemachine 패키지 Upgrade로 인한 종속성 수정
 
 변경 요약 
     Unity 6.3LST 적용으로 인한 Cinemachine 2.10 버전 deprecated 되어 3.1.5 버전으로 마이그레이션
+
+
+Commit 
+    [Resource] Stage0_1 프리팹 업로드
+    
+변경 요약
+    1. Stage Template를 이용한 Stage0_1 업로드 
+
+    2. Stage0.prefab 이름 변경
+    -> Stage0_0
