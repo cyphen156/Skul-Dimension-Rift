@@ -1,14 +1,14 @@
-using Cinemachine;
+using Unity.Cinemachine;
 using UnityEngine;
 
-[RequireComponent(typeof(CinemachineVirtualCamera))]
+[RequireComponent(typeof(CinemachineCamera))]
 public class VirtualCamera : MonoBehaviour
 {
-    [SerializeField] CinemachineVirtualCamera vcam;
+    [SerializeField] CinemachineCamera vcam;
 
     private void Awake()
     {
-        vcam = GetComponent<CinemachineVirtualCamera>();
+        vcam = GetComponent<CinemachineCamera>();
         if (CameraManager.instance != null)
         {
             CameraManager.instance.RegisterCamera(vcam);

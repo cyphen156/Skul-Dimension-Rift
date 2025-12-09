@@ -57,3 +57,10 @@ Commit
     Domain에서 스크롤 대상 오브젝트를 자동 로드하는 구조 추가
     Infinity Scroll의 세그먼트 운용을 풀링화하여 메모리 재사용 구조 정립
     ScrollSystem을 CameraManager와 연동하여 스테이지 기반 패럴랙스 계층 자동 구성 검토
+
+
+Commit 
+    [Package] Cinemachine 패키지 Upgrade로 인한 종속성 수정
+
+변경 요약 
+    Unity 6.3LST 적용으로 인한 Cinemachine 2.10 버전 deprecated 되어 3.1.5 버전으로 마이그레이션

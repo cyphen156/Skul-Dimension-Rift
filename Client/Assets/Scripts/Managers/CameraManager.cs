@@ -1,5 +1,5 @@
-using Cinemachine;
 using System.Collections.Generic;
+using Unity.Cinemachine;
 using UnityEngine;
 
 public class CameraManager : MonoBehaviour
@@ -7,7 +7,7 @@ public class CameraManager : MonoBehaviour
     public static CameraManager instance;
 
     [Header("Scanned Virtual Cameras")]
-    private Dictionary<string, CinemachineVirtualCamera> virtualCameras = new Dictionary<string, CinemachineVirtualCamera>();
+    private Dictionary<string, CinemachineCamera> virtualCameras = new Dictionary<string, CinemachineCamera>();
 
     [SerializeField] private Camera mainCamera;
     [SerializeField] private CinemachineBrain brain;
@@ -39,7 +39,7 @@ public class CameraManager : MonoBehaviour
     /// when Camera Object is Awake On Load
     /// </summary>
     /// <param name="camera"></param>
-    public void RegisterCamera(CinemachineVirtualCamera vcam)
+    public void RegisterCamera(CinemachineCamera vcam)
     {
         if (vcam == null)
         {
@@ -74,7 +74,7 @@ public class CameraManager : MonoBehaviour
     /// when Camera Object has been Destroyed
     /// </summary>
     /// <param name="camera"></param>
-    public void UnregisterCamera(CinemachineVirtualCamera vcam)
+    public void UnregisterCamera(CinemachineCamera vcam)
     {
         if (vcam == null)
         {
@@ -89,9 +89,9 @@ public class CameraManager : MonoBehaviour
         }
     }
 
-    public CinemachineVirtualCamera GetCamera(string name)
+    public CinemachineCamera GetCamera(string name)
     {
-        CinemachineVirtualCamera result;
+        CinemachineCamera result;
 
         if (virtualCameras.TryGetValue(name, out result))
         {
@@ -110,7 +110,7 @@ public class CameraManager : MonoBehaviour
             return;
         }
 
-        CinemachineVirtualCamera vcam = GetCamera(playerFollowCameraName);
+        CinemachineCamera vcam = GetCamera(playerFollowCameraName);
 
         if (vcam == null)
         {
@@ -130,9 +130,9 @@ public class CameraManager : MonoBehaviour
             return;
         }
 
-        foreach (KeyValuePair<string, CinemachineVirtualCamera> pair in virtualCameras)
+        foreach (KeyValuePair<string, CinemachineCamera> pair in virtualCameras)
         {
-            CinemachineVirtualCamera vcam = pair.Value;
+            CinemachineCamera vcam = pair.Value;
 
             if (vcam == null)
             {
@@ -143,7 +143,7 @@ public class CameraManager : MonoBehaviour
         }
     }
 
-    private void ApplyBoundsToCamera(CinemachineVirtualCamera vcam)
+    private void ApplyBoundsToCamera(CinemachineCamera vcam)
     {
         CinemachineConfiner2D confiner = vcam.GetComponent<CinemachineConfiner2D>();
 
@@ -152,6 +152,6 @@ public class CameraManager : MonoBehaviour
             return;
         }
 
-        confiner.m_BoundingShape2D = currentBounds;
+        confiner.BoundingShape2D = currentBounds;
     }
 }
