@@ -14,10 +14,10 @@ TagManager:
   - UI
   - Ground
   - GroundChecker
-  - 
-  - 
-  - 
-  - 
+  - VirtualCamera
+  - CinemachineConfiner
+  - Wall
+  - Player
   - 
   - 
   - 
@@ -39,8 +39,35 @@ TagManager:
   - 
   - 
   m_SortingLayers:
+  - name: Background_UnMove
+    uniqueID: 3790681503
+    locked: 0
+  - name: Background
+    uniqueID: 3450402503
+    locked: 0
+  - name: Background_Override
+    uniqueID: 154925515
+    locked: 0
+  - name: Wall
+    uniqueID: 2036979247
+    locked: 0
+  - name: Ground_UnMove
+    uniqueID: 6465017
+    locked: 0
+  - name: Ground
+    uniqueID: 4073950247
+    locked: 0
+  - name: Platform
+    uniqueID: 71182609
+    locked: 0
   - name: Default
     uniqueID: 0
+    locked: 0
+  - name: Foreground_UnMove
+    uniqueID: 40202185
+    locked: 0
+  - name: Foreground
+    uniqueID: 2733762659
     locked: 0
   m_RenderingLayers:
   - Default

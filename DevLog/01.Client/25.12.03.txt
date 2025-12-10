@@ -1,7 +1,7 @@
 Branch 
     #8 Stage1 구성
 
-Commit
+Commit 78bc08c
     [Resource][Editor][Tool] Common 타일맵 & 타일 스프라이트 업로드, 스프라이트 자동 확장 툴 도입
 
 변경 요약
@@ -36,3 +36,19 @@ Commit
     원본 스프라이트는 아카이브 성격의 Backup 리포지토리로 이동
     게임에서 실제 사용하는 모든 타일은 “정규화된 버전”을 기준으로 사용
     추후 Addressables 전환 시, 동일 구조 유지하도록 설계 예정
+
+Commit 6614c0f
+    [Resource] Stage1 타일 팔레트 업로드
+
+변경 요약
+    1. 타일 스프라이트 애셋 일부 이름 정규화
+
+    2. Stage1에 사용될 타일 팔레트 애셋 업로드
+
+
+Commit 4c6d820
+    [Resource] Stage 구성을 위한 기본 템플릿 업로드
+    
+변경 요약 
+    StageTemplate.Prefab 업로드
+

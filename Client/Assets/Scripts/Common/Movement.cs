@@ -11,7 +11,7 @@ namespace Assets.Scripts.Common
         private void Awake()
         {
             rb = GetComponent<Rigidbody2D>();
-            maxGravityAcc = Physics2D.gravity.y * 0.6f;
+            maxGravityAcc = Physics2D.gravity.y;
         }
         private void FixedUpdate()
         {

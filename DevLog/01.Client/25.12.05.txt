@@ -1,0 +1,45 @@
+Branch
+    #9 마왕성 씬 구성
+
+Commit d109aae
+    [Feat] 씨네머신 카메라 기능 구현
+
+변경 요약
+    플레이어를 따라가는 씨네머신 기반 카메라 시스템을 도입했습니다.
+    메인 카메라를 DDOL로 관리하는 CameraManager와, 씬마다 배치하는 VirtualCamera 프리팹 구조를 정립했고,
+    PlayerController에서 카메라 시스템에 자신의 Transform을 등록하는 흐름을 추가했습니다.
+
+상세 수정 내용
+
+    PlayerController.cs
+        플레이어 초기화 시 카메라 시스템에 자신을 등록하도록 로직 추가
+        Awake()에서 CameraManager.instance.SetPlayerFollow(transform) 호출 (null 방어 포함)
+        기존 이동/점프/상호작용 로직은 유지하면서, 카메라 관련 책임은 전담 매니저로 위임하는 방향으로 분리
+
+    VirtualCamera.cs
+        CinemachineVirtualCamera를 자동으로 레지스트리에 등록하는 어댑터 컴포넌트 추가
+        Awake()에서 GetComponent<CinemachineVirtualCamera>() 후 CameraManager.RegisterCamera(vcam) 호출
+        OnDestroy()에서 CameraManager.UnregisterCamera(vcam) 호출
+        VirtualCamera 프리팹을 “씬에 찍어 쓰는 카메라 템플릿”으로 사용할 수 있도록 역할 명확화
+
+    CameraManager.cs
+        싱글톤 기반 카메라 매니저 도입 및 DDOL 처리
+        instance 초기화 및 DontDestroyOnLoad(gameObject) 적용
+        Camera.main과 CinemachineBrain 참조 캐시
+        씬 스코프 VCam 관리용 레지스트리 구현
+        Dictionary<string, CinemachineVirtualCamera> virtualCameras로 VCam 인덱싱
+        RegisterCamera / UnregisterCamera / GetCamera 메서드 구현
+        플레이어 추적용 VCam 연동 기능 추가
+        playerFollowCameraName = "VCam_PlayerFollow" 상수화
+        SetPlayerFollow(Transform playerTransform)에서 해당 VCam을 조회 후 Follow, LookAt에 바인딩
+        VCam이 존재하지 않을 경우 경고 로그 출력으로 디버깅 용이성 확보
+        씬 / 프리팹 구성 (개념 정리)
+        VirtualCamera 프리팹을 VCam_PlayerFollow 등 이름으로 스테이지 씬에 배치
+        각 VCam에 CinemachineVirtualCamera + VirtualCamera 컴포넌트 부착
+        메인 카메라는 DDOL로 유지, 씬에는 연출용 VCam만 두는 구조 확립
+        (에디터 레벨) 플레이어가 포함된 씬에서 VCam_PlayerFollow가 Player를 Follow하도록 CameraManager 연동 확인
+
+    향후 작업 예정
+        PlayerController의 카메라 등록 시점을 Netcode OnNetworkSpawn() 기반으로 이관하여 로컬 오너 기준 카메라 추적 보장
+        CameraBounds + CinemachineConfiner2D를 CameraManager와 연동해, 스테이지별 카메라 이동 한계 자동 적용
+        패럴랙스 배경 레이어를 메인 카메라 Transform 기반으로 연동하여 2D 사이드뷰 연출 보강
