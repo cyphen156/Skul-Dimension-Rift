@@ -8,6 +8,12 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/TitleScene.unity
     guid: 8c9cfa26abfee488c85f1582747f6a02
+  - enabled: 1
+    path: Assets/RemoteDatas/Stage0/Scene/Stage0Scene.unity
+    guid: b93aa608a3c3f4e4b9dec48b71a60142
+  - enabled: 1
+    path: Assets/RemoteDatas/Stage1/Scene/Stage1Scene.unity
+    guid: cb554c616fedc434e856e58df379f76c
   m_configObjects:
     com.unity.adaptivePerformance.basic.provider_settings: {fileID: 11400000, guid: d203a847073082f4a9a51e8f7abcf51c, type: 2}
     com.unity.adaptiveperformance.loader_settings: {fileID: 11400000, guid: 0ade19cbddd712749a0ab5e1b9655d4a, type: 2}

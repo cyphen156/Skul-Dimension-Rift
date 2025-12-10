@@ -111,6 +111,7 @@
     <Compile Include="Assets\Scripts\Utility\EnumUtility.cs" />
     <Compile Include="Assets\Scripts\Interface\IPlayable.cs" />
     <Compile Include="Assets\Scripts\Player\PlayerStateMachine.cs" />
+    <Compile Include="Assets\Scripts\Managers\StageManager.cs" />
     <Compile Include="Assets\Scripts\Interface\IContainer.cs" />
     <Compile Include="Assets\Scripts\Common\FadeInOut.cs" />
     <Compile Include="Assets\TextMesh Pro\Examples &amp; Extras\Scripts\EnvMapAnimator.cs" />

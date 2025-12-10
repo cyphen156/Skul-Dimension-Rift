@@ -45,9 +45,10 @@ public class GameManager : NetworkBehaviour
         ResetGame();
         Scene scene = SceneManager.GetActiveScene();
         currentSceneName = scene.name;
+
         if (currentSceneName != "TitleScene")
         {
-            SceneLoadManager.LoadScene("TitleScene");
+            RequestChangeScene("TitleScene");
         }
     }
 
@@ -137,6 +138,7 @@ public class GameManager : NetworkBehaviour
                 break;
         }
     }
+
     public void ChangeGameState(GameState state)
     {
         if (currentState == state)
@@ -149,6 +151,7 @@ public class GameManager : NetworkBehaviour
         switch (state)
         {
             case GameState.Ready:
+                UIManager.instance.Hide("Loading");
                 if (currentSceneName == "TitleScene")
                 {
                     UIManager.instance.Show("Press Any Key");
@@ -336,4 +339,52 @@ public class GameManager : NetworkBehaviour
         ResourceManager.instance.SaveUserData();
     }
     #endregion
+    public void SetCurrentScene(string sceneName)
+    {
+        if (string.IsNullOrEmpty(sceneName) == true)
+        {
+            return;
+        }
+
+        currentSceneName = sceneName;
+    }
+
+    public void RequestChangeScene(string sceneName)
+    {
+        if (string.IsNullOrEmpty(sceneName) == true)
+        {
+            return;
+        }
+
+        // 싱글 플레이 모드
+        if (gameMode == GameMode.Single)
+        {
+            ChangeGameState(GameState.Loading);
+            SceneLoadManager.LoadScene(sceneName);
+            return;
+        }
+
+        // 멀티 플레이 모드
+        if (IsServer == true)
+        {
+            ChangeGameState(GameState.Loading);
+            SceneLoadManager.LoadScene(sceneName);
+        }
+        else
+        {
+            RequestChangeSceneServerRpc(sceneName);
+        }
+    }
+
+    [ServerRpc]
+    private void RequestChangeSceneServerRpc(string sceneName)
+    {
+        if (string.IsNullOrEmpty(sceneName) == true)
+        {
+            return;
+        }
+
+        ChangeGameState(GameState.Loading);
+        SceneLoadManager.LoadScene(sceneName);
+    }
 }

@@ -1,0 +1,76 @@
+Branch #9 마왕성 씬 구성
+
+Commit 0c39b44
+    [Task] Stage0_0 프리팹 수정
+
+변경 요약
+    Stage0_0에 NPC와 오브젝트 스폰 포인트를 배치하였습니다.
+
+
+PR #9 마왕성 씬 구성 병합
+    Merged At 3d93c87 into Main
+
+변경 요약
+
+    TitleScene 이후 최초로 진입할 Stage0Scene(prefab)을 구성했습니다.
+    Stage0은 플레이어 초기 조작 구간이며, 이후 스테이지들의 기준 레벨 역할을 합니다.
+    플레이어 버프 지급, 아이템 제공, 영구 업그레이드 등 허브 기능의 디자인을 반영한 기본 구조를 포함합니다.
+    씬 구성은 Stage0_0 / Stage0_1 프리팹 조합으로 이루어집니다.
+
+참고 사항
+    이번 PR은 StageManager와의 연결 이전 단계이며,
+    스테이지 아키텍처 개편을 위한 기반 씬 구성을 먼저 병합하는 목적입니다.
+    StageManager 연동 및 스테이지 전환 흐름은
+    별도 브랜치 - #12 StageManager 개발 -에서 진행될 예정입니다
+
+Branch # 12 StageManager 구현
+
+Commit 
+    [Feat] SceneLoadManager - GameManager연결
+
+변경 요약
+    씬 전환을 GameManager를 통해서만 요청하고, 실제 비동기 로드는 SceneLoadManager가 담당하도록 플로우를 분리했습니다.
+    타이틀 → Stage0 전환 과정에서 GameState(Loading → Ready)를 기준으로 UI, 입력 모드가 연동되도록 기본 루프를 구축했습니다.
+
+상세 변경 내용
+
+    SceneLoadManager 구조 정리 및 GameManager 연동
+        내부에 Dictionary<string, uint> scenes를 두고, 씬 이름 → 도메인 키(uint) 매핑 초기화.
+        예: "TitleScene" → 0xFFFF0000u, "Stage0Scene" → 0xFFFF1000u 등.
+
+    Public) static void LoadScene(string sceneName)
+        → 외부 진입점은 정적 메서드, 실제 처리는 C_LoadScene 코루틴에서 수행.
+
+    private) IEnumerator C_LoadScene()
+        씬 이름으로부터 sceneId 조회 실패 시 로드 중단 및 경고 로그 출력.
+        ResourceManager.instance.C_LoadSceneData(sceneId) 코루틴 호출로 Addressables 의존성 선로딩.
+        SceneManager.LoadSceneAsync(sceneName) 호출로 실제 씬 비동기 로드.
+        SceneManager.sceneLoaded 콜백에서:
+        GameManager.instance.SetCurrentScene(scene.name) 호출로 현재 씬 이름 동기화.
+        타이틀 씬 진입 시 Intro가 IPlayable이면 C_Play() 코루틴 자동 재생.
+        씬 로드 완료 후 GameManager.instance.ChangeGameState(GameState.Ready) 호출.
+
+    ResourceManager – 씬용 Addressables 로딩 코루틴 추가
+        Public) IEnumerator C_LoadSceneData(uint sceneId) 추가.
+
+    GameManager – 씬 전환 요청 진입점 및 상태 제어 추가
+        현재 씬 이름을 외부에서 세팅하기 위한 SetCurrentScene(string sceneName) 추가.
+        씬 전환 요청을 단일 진입점으로 모으는 RequestChangeScene(string sceneName) 추가.
+
+    싱글플레이 모드인 경우:
+        ChangeGameState(GameState.Loading) 호출 후 SceneLoadManager.LoadScene(sceneName) 실행.
+
+    멀티플레이 모드인 경우:
+        서버(IsServer == true)면 직접 SceneLoadManager.LoadScene(sceneName) 호출.
+        클라이언트면 RequestChangeSceneServerRpc(sceneName)로 서버에 요청.
+
+    [ServerRpc] 
+    RequestChangeSceneServerRpc(string sceneName)
+        유효성 검사 후 
+        ChangeGameState(GameState.Loading) → SceneLoadManager.LoadScene(sceneName) 수행.
+
+    PressAnyKey – 씬 전환 트리거 역할 단순화
+        기존에 GameState.Playing을 직접 변경하던 로직 제거.
+        입력 시 GameManager.instance.RequestChangeScene("Stage0Scene")만 호출하도록 수정.
+        플레이 상태 진입은 이후 Stage0 쪽(StageManager / StageController)에서 준비 완료 시점에
+        GameManager.ChangeGameState(GameState.Playing)을 호출해 제어할 수 있도록 책임을 분리.

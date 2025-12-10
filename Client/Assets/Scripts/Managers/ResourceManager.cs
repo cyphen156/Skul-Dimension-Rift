@@ -1,5 +1,6 @@
 using Assets.Scripts.Data;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
@@ -448,6 +449,15 @@ public class ResourceManager : MonoBehaviour
             Debug.Log($"Loading UserData Failed : {e}");
             return null;
         }
+    }
+
+    /// <summary>
+    /// Addressable 애셋 로드
+    /// </summary>
+    /// <param name="id"></param>
+    public IEnumerator C_LoadSceneData(uint sceneId)
+    {
+        yield return null;
     }
 
     public void ChangeResource(string dictionaryName, string ResourceTarget)

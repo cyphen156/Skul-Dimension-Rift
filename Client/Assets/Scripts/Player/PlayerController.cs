@@ -51,7 +51,6 @@ public class PlayerController : NetworkBehaviour
         }
     }
 
-    
     private void OnDisable()
     {
         if (detector != null)

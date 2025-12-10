@@ -15,6 +15,7 @@ using UnityEngine;
 /// 8. SoundManager
 /// 9. InputManager
 /// 10. CameraManager
+/// 11. StageManager
 /// 11. GameManager
 /// </summary>
 public class BootStrap : MonoBehaviour
@@ -89,7 +90,9 @@ public class BootStrap : MonoBehaviour
         PromoteOrCreate<InputManager>("InputManager");
         // 10. CameraManager 초기화
         PromoteOrCreate<CameraManager>("CameraManager");
-        // 11. GameManager 초기화
+        // 11. StageManager 초기화
+        PromoteOrCreate<StageManager>("StageManager");
+        // 12. GameManager 초기화
         PromoteOrCreate<GameManager>("GameManager");
     }
    private T PromoteOrCreate<T>(string goName) where T : Component
