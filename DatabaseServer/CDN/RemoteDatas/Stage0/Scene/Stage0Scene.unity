@@ -119,37 +119,6 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &321169325
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 321169326}
-  m_Layer: 0
-  m_Name: StageManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &321169326
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 321169325}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &500392953
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -227,6 +196,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: Stage0_1
       objectReference: {fileID: 0}
+    - target: {fileID: 5577001873706242741, guid: b17086b0b27f749409c9e8fdab1b556d, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6760602407824377973, guid: b17086b0b27f749409c9e8fdab1b556d, type: 3}
+      propertyPath: m_ColliderPaths.Array.size
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 8204244604355114983, guid: b17086b0b27f749409c9e8fdab1b556d, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -288,14 +265,6 @@ PrefabInstance:
       propertyPath: m_Name
       value: Stage0_0
       objectReference: {fileID: 0}
-    - target: {fileID: 4884791451476237395, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
-      propertyPath: m_IsActive
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6016037537882834579, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
-      propertyPath: m_ColliderPaths.Array.size
-      value: 0
-      objectReference: {fileID: 0}
     - target: {fileID: 9184082817551284481, guid: a3ebb7811c6b6dc4aa18fb0df9da6707, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -353,4 +322,3 @@ SceneRoots:
   - {fileID: 500392953}
   - {fileID: 762445799}
   - {fileID: 508170432}
-  - {fileID: 321169326}
