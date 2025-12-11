@@ -71,7 +71,6 @@ public class SceneLoadManager : MonoBehaviour
         }
 
         instance.StartCoroutine(instance.C_LoadScene(sceneName));
-        StageManager.instance.ApplyStageSettings();
     }
 
     private IEnumerator C_LoadScene(string sceneName)
@@ -101,6 +100,11 @@ public class SceneLoadManager : MonoBehaviour
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         GameManager.instance.SetCurrentScene(scene.name);
+
+        if (StageManager.instance != null)
+        {
+            StageManager.instance.SetSceneName(scene.name);
+        }
 
         switch (scene.name)
         {

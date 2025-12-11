@@ -2,24 +2,30 @@
 
 public static class ObjectKey
 {
-    // 비트 위치
+    // ObjectKey 32bit 레이아웃 (상위 → 하위):
+    // [ 31 … 28 ] Domain (4bit)
+    // [ 27 … 24 ] Grade (4bit)
+    // [ 23 … 20 ] Role (4bit)
+    // [ 19 … 12 ] Class (8bit)
+    // [ 11 … 0 ] Instance (12bit)
+
+    // 비트 위치 (상위 → 하위)
     private const int DomainShift = 28; // 4bit
-    private const int RoleShift = 20; // 8bit
-    private const int GradeShift = 16; // 4bit
-    private const int ClassShift = 12; // 4bit
+    private const int GradeShift = 24; // 4bit
+    private const int RoleShift = 20; // 4bit
+    private const int ClassShift = 12; // 8bit
 
     // 마스크
-    private const uint DomainMask = 0xFu;
-    private const uint RoleMask = 0xFFu;
-    private const uint GradeMask = 0xFu;
-    private const uint ClassMask = 0xFu;
-    private const uint InstanceMask = 0x0FFFu;
+    private const uint DomainMask = 0xFu;    // 4bit
+    private const uint GradeMask = 0xFu;    // 4bit
+    private const uint RoleMask = 0xFu;    // 4bit
+    private const uint ClassMask = 0xFFu;   // 8bit
+    private const uint InstanceMask = 0x0FFFu; // 12bit
 
-    // 메인 생성 함수
     public static uint Make(
         ObjectDomain domain,
-        byte role,
         byte grade,
+        byte role,
         byte clazz,
         ushort instance // 0~4095
     )
@@ -27,31 +33,30 @@ public static class ObjectKey
         uint value = 0u;
 
         value |= ((uint)domain & DomainMask) << DomainShift;
-        value |= ((uint)role & RoleMask) << RoleShift;
         value |= ((uint)grade & GradeMask) << GradeShift;
+        value |= ((uint)role & RoleMask) << RoleShift;
         value |= ((uint)clazz & ClassMask) << ClassShift;
         value |= ((uint)instance & InstanceMask);
 
         return value;
     }
 
-    // 정적/도메인 정보 읽기
     public static ObjectDomain GetDomain(uint key)
     {
         uint domain = (key >> DomainShift) & DomainMask;
         return (ObjectDomain)domain;
     }
 
-    public static byte GetRole(uint key)
-    {
-        uint role = (key >> RoleShift) & RoleMask;
-        return (byte)role;
-    }
-
     public static byte GetGrade(uint key)
     {
         uint grade = (key >> GradeShift) & GradeMask;
         return (byte)grade;
+    }
+
+    public static byte GetRole(uint key)
+    {
+        uint role = (key >> RoleShift) & RoleMask;
+        return (byte)role;
     }
 
     public static byte GetClass(uint key)
@@ -66,13 +71,18 @@ public static class ObjectKey
         return (ushort)instance;
     }
 
-    // StaticId (Instance 제거한 상위 20비트) 추출
+    /// <summary>
+    /// Instance(하위 12bit)를 제거한 "정적 ID" 추출.
+    /// 테이블 키, 리소스 매핑, DB 경로 등에 사용.
+    /// </summary>
     public static uint GetStaticId(uint key)
     {
         return key & ~InstanceMask;
     }
 
-    // StaticId + Instance 로 다시 합치는 헬퍼
+    /// <summary>
+    /// StaticId + Instance 를 다시 합치는 헬퍼.
+    /// </summary>
     public static uint WithInstance(uint staticId, ushort instance)
     {
         uint value = staticId & ~InstanceMask;

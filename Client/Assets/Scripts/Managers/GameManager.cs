@@ -119,6 +119,7 @@ public class GameManager : NetworkBehaviour
     private void ChangeGameMode(GameMode mode)
     {
         gameMode = mode;
+
         switch (mode)
         {
             case GameMode.Single:

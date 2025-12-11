@@ -142,33 +142,32 @@ public class ObjectSpawner : MonoBehaviour
     [SerializeField]
     private static readonly uint[] debugItemKeys =
     {
-        // Item / Weapon / Tier1 / Class0 / Instance0
+        // Item / Grade=Tier1 / Role=Weapon / Class=0x0 / Instance=0
         ObjectKey.Make(
             ObjectDomain.Item,
-            (byte)ItemRole.Weapon,
             (byte)Grade.Tier1,
+            (byte)ItemRole.Weapon,
             0x0,
             0
         ),
 
-        // Item / Weapon / Tier2 / Class1 / Instance0
+        // Item / Grade=Tier2 / Role=Weapon / Class=0x1 / Instance=0
         ObjectKey.Make(
             ObjectDomain.Item,
-            (byte)ItemRole.Weapon,
             (byte)Grade.Tier2,
+            (byte)ItemRole.Weapon,
             0x1,
             0
         ),
 
-        // Item / Skull / Tier1 / Class0 / Instance0
+        // Item / Grade=Tier1 / Role=Skull / Class=0x0 / Instance=0
         ObjectKey.Make(
             ObjectDomain.Item,
-            (byte)ItemRole.Skull,
             (byte)Grade.Tier1,
+            (byte)ItemRole.Skull,
             0x0,
             0
         ),
-
     };
     public void Spawn()
     {
