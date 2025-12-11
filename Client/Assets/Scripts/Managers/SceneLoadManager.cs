@@ -71,6 +71,7 @@ public class SceneLoadManager : MonoBehaviour
         }
 
         instance.StartCoroutine(instance.C_LoadScene(sceneName));
+        StageManager.instance.ApplyStageSettings();
     }
 
     private IEnumerator C_LoadScene(string sceneName)

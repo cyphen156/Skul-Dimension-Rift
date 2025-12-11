@@ -4,21 +4,21 @@
 //
 // 32bit ObjectKey 구성 (상위 → 하위):
 //
-//  [ 31 … 28 ]   [ 27 … 20 ]   [ 19 … 16 ]  [ 15 … 12 ]    [ 11 … 0 ]
-//    Domain         Role          Grade        Class        Instance
-//    4bit           8bit          4bit         4bit         12bit
+//  [ 31 … 28 ]   [ 27 … 24 ]   [ 23 … 16 ]  [ 15 … 12 ]    [ 11 … 0 ]
+//    Domain         Grade         Role         Class        Instance
+//    4bit           4bit          4bit         8bit         12bit
 //
 // - Domain  : 필드 위에서 최상위 분류 (아이템, 몬스터, NPC, 투사체, 월드오브젝트 등)
-// - Role    : Domain 내부의 역할/타입 (근접/원거리, 무기/방어구, 파괴 가능 오브젝트 등)
 // - Grade   : 등급/티어/레어리티 (스컬 티어, 일반/엘리트/보스 등)
+// - Role    : Domain 내부의 역할/타입 (근접/원거리, 무기/방어구, 파괴 가능 오브젝트 등)
 // - Class   : 동일 Role/Grade 안에서의 세부 클래스(개별 종류)
 // - Instance: 런타임 인스턴스 식별 번호 (0~4095), 세이브에는 사용하지 않음.
 //
 // 헥사 표현 예시: 0xA B C D E F G H
 //   A   : Domain (4bit)
-//   B C : Role   (8bit)
-//   D   : Grade  (4bit)
-//   E   : Class  (4bit)
+//   B   : Grade  (4bit)
+//   C   : Role   (4bit)
+//   D E : Class  (8bit)
 //   F G H : Instance (하위 12bit, 런타임 인스턴스 식별)
 //
 // 정적 ID(StaticId)는 Instance를 제외한 상위 20bit를 의미하며,

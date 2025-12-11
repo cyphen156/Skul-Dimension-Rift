@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.Utilities;
@@ -9,7 +8,7 @@ using static Types;
 /// <summary>
 /// 사용자의 입력을 관리하는 싱글톤 매니저 클래스입니다.
 /// </summary>
-public class InputManager : NetworkBehaviour
+public class InputManager : MonoBehaviour
 {
     public static InputManager instance;
 
@@ -324,6 +323,61 @@ public class InputManager : NetworkBehaviour
             }
         }
     }
+
+    public void UnregisterPlayerInputAction(PlayerController targetController)
+    {
+        if (targetController == null)
+        {
+            return;
+        }
+
+        if (playerMap == null)
+        {
+            return;
+        }
+
+        foreach (var action in playerMap.actions)
+        {
+            switch (action.name)
+            {
+                case "Move":
+                    action.performed -= targetController.OnMove;
+                    action.canceled -= targetController.OnMove;
+                    break;
+                case "Jump":
+                    action.performed -= targetController.OnJump;
+                    break;
+                case "Dash":
+                    action.performed -= targetController.OnDash;
+                    break;
+                case "Attack":
+                    action.performed -= targetController.OnAttack;
+                    break;
+                case "Skill1":
+                    action.performed -= targetController.OnSkill1;
+                    break;
+                case "Skill2":
+                    action.performed -= targetController.OnSkill2;
+                    break;
+                case "Spirit":
+                    action.performed -= targetController.OnSpirit;
+                    break;
+                case "Switch":
+                    action.performed -= targetController.OnSwitch;
+                    break;
+                case "Interaction":
+                    action.performed -= targetController.OnInteraction;
+                    break;
+                case "Scroll":
+                    action.performed -= targetController.OnScroll;
+                    break;
+                case "ArrowDash":
+                    action.performed -= targetController.OnArrowButton;
+                    break;
+            }
+        }
+    }
+
     /// <summary>
     /// Input ActionMap을 전환합니다.
     /// </summary>

@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 
 public class StageManager : MonoBehaviour
@@ -9,8 +8,8 @@ public class StageManager : MonoBehaviour
     public static StageManager instance;
     
     [SerializeField] private GameObject currentStageObject;
-    [SerializeField] private int currentStage;
-    [SerializeField] private int stageCount;
+    [SerializeField] private int stageMainIndex;
+    [SerializeField] private int stageSubIndex;
     private void Awake()
     {
         if (instance == null)
@@ -24,18 +23,12 @@ public class StageManager : MonoBehaviour
             return;
         }
 
-        currentStage = 0;
-        stageCount = 0;
+        stageMainIndex = 0;
+        stageSubIndex = 0;
     }
 
     public void ChangeStage()
     {
 
-    }
-
-    private void BatchingStageObjects()
-    {
-        string stageInfo = "Stage_" + currentStage + "_" + stageCount;
-        currentStageObject = ResourceManager.instance.GetGameObject(stageInfo);
     }
 }

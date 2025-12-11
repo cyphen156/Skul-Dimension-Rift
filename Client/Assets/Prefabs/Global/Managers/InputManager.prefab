@@ -46,7 +46,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 3900704415
+  GlobalObjectIdHash: 2600342693
   InScenePlacedSourceGlobalObjectIdHash: 2600342693
   DeferredDespawnTick: 0
   Ownership: 1
@@ -71,7 +71,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7c988ec13eef98549b7a006d6dbf855a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::InputManager
-  ShowTopMostFoldoutHeaderGroup: 1
   currentInputMode: 0
   playerInput: {fileID: 0}
   currentActionMap:

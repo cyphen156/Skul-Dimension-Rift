@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -15,11 +16,16 @@ public class GameManager : NetworkBehaviour
     [Header("NetworkSettings")]
     [SerializeField] private GameMode gameMode;
     [SerializeField] private bool isCoopMode;
+    private Dictionary<ulong, PlayerController> connectedPlayers = new Dictionary<ulong, PlayerController>();
 
     [Header("GameState")]
     [SerializeField] private string currentSceneName;
     [SerializeField] private GameDifficulty difficulty;
     [SerializeField] private GameState currentState;
+
+    [Header("Players")]
+    [SerializeField] private GameObject playerPrefab;
+    [SerializeField] private NetworkObject localPlayer;
 
     #region Unity Methods
     private void Awake()
@@ -42,6 +48,8 @@ public class GameManager : NetworkBehaviour
 
     private void InitializeGame()
     {
+        playerPrefab = ResourceManager.instance.GetGameObject("Player");
+
         ResetGame();
         Scene scene = SceneManager.GetActiveScene();
         currentSceneName = scene.name;
@@ -116,7 +124,6 @@ public class GameManager : NetworkBehaviour
             case GameMode.Single:
                 if (IsServer)
                 {
-                    NetworkManager.Singleton.Shutdown();
                 }
                 break;
             case GameMode.MultiplayerCoop:
@@ -339,6 +346,7 @@ public class GameManager : NetworkBehaviour
         ResourceManager.instance.SaveUserData();
     }
     #endregion
+
     public void SetCurrentScene(string sceneName)
     {
         if (string.IsNullOrEmpty(sceneName) == true)
@@ -376,6 +384,75 @@ public class GameManager : NetworkBehaviour
         }
     }
 
+
+    #region MultiPlay
+    public void EnsureLocalPlayer(Vector3 spawnPosition)
+    {
+        if (localPlayer != null && localPlayer.IsSpawned)
+        {
+            return;
+        }
+
+        if (NetworkManager.Singleton == null)
+        {
+            Debug.LogWarning("[GameManager] NetworkManager is null.");
+            return;
+        }
+
+        if (IsServer)
+        {
+            SpawnPlayerInternal(NetworkManager.Singleton.LocalClientId, spawnPosition);
+        }
+        else
+        {
+            // 클라이언트라면 서버에게 스폰 요청
+            SpawnPlayerServerRpc(spawnPosition);
+        }
+    }
+
+    private void SpawnPlayerInternal(ulong clientId, Vector3 spawnPosition)
+    {
+        if (playerPrefab == null)
+        {
+            Debug.LogError("[GameManager] playerPrefab is null.");
+            return;
+        }
+
+        GameObject instance = Instantiate(playerPrefab, spawnPosition, Quaternion.identity);
+
+        NetworkObject netObj = instance.GetComponent<NetworkObject>();
+        if (netObj == null)
+        {
+            Debug.LogError("[GameManager] Player prefab has no NetworkObject.");
+            Destroy(instance);
+            return;
+        }
+
+        netObj.SpawnAsPlayerObject(clientId, false); 
+
+        PlayerController controller = instance.GetComponent<PlayerController>();
+        if (controller != null)
+        {
+            if (!connectedPlayers.ContainsKey(clientId))
+            {
+                connectedPlayers.Add(clientId, controller);
+            }
+            else
+            {
+                connectedPlayers[clientId] = controller;
+            }
+        }
+    }
+
+    [ServerRpc]
+    private void SpawnPlayerServerRpc(Vector3 spawnPosition, ServerRpcParams rpcParams = default)
+    {
+        ulong senderClientId = rpcParams.Receive.SenderClientId;
+
+        SpawnPlayerInternal(senderClientId, spawnPosition);
+    }
+
+
     [ServerRpc]
     private void RequestChangeSceneServerRpc(string sceneName)
     {
@@ -387,4 +464,5 @@ public class GameManager : NetworkBehaviour
         ChangeGameState(GameState.Loading);
         SceneLoadManager.LoadScene(sceneName);
     }
+#endregion
 }
