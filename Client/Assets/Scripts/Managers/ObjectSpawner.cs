@@ -9,7 +9,7 @@ using UnityEngine;
 [Serializable]
 public class SpawnPoolConfig
 {
-    public ObjectDomain domain;
+    public Domain domain;
     public PoolKey poolKey;
     public GameObject prefab;
     public int initialSize = 30;
@@ -22,8 +22,8 @@ public class ObjectSpawner : MonoBehaviour
     [SerializeField]
     private List<SpawnPoolConfig> configs = new List<SpawnPoolConfig>();
 
-    private readonly Dictionary<ObjectDomain, SpawnPoolConfig> configMap =
-        new Dictionary<ObjectDomain, SpawnPoolConfig>();
+    private readonly Dictionary<Domain, SpawnPoolConfig> configMap =
+        new Dictionary<Domain, SpawnPoolConfig>();
 
     private void Awake()
     {
@@ -91,7 +91,7 @@ public class ObjectSpawner : MonoBehaviour
             return null;
         }
 
-        ObjectDomain domain = ObjectKey.GetDomain(objectKey);
+        Domain domain = DomainKey.GetDomain(objectKey);
 
         SpawnPoolConfig cfg;
         if (!configMap.TryGetValue(domain, out cfg))
@@ -143,28 +143,28 @@ public class ObjectSpawner : MonoBehaviour
     private static readonly uint[] debugItemKeys =
     {
         // Item / Grade=Tier1 / Role=Weapon / Class=0x0 / Instance=0
-        ObjectKey.Make(
-            ObjectDomain.Item,
-            (byte)Grade.Tier1,
+        DomainKey.Make(
+            Domain.Item,
+            (byte)Grade.Grade1,
             (byte)ItemRole.Weapon,
             0x0,
             0
         ),
 
         // Item / Grade=Tier2 / Role=Weapon / Class=0x1 / Instance=0
-        ObjectKey.Make(
-            ObjectDomain.Item,
-            (byte)Grade.Tier2,
+        DomainKey.Make(
+            Domain.Item,
+            (byte)Grade.Grade2,
             (byte)ItemRole.Weapon,
             0x1,
             0
         ),
 
         // Item / Grade=Tier1 / Role=Skull / Class=0x0 / Instance=0
-        ObjectKey.Make(
-            ObjectDomain.Item,
-            (byte)Grade.Tier1,
-            (byte)ItemRole.Skull,
+        DomainKey.Make(
+            Domain.Item,
+            (byte)Grade.Grade1,
+            (byte)ItemRole.Skul,
             0x0,
             0
         ),

@@ -1,8 +1,8 @@
 ﻿// Domain.cs
 // -----------------------------------------------------------------------------
-// ObjectKey 32bit 레이아웃에서 사용하는 도메인 / 롤 / 등급 정의 및 규약 문서.
+// DomainKey 32bit 레이아웃에서 사용하는 도메인 / 롤 / 등급 정의 및 규약 문서.
 //
-// 32bit ObjectKey 구성 (상위 → 하위):
+// 32bit DomainKey 구성 (상위 → 하위):
 //
 //  [ 31 … 28 ]   [ 27 … 24 ]   [ 23 … 20 ]  [ 19 … 12 ]    [ 11 … 0 ]
 //    Domain         Grade         Role         Class        Instance
@@ -28,12 +28,12 @@
 namespace Assets.Scripts.Data
 {
     /// <summary>
-    /// ObjectKey 의 최상위 4bit 에 사용되는 도메인 정의.
+    /// DomainKey 의 최상위 4bit 에 사용되는 도메인 정의.
     /// 
     /// - 값 범위: 0x0 ~ 0xF (4bit)
     /// - 실제 사용 중인 도메인만 정의하고, 나머지는 예약(reserved)으로 남겨둔다.
     /// </summary>
-    public enum ObjectDomain : byte
+    public enum Domain : byte
     {
         None = 0x0,
 
@@ -70,7 +70,12 @@ namespace Assets.Scripts.Data
         /// </summary>
         Npc = 0x6,
 
-        // 0x7 ~ 0xF : 예약 (추가 도메인 확장용)
+        /// <summary>
+        /// 씬/스테이지 프리팹 등 "맵 구성" 계열을 식별하는 도메인.
+        /// </summary>
+        Scene = 0x7, // 씬/레벨/맵 도메인
+
+        // 0x8 ~ 0xF : 예약 (추가 도메인 확장용)
     }
 
     // -------------------------------------------------------------------------
@@ -80,17 +85,19 @@ namespace Assets.Scripts.Data
     //
     // - 값 범위: 0x0 ~ 0xF (4bit)
     // - 스컬 티어, 아이템 레어리티, 몬스터 등급 등에 공통으로 사용 가능.
+    // - Scene: DLC/AssetPack Index (Scene Pack 번호)
+    // - 구체적인 의미는 Domain/Role 에 따라 다를 수 있음.
     // -------------------------------------------------------------------------
     public enum Grade : byte
     {
         None = 0x0,     // 등급 없음/기본
 
         // 스컬/아이템 티어 예시
-        Tier1 = 0x1,    // common
-        Tier2 = 0x2,    // uncommon
-        Tier3 = 0x3,    // rare
-        Tier4 = 0x4,    // epic
-        Tier5 = 0x5,    // legendary
+        Grade1 = 0x1,    // common
+        Grade2 = 0x2,    // uncommon
+        Grade3 = 0x3,    // rare
+        Grade4 = 0x4,    // epic
+        Grade5 = 0x5,    // legendary
 
         // 0x6 ~ 0xF : 확장 여유분
     }
@@ -98,13 +105,13 @@ namespace Assets.Scripts.Data
     // -------------------------------------------------------------------------
     // Role (4bit)
     // -------------------------------------------------------------------------
-    // Role 은 ObjectDomain 별로 따로 정의한다.
+    // Role 은 Domain 별로 따로 정의한다.
     // - MonsterRole, ItemRole, WorldObjectRole, NpcRole 등
     // - 값 범위: 0x0 ~ 0xF (4bit)
     // -------------------------------------------------------------------------
     /// <summary>
     /// Item 도메인 내부 역할(타입) 정의.
-    /// ObjectDomain.Item 과 함께 사용된다.
+    /// Domain.Item 과 함께 사용된다.
     /// </summary>
     public enum ItemRole : byte
     {
@@ -113,7 +120,7 @@ namespace Assets.Scripts.Data
         Armor = 0x2,
         Consumable = 0x3,
         Currency = 0x4,
-        Skull = 0x5,
+        Skul = 0x5,
         // 0x6 ~ 0xF : 확장
     }
 
@@ -148,6 +155,29 @@ namespace Assets.Scripts.Data
         Merchant = 0x2,
         QuestGiver = 0x3,
         // 0x4 ~ 0xF : 확장
+    }
+
+    // SceneRole
+    public enum SceneRole : byte
+    {
+        None = 0x0,
+
+        UnityScene = 0x1,
+        StageData = 0x2,
+        StagePrefab = 0x3,
+        // 0x4 ~ 0xF : 확장
+    }
+
+    // StageRole(논리 스테이지 타입)
+    public enum StageRole : byte
+    {
+        None = 0x0,
+
+        Normal = 0x1,
+        Hidden = 0x2,
+        Shop = 0x3,
+        MidBoss = 0x4,
+        Boss = 0x5,
     }
 
     // Class (8bit)에 대한 규약은 별도 파일/주석에서 관리

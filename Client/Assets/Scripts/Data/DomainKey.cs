@@ -1,8 +1,8 @@
 ﻿using Assets.Scripts.Data;
 
-public static class ObjectKey
+public static class DomainKey
 {
-    // ObjectKey 32bit 레이아웃 (상위 → 하위):
+    // DomainKey 32bit 레이아웃 (상위 → 하위):
     // [ 31 … 28 ] Domain (4bit)
     // [ 27 … 24 ] Grade (4bit)
     // [ 23 … 20 ] Role (4bit)
@@ -23,7 +23,7 @@ public static class ObjectKey
     private const uint InstanceMask = 0x0FFFu; // 12bit
 
     public static uint Make(
-        ObjectDomain domain,
+        Domain domain,
         byte grade,
         byte role,
         byte clazz,
@@ -41,10 +41,10 @@ public static class ObjectKey
         return value;
     }
 
-    public static ObjectDomain GetDomain(uint key)
+    public static Domain GetDomain(uint key)
     {
         uint domain = (key >> DomainShift) & DomainMask;
-        return (ObjectDomain)domain;
+        return (Domain)domain;
     }
 
     public static byte GetGrade(uint key)

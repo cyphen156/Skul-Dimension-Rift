@@ -43,6 +43,7 @@ public class ResourceManager : MonoBehaviour
     private Dictionary<string, GameObject> prefabs = new Dictionary<string, GameObject>();
     private Dictionary<string, AudioClip> bgmClips = new Dictionary<string, AudioClip>();
     private Dictionary<string, AudioClip> sfxClips = new Dictionary<string, AudioClip>();
+    private Dictionary<uint, StageData> stageDatas = new Dictionary<uint, StageData>();
     private readonly Dictionary<string, string> controlBindings = new Dictionary<string, string>();
     private readonly Dictionary<string, Sprite> controlSprites = new Dictionary<string, Sprite>();
     private Sprite placeHolderSprite;
@@ -176,6 +177,13 @@ public class ResourceManager : MonoBehaviour
     #endregion
 
     #region Resource Accessors
+    public StageData GetStageData(uint stageDataKey)
+    {
+        StageData data = null;
+        stageDatas.TryGetValue(stageDataKey, out data);
+        return data;
+    }
+
     public T GetResource<T>(string resourceName) where T : Object
     {
         // how to Resource??
@@ -219,19 +227,19 @@ public class ResourceManager : MonoBehaviour
             return null;
         }
 
-        ObjectDomain domain = ObjectKey.GetDomain(objectKey);
+        Domain domain = DomainKey.GetDomain(objectKey);
 
         switch (domain)
         {
-            case ObjectDomain.Item:
+            case Domain.Item:
                 {
                     return GetItemSprite(objectKey);
                 }
-            case ObjectDomain.Monster:
+            case Domain.Monster:
                 {
                     return GetMonsterSprite(objectKey);
                 }
-            case ObjectDomain.WorldObject:
+            case Domain.WorldObject:
                 {
                     return GetWorldObjectSprite(objectKey);
                 }
@@ -252,7 +260,7 @@ public class ResourceManager : MonoBehaviour
         }
 
         // 파일 네이밍 규칙은 프로젝트에 맞게 조정
-        string hex = ObjectKey.ToHex8(objectKey);
+        string hex = DomainKey.ToHex8(objectKey);
         string path = "Sprite/Item/Item_" + hex;
 
         sprite = Resources.Load<Sprite>(path);
@@ -280,7 +288,7 @@ public class ResourceManager : MonoBehaviour
         }
 
         // 예) Sprite/Monster/Monster_FF000001
-        string hex = ObjectKey.ToHex8(objectKey);
+        string hex = DomainKey.ToHex8(objectKey);
         string path = "Sprite/Monster/Monster_" + hex;
 
         sprite = Resources.Load<Sprite>(path);
@@ -308,7 +316,7 @@ public class ResourceManager : MonoBehaviour
         }
 
         // 예) Sprite/WorldObject/WorldObject_FF000001
-        string hex = ObjectKey.ToHex8(objectKey);
+        string hex = DomainKey.ToHex8(objectKey);
         string path = "Sprite/WorldObject/WorldObject_" + hex;
 
         sprite = Resources.Load<Sprite>(path);

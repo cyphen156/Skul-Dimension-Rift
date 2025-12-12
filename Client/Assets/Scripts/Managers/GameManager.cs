@@ -1,9 +1,9 @@
+using Assets.Scripts.Interface;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.SceneManagement;
 using static Types;
 
 /// <summary>
@@ -19,7 +19,6 @@ public class GameManager : NetworkBehaviour
     private Dictionary<ulong, PlayerController> connectedPlayers = new Dictionary<ulong, PlayerController>();
 
     [Header("GameState")]
-    [SerializeField] private string currentSceneName;
     [SerializeField] private GameDifficulty difficulty;
     [SerializeField] private GameState currentState;
 
@@ -51,10 +50,8 @@ public class GameManager : NetworkBehaviour
         playerPrefab = ResourceManager.instance.GetGameObject("Player");
 
         ResetGame();
-        Scene scene = SceneManager.GetActiveScene();
-        currentSceneName = scene.name;
 
-        if (currentSceneName != "TitleScene")
+        if (StageManager.instance.GetCurrentSceneName() != "TitleScene")
         {
             RequestChangeScene("TitleScene");
         }
@@ -160,7 +157,7 @@ public class GameManager : NetworkBehaviour
         {
             case GameState.Ready:
                 UIManager.instance.Hide("Loading");
-                if (currentSceneName == "TitleScene")
+                if (StageManager.instance.GetCurrentSceneName() == "TitleScene")
                 {
                     UIManager.instance.Show("Press Any Key");
                     InputManager.instance.ChangeInputMode(InputMode.Ready);
@@ -348,16 +345,6 @@ public class GameManager : NetworkBehaviour
     }
     #endregion
 
-    public void SetCurrentScene(string sceneName)
-    {
-        if (string.IsNullOrEmpty(sceneName) == true)
-        {
-            return;
-        }
-
-        currentSceneName = sceneName;
-    }
-
     public void RequestChangeScene(string sceneName)
     {
         if (string.IsNullOrEmpty(sceneName) == true)
@@ -445,16 +432,13 @@ public class GameManager : NetworkBehaviour
         }
     }
 
-    [ServerRpc]
-    private void SpawnPlayerServerRpc(Vector3 spawnPosition, ServerRpcParams rpcParams = default)
+    [Rpc(SendTo.Server)]
+    private void SpawnPlayerServerRpc(Vector3 spawnPosition)
     {
-        ulong senderClientId = rpcParams.Receive.SenderClientId;
-
-        SpawnPlayerInternal(senderClientId, spawnPosition);
+        SpawnPlayerInternal(OwnerClientId, spawnPosition);
     }
 
-
-    [ServerRpc]
+    [Rpc(SendTo.Server)]
     private void RequestChangeSceneServerRpc(string sceneName)
     {
         if (string.IsNullOrEmpty(sceneName) == true)
