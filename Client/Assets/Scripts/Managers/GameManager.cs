@@ -1,4 +1,3 @@
-using Assets.Scripts.Interface;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
@@ -166,9 +165,6 @@ public class GameManager : NetworkBehaviour
             case GameState.Playing:
                 UIManager.instance.HideAll();
                 InputManager.instance.ChangeInputMode(InputMode.PlayerOnly);
-#if UNITY_EDITOR
-                ObjectSpawner.instance.Spawn();
-#endif
                 break;
             case GameState.Paused:
                 InputManager.instance.ChangeInputMode(InputMode.UIOnly);

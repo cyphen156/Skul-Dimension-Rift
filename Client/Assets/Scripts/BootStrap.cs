@@ -8,14 +8,13 @@ using UnityEngine;
 /// 1. NetworkManager
 /// 2. ResourceManager
 /// 3. PoolManager
-/// 4. ObjectSpawner
-/// 5. GraphicManager
-/// 6. SceneLoadManager
-/// 7. UIManager
-/// 8. SoundManager
-/// 9. InputManager
-/// 10. CameraManager
-/// 11. StageManager
+/// 4. GraphicManager
+/// 5. SceneLoadManager
+/// 6. UIManager
+/// 7. SoundManager
+/// 8. InputManager
+/// 9. CameraManager
+/// 10. StageManager
 /// 11. GameManager
 /// </summary>
 public class BootStrap : MonoBehaviour
@@ -76,23 +75,21 @@ public class BootStrap : MonoBehaviour
         PromoteOrCreate<ResourceManager>("ResourceManager");
         // 3. PoolManager 초기화
         PromoteOrCreate<PoolManager>("PoolManager");
-        // 4. ObjectSpawner 초기화
-        PromoteOrCreate<ObjectSpawner>("ObjectSpawner");
-        // 5. GraphicManager 초기화
+        // 4. GraphicManager 초기화
         PromoteOrCreate<GraphicManager>("GraphicManager");
-        // 6. SceneLoadManager 초기화
+        // 5. SceneLoadManager 초기화
         PromoteOrCreate<SceneLoadManager>("SceneLoadManager");
-        // 7. UIManager 초기화
+        // 6. UIManager 초기화
         PromoteOrCreate<UIManager>("UIManager");
-        // 8. SoundManager 초기화
+        // 7. SoundManager 초기화
         PromoteOrCreate<SoundManager>("SoundManager");
-        // 9. InputManager 초기화
+        // 8. InputManager 초기화
         PromoteOrCreate<InputManager>("InputManager");
-        // 10. CameraManager 초기화
+        // 9. CameraManager 초기화
         PromoteOrCreate<CameraManager>("CameraManager");
-        // 11. StageManager 초기화
+        // 10. StageManager 초기화
         PromoteOrCreate<StageManager>("StageManager");
-        // 12. GameManager 초기화
+        // 11. GameManager 초기화
         PromoteOrCreate<GameManager>("GameManager");
     }
    private T PromoteOrCreate<T>(string goName) where T : Component

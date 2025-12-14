@@ -168,5 +168,6 @@ public class CameraManager : MonoBehaviour
         }
 
         confiner.BoundingShape2D = currentBounds;
+        confiner.InvalidateBoundingShapeCache();
     }
 }
