@@ -3,14 +3,6 @@ using UnityEngine;
 
 namespace Assets.Scripts.Common
 {
-    public enum PoolKey
-    {
-        None = 0,
-        Item = 1,
-        Monster = 2,
-        WorldObject = 3
-    }
-
     public class Pool
     {
         private readonly Queue<GameObject> objects;

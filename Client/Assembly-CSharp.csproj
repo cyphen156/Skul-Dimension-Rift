@@ -113,6 +113,7 @@
     <Compile Include="Assets\Scripts\Utility\EnumUtility.cs" />
     <Compile Include="Assets\Scripts\Interface\IPlayable.cs" />
     <Compile Include="Assets\Scripts\Data\DomainIdentity.cs" />
+    <Compile Include="Assets\Scripts\Common\DomainObject.cs" />
     <Compile Include="Assets\Scripts\Player\PlayerStateMachine.cs" />
     <Compile Include="Assets\Scripts\Data\DomainKey.cs" />
     <Compile Include="Assets\Scripts\Managers\StageManager.cs" />

@@ -1,23 +1,13 @@
-using Assets.Scripts.Common;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class PoolManager : MonoBehaviour
+public sealed class PoolManager : MonoBehaviour
 {
     public static PoolManager instance;
 
-    private readonly Dictionary<PoolKey, Pool> pools = new Dictionary<PoolKey, Pool>();
-#if UNITY_EDITOR
-    [SerializeField] List<PoolKey> debugRegisteredPools = new List<PoolKey>();
-    private void Update()
-    {
-        debugRegisteredPools.Clear();
-        foreach (var key in pools.Keys)
-        {
-            debugRegisteredPools.Add(key);
-        }
-    }
-#endif
+    private readonly Dictionary<uint, Pool> pools = new Dictionary<uint, Pool>();
+    private ushort nextInstanceId;
+
     private void Awake()
     {
         if (instance == null)
@@ -28,57 +18,48 @@ public class PoolManager : MonoBehaviour
         else
         {
             Destroy(gameObject);
-            return;
         }
     }
 
-    public void RegisterPool(PoolKey key, GameObject prefab, int size, Transform parent)
+    public void RegisterPool(uint staticKey, GameObject prefab, int size, Transform parent)
     {
-        if (prefab == null)
-        {
-            Debug.LogError("[PoolManager] Prefab is null for key: " + key);
-            return;
-        }
-
-        if (pools.ContainsKey(key) == true)
+        if (pools.ContainsKey(staticKey))
         {
             return;
         }
 
-        Pool pool = new Pool(prefab, size, parent);
-        pools.Add(key, pool);
+        Pool pool = new Pool(staticKey, prefab, size, parent);
+        pools.Add(staticKey, pool);
     }
 
-    public GameObject Spawn(PoolKey key, Vector3 position)
+    public GameObject Spawn(uint staticKey, Vector3 position, int scopeId)
     {
         Pool pool;
-        if (!pools.TryGetValue(key, out pool))
+
+        if (pools.TryGetValue(staticKey, out pool) == false)
         {
-            Debug.LogError("[PoolManager] Pool not registered : " + key);
+            Debug.LogError("[PoolManager] Pool not registered: " + DomainKey.ToHex8(staticKey));
             return null;
         }
 
-        GameObject go = pool.Get();
+        ushort instanceId = nextInstanceId++;
+        GameObject go = pool.Get(instanceId, scopeId);
+
         if (go != null)
         {
-            Transform t = go.transform;
-            t.position = position;
+            go.transform.position = position;
         }
 
         return go;
     }
 
-    public void Despawn(PoolKey key, GameObject go)
+    public void Despawn(uint staticKey, GameObject go)
     {
-        if (go == null)
-        {
-            return;
-        }
-
         Pool pool;
-        if (!pools.TryGetValue(key, out pool))
+
+        if (pools.TryGetValue(staticKey, out pool) == false)
         {
-            Debug.LogError("[PoolManager] Pool not registered : " + key);
+            Debug.LogError("[PoolManager] Pool not registered: " + DomainKey.ToHex8(staticKey));
             return;
         }
 
