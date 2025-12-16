@@ -4,7 +4,7 @@
 // - DomainKey 조립/해석은 DomainKey가 담당한다.
 // -----------------------------------------------------------------------------
 
-namespace Assets.Scripts.Data
+namespace Assets.Scripts.Utility
 {
     public static class ClassCodec
     {

@@ -1,4 +1,6 @@
 using Assets.Scripts.Data;
+using Assets.Scripts.Interface;
+using Assets.Scripts.Utility;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -35,6 +37,16 @@ public class ResourceManager : MonoBehaviour
         { "Gamepad_PS",     "Control/GamePad/PlayStation" },
         { "Gamepad_Switch", "Control/GamePad/NintendoSwitch" },
     };
+    [Header("DomainProvider")]
+    [SerializeField] private DomainAddressResolver domainAddressResolver;
+#if UNITY_EDITOR
+    [Header("DomainResolver Debug")]
+    [SerializeField] private List<string> domainResolverKeys = new List<string>();
+
+    [SerializeField]
+    private List<SerializableKeyValuePair> domainResolverDebugList
+        = new List<SerializableKeyValuePair>();
+#endif
 
     [Header("Optional DLC Catalogs")]
     [SerializeField] private List<string> dlcCatalogUrls = new List<string>();
@@ -84,6 +96,32 @@ public class ResourceManager : MonoBehaviour
             return;
         }
         Initialize();
+        domainAddressResolver = new DomainAddressResolver();
+        uint titleStaticKey = DomainKey.GetStaticId(
+            DomainKey.Make(
+                Domain.Scene,
+                0,
+                (byte)SceneRole.StagePrefab,
+                ClassCodec.Pack(0, 0),
+                0
+            )
+        );
+
+        domainAddressResolver.Register(titleStaticKey, "Prefab/StageTitle_0");
+#if UNITY_EDITOR
+        domainResolverKeys.Clear();
+
+        Dictionary<string, string> temp = new Dictionary<string, string>();
+
+        foreach (KeyValuePair<uint, string> pair in domainAddressResolver.Map)
+        {
+            string hex = DomainKey.ToHex8(pair.Key);
+            domainResolverKeys.Add(hex);
+            temp[hex] = pair.Value;
+        }
+
+        domainResolverDebugList = Serializer.ToDebugList(temp);
+#endif
     }
 
     #endregion Unity Methods
@@ -92,7 +130,6 @@ public class ResourceManager : MonoBehaviour
     private void Initialize()
     {
         // 시스템 리소스 로드
-
         // 어드레서블 초기화
         Addressables.InitializeAsync().WaitForCompletion();
 
@@ -182,6 +219,15 @@ public class ResourceManager : MonoBehaviour
         StageData data = null;
         stageDatas.TryGetValue(stageDataKey, out data);
         return data;
+    }
+
+    public GameObject GetDomainObject(uint staticKey)
+    {
+        if (staticKey == default)
+        {
+            return null;
+        }
+        return null;
     }
 
     public T GetResource<T>(string resourceName) where T : Object

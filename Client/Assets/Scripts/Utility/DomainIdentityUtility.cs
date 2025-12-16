@@ -1,6 +1,7 @@
-﻿using Assets.Scripts.Data;
+﻿using Assets.Scripts.Common;
+using Assets.Scripts.Data;
 
-namespace Assets.Scripts.Common
+namespace Assets.Scripts.Utility
 {
     public static class DomainIdentityUtility
     {
