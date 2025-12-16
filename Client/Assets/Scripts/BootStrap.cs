@@ -37,6 +37,7 @@ public class BootStrap : MonoBehaviour
         }
 
         InitializeManagers();
+        GameManager.instance.Boot();
     }
 
     #endregion Unity Methods

@@ -68,18 +68,6 @@ public class StageManager : MonoBehaviour
             Debug.LogError("[StageManager] BuildStageData failed.");
             return;
         }
-
-        if (stageController == null)
-        {
-            stageController = FindFirstObjectByType<StageController>(FindObjectsInactive.Include);
-        }
-
-        if (stageController == null)
-        {
-            Debug.LogError("[StageManager] StageController is null.");
-            return;
-        }
-
     }
 
     public void RequestNextSubStage()
