@@ -3,46 +3,71 @@ using UnityEngine;
 
 namespace Assets.Scripts.Common
 {
-    public class Pool
+    public sealed class Pool
     {
         private readonly Queue<GameObject> objects;
+        private readonly GameObject prefab;
         private readonly Transform parent;
+        private readonly uint staticKey;
 
-        public Pool(GameObject prefab, int size, Transform parent)
+        public Pool(uint staticKey, GameObject prefab, int size, Transform parent)
         {
+            this.staticKey = DomainKey.GetStaticId(staticKey);
+            this.prefab = prefab;
             this.parent = parent;
+
             objects = new Queue<GameObject>(size);
 
             for (int i = 0; i < size; i++)
             {
-                GameObject go = GameObject.Instantiate(prefab, parent);
-                go.SetActive(false);
+                GameObject go = CreateInstance();
                 objects.Enqueue(go);
             }
         }
 
-        public GameObject Get()
+        private GameObject CreateInstance()
         {
-            if (objects.Count == 0)
+            GameObject go = Object.Instantiate(prefab, parent);
+
+            DomainObject domain = go.GetComponent<DomainObject>();
+            if (domain == null)
             {
-                Debug.LogError("[Pool] Pool is empty. Check pool size design.");
-                return null;
+#if UNITY_EDITOR
+                Debug.LogError("[Pool Contract Violation] Prefab missing DomainObject.", prefab);
+                UnityEditor.EditorApplication.isPlaying = false;
+#endif
+                return go;
             }
 
-            GameObject go = objects.Dequeue();
-            go.SetActive(true);
+            domain.SetStaticKey(staticKey);
+            go.SetActive(false);
             return go;
         }
 
-        public void Return(GameObject go)
+        public GameObject Acquire()
+        {
+            GameObject go = objects.Count > 0 ? objects.Dequeue() : CreateInstance();
+            go.SetActive(false);
+            return go;
+        }
+
+        public void Release(GameObject go)
         {
             if (go == null)
             {
                 return;
             }
 
-            go.SetActive(false);
+            go.transform.SetParent(parent, false);
             objects.Enqueue(go);
+        }
+
+        public void DestroyAll()
+        {
+            while (objects.Count > 0)
+            {
+                Object.Destroy(objects.Dequeue());
+            }
         }
     }
 }

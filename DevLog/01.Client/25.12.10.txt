@@ -25,7 +25,7 @@ PR #9 마왕성 씬 구성 병합
 
 Branch # 12 StageManager 구현
 
-Commit 
+Commit e2bf122
     [Feat] SceneLoadManager - GameManager연결
 
 변경 요약

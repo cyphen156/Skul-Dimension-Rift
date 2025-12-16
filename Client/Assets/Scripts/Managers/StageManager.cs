@@ -80,7 +80,6 @@ public class StageManager : MonoBehaviour
             return;
         }
 
-        stageController.Apply(currentStageData);
     }
 
     public void RequestNextSubStage()

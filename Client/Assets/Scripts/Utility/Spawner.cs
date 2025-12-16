@@ -3,7 +3,7 @@ using UnityEngine;
 
 public static class Spawner
 {
-    public static IPoolable Spawn(uint objectKey, Vector3 position, int scopeId)
+    public static GameObject Spawn(uint objectKey, Vector3 position, int scopeId)
     {
         if (PoolManager.instance == null)
         {
@@ -11,12 +11,11 @@ public static class Spawner
             return null;
         }
 
-        uint staticId = DomainKey.GetStaticId(objectKey);
-        //return PoolManager.instance.Spawn(staticId, position, scopeId);
-        return null;
+        uint staticKey = DomainKey.GetStaticId(objectKey);
+        return PoolManager.instance.Spawn(staticKey, position, scopeId);
     }
 
-    public static void Despawn(IPoolable obj)
+    public static void Despawn(GameObject go)
     {
         if (PoolManager.instance == null)
         {
@@ -24,6 +23,6 @@ public static class Spawner
             return;
         }
 
-        //PoolManager.instance.Despawn(obj);
+        PoolManager.instance.Despawn(go);
     }
 }

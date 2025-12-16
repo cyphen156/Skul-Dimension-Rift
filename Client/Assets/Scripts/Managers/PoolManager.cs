@@ -1,3 +1,5 @@
+using Assets.Scripts.Common;
+using Assets.Scripts.Interface;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -6,6 +8,7 @@ public sealed class PoolManager : MonoBehaviour
     public static PoolManager instance;
 
     private readonly Dictionary<uint, Pool> pools = new Dictionary<uint, Pool>();
+    private readonly List<IPoolable> tempPoolables = new List<IPoolable>();
     private ushort nextInstanceId;
 
     private void Awake()
@@ -14,6 +17,7 @@ public sealed class PoolManager : MonoBehaviour
         {
             instance = this;
             DontDestroyOnLoad(gameObject);
+            nextInstanceId = 1;
         }
         else
         {
@@ -42,27 +46,112 @@ public sealed class PoolManager : MonoBehaviour
             return null;
         }
 
-        ushort instanceId = nextInstanceId++;
-        GameObject go = pool.Get(instanceId, scopeId);
+        ushort instanceId = AllocateInstanceId();
 
-        if (go != null)
+        if (instanceId == 0)
         {
-            go.transform.position = position;
+            Debug.LogError("[PoolManager] InstanceId exhausted.");
+            return null;
         }
+
+        GameObject go = pool.Acquire();
+
+        if (go == null)
+        {
+            return null;
+        }
+
+        BroadcastSpawn(go, instanceId, scopeId);
+
+        go.transform.position = position;
+        go.SetActive(true);
 
         return go;
     }
 
-    public void Despawn(uint staticKey, GameObject go)
+    public void Despawn(GameObject go)
     {
-        Pool pool;
+        if (go == null)
+        {
+            return;
+        }
 
+        DomainObject domain = go.GetComponent<DomainObject>();
+        if (domain == null)
+        {
+            Debug.LogError("[PoolManager] Missing DomainObject.");
+            return;
+        }
+
+        uint staticKey = domain.GetStaticKey();
+
+        Pool pool;
         if (pools.TryGetValue(staticKey, out pool) == false)
         {
             Debug.LogError("[PoolManager] Pool not registered: " + DomainKey.ToHex8(staticKey));
             return;
         }
 
-        pool.Return(go);
+        BroadcastDespawn(go);
+
+        go.SetActive(false);
+        pool.Release(go);
+    }
+
+    public void DisposePool(uint staticKey)
+    {
+        Pool pool;
+        if (pools.TryGetValue(staticKey, out pool) == false)
+        {
+            return;
+        }
+
+        pools.Remove(staticKey);
+        pool.DestroyAll();
+    }
+
+    public void DisposeAllPools()
+    {
+        foreach (KeyValuePair<uint, Pool> kv in pools)
+        {
+            kv.Value.DestroyAll();
+        }
+
+        pools.Clear();
+    }
+
+    private ushort AllocateInstanceId()
+    {
+        ushort id = nextInstanceId;
+        nextInstanceId++;
+
+        if (nextInstanceId == 0)
+        {
+            nextInstanceId = 1;
+        }
+
+        return id;
+    }
+
+    private void BroadcastSpawn(GameObject go, ushort instanceId, int scopeId)
+    {
+        tempPoolables.Clear();
+        go.GetComponents(tempPoolables);
+
+        for (int i = 0; i < tempPoolables.Count; i++)
+        {
+            tempPoolables[i].OnSpawned(instanceId, scopeId);
+        }
+    }
+
+    private void BroadcastDespawn(GameObject go)
+    {
+        tempPoolables.Clear();
+        go.GetComponents(tempPoolables);
+
+        for (int i = 0; i < tempPoolables.Count; i++)
+        {
+            tempPoolables[i].OnDespawned();
+        }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using Assets.Scripts.Data;
+using System;
 
 public static class DomainKey
 {
@@ -30,6 +31,20 @@ public static class DomainKey
         ushort instance // 0~4095
     )
     {
+#if UNITY_EDITOR
+        if ((grade & ~0xFu) != 0u)
+        {
+            throw new ArgumentOutOfRangeException(nameof(grade));
+        }
+        if ((role & ~0xFu) != 0u)
+        {
+            throw new ArgumentOutOfRangeException(nameof(role));
+        }
+        if (instance > 0x0FFFu)
+        {
+            throw new ArgumentOutOfRangeException(nameof(instance));
+        }
+#endif
         uint value = 0u;
 
         value |= ((uint)domain & DomainMask) << DomainShift;
