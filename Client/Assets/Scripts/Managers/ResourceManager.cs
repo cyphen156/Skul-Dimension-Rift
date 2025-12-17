@@ -1,5 +1,4 @@
 using Assets.Scripts.Data;
-using Assets.Scripts.Interface;
 using Assets.Scripts.Utility;
 using System;
 using System.Collections;
@@ -40,9 +39,6 @@ public class ResourceManager : MonoBehaviour
     [Header("DomainProvider")]
     [SerializeField] private DomainAddressResolver domainAddressResolver;
 #if UNITY_EDITOR
-    [Header("DomainResolver Debug")]
-    [SerializeField] private List<string> domainResolverKeys = new List<string>();
-
     [SerializeField]
     private List<SerializableKeyValuePair> domainResolverDebugList
         = new List<SerializableKeyValuePair>();
@@ -109,18 +105,7 @@ public class ResourceManager : MonoBehaviour
 
         domainAddressResolver.Register(titleStaticKey, "Prefab/StageTitle_0");
 #if UNITY_EDITOR
-        domainResolverKeys.Clear();
-
-        Dictionary<string, string> temp = new Dictionary<string, string>();
-
-        foreach (KeyValuePair<uint, string> pair in domainAddressResolver.Map)
-        {
-            string hex = DomainKey.ToHex8(pair.Key);
-            domainResolverKeys.Add(hex);
-            temp[hex] = pair.Value;
-        }
-
-        domainResolverDebugList = Serializer.ToDebugList(temp);
+        domainResolverDebugList = Serializer.ToDebugList<uint, string>(domainAddressResolver.Map);
 #endif
     }
 

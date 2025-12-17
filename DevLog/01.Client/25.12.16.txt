@@ -1,6 +1,6 @@
 Branch #12 StageManager 구현    
 
-Commit 
+Commit 3f1e0ad
     [Feat] 도메인 오브젝트 체계 확정
 
 변경 요약
