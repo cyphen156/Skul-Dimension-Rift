@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Assets.Scripts.Data
+namespace Assets.Scripts.Content
 {
     [Serializable]
     public sealed class ContentManifestCatalog
@@ -15,8 +15,9 @@ namespace Assets.Scripts.Data
     {
         public string manifestMetaPath;
     }
-    
-    public class ContentManifest
+
+    [Serializable]
+    public sealed class ContentManifest
     {
         public int version = 1;
         public string debugUri;
