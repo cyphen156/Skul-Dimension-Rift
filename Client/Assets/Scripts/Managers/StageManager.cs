@@ -79,9 +79,9 @@ public class StageManager : MonoBehaviour
 
     private StageData BuildStageData(int mainIndex, int subIndex)
     {
-        uint stageStaticId = MakeStageStaticId(currentDlcIndex, mainIndex, subIndex);
+        uint stageStaticKey = MakeStageStaticId(currentDlcIndex, mainIndex, subIndex);
 
-        StageData data = TryGetStageData(stageStaticId);
+        StageData data = TryGetStageData(stageStaticKey);
 
         if (data == null)
         {
@@ -89,7 +89,7 @@ public class StageManager : MonoBehaviour
             data.spawns = new System.Collections.Generic.List<StageSpawnEntry>();
         }
 
-        data.stageStaticId = stageStaticId;
+        data.stageStaticKey = stageStaticKey;
 
         if (data.spawns == null)
         {
@@ -99,7 +99,7 @@ public class StageManager : MonoBehaviour
         return data;
     }
 
-    private StageData TryGetStageData(uint stageStaticId)
+    private StageData TryGetStageData(uint stageStaticKey)
     {
         if (ResourceManager.instance == null)
         {
@@ -108,7 +108,7 @@ public class StageManager : MonoBehaviour
 
         try
         {
-            return ResourceManager.instance.GetStageData(stageStaticId);
+            return ResourceManager.instance.GetStageData(stageStaticKey);
         }
         catch
         {

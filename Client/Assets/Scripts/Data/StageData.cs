@@ -13,15 +13,15 @@ public struct TransformInfo
 [Serializable]
 public class StageSpawnEntry
 {
-    public uint objectKey;              // Domain/Role/Grade/Class 포함
-    public TransformInfo transformInfo; // 트랜스폼 정보
-    public int weight;                  // 옵션
+    public uint objectStaticKey;                // Domain/Role/Grade/Class 포함
+    public TransformInfo placementTransform;    // 배치되는 트랜스폼 정보
+    public int weight;                          // 옵션
 }
 
 [Serializable]
 public class StageData
 {
-    public uint stageStaticId;
-    public TransformInfo stagePose;
+    public uint stageStaticKey;
+    public TransformInfo stageRootTransform;
     public List<StageSpawnEntry> spawns = new List<StageSpawnEntry>();
 }

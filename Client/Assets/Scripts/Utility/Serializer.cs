@@ -24,8 +24,8 @@ namespace Assets.Scripts.Utility
 
             foreach (KeyValuePair<TKey, TValue> pair in map)
             {
-                string k = pair.Key != null ? pair.Key.ToString() : "null";
-                string v = pair.Value != null ? pair.Value.ToString() : "null";
+                string k = Formatter.ToDebugString(pair.Key);
+                string v = Formatter.ToDebugString(pair.Value);
 
                 SerializableKeyValuePair entry = new SerializableKeyValuePair(k, v);
                 result.Add(entry);
