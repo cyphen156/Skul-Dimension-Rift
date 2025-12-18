@@ -1,3 +1,4 @@
+using System.Collections;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
 using UnityEngine;
@@ -8,13 +9,13 @@ using UnityEngine;
 /// 1. NetworkManager
 /// 2. ResourceManager
 /// 3. PoolManager
-/// 4. ObjectSpawner
-/// 5. GraphicManager
-/// 6. SceneLoadManager
-/// 7. UIManager
-/// 8. SoundManager
-/// 9. InputManager
-/// 10. CameraManager
+/// 4. GraphicManager
+/// 5. SceneLoadManager
+/// 6. UIManager
+/// 7. SoundManager
+/// 8. InputManager
+/// 9. CameraManager
+/// 10. StageManager
 /// 11. GameManager
 /// </summary>
 public class BootStrap : MonoBehaviour
@@ -36,7 +37,7 @@ public class BootStrap : MonoBehaviour
             return;
         }
 
-        InitializeManagers();
+        StartCoroutine(C_InitializeManagers());
     }
 
     #endregion Unity Methods
@@ -46,7 +47,7 @@ public class BootStrap : MonoBehaviour
     /// <summary>
     /// 매니저들을 순서대로 초기화
     /// </summary>
-    private void InitializeManagers()
+    private IEnumerator C_InitializeManagers()
     {
         // 1. NetworkManager 초기화
         NetworkManager ngo = FindFirstObjectByType<NetworkManager>(FindObjectsInactive.Include);
@@ -72,23 +73,24 @@ public class BootStrap : MonoBehaviour
         ngo.NetworkConfig.NetworkTransport = utp;
 
         // 2. ResourceManager 초기화
-        PromoteOrCreate<ResourceManager>("ResourceManager");
+        ResourceManager rm = PromoteOrCreate<ResourceManager>("ResourceManager");
+        yield return rm.C_VerifyContentMeta();
         // 3. PoolManager 초기화
         PromoteOrCreate<PoolManager>("PoolManager");
-        // 4. ObjectSpawner 초기화
-        PromoteOrCreate<ObjectSpawner>("ObjectSpawner");
-        // 5. GraphicManager 초기화
+        // 4. GraphicManager 초기화
         PromoteOrCreate<GraphicManager>("GraphicManager");
-        // 6. SceneLoadManager 초기화
+        // 5. SceneLoadManager 초기화
         PromoteOrCreate<SceneLoadManager>("SceneLoadManager");
-        // 7. UIManager 초기화
+        // 6. UIManager 초기화
         PromoteOrCreate<UIManager>("UIManager");
-        // 8. SoundManager 초기화
+        // 7. SoundManager 초기화
         PromoteOrCreate<SoundManager>("SoundManager");
-        // 9. InputManager 초기화
+        // 8. InputManager 초기화
         PromoteOrCreate<InputManager>("InputManager");
-        // 10. CameraManager 초기화
+        // 9. CameraManager 초기화
         PromoteOrCreate<CameraManager>("CameraManager");
+        // 10. StageManager 초기화
+        PromoteOrCreate<StageManager>("StageManager");
         // 11. GameManager 초기화
         PromoteOrCreate<GameManager>("GameManager");
     }

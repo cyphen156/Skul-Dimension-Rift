@@ -63,6 +63,7 @@
   <ItemGroup>
     <Compile Include="Assets\Scripts\Editor\HexViewDrawer.cs" />
     <Compile Include="Assets\Editor\SpriteNormalizer.cs" />
+    <Compile Include="Assets\Editor\ContentMetaGenerator.cs" />
     <Compile Include="Assets\Editor\StageGirdOrderNormalizer.cs" />
   </ItemGroup>
   <ItemGroup>

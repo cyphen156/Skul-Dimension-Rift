@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Assets.Scripts.Common
+namespace Assets.Scripts.Utility
 {
     public static class EnumUtility
     {

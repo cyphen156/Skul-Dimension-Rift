@@ -1,8 +1,6 @@
 using Assets.Scripts.Interface;
 using System.Collections.Generic;
-using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 using static Types;
 
 public class Options : InteractiveUIBehaviour, IContainerEventHandler

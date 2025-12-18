@@ -18,13 +18,16 @@ namespace Assets.Scripts.Utility
 
     public static class Serializer
     {
-        public static List<SerializableKeyValuePair> ToDebugList(Dictionary<string, string> map)
+        public static List<SerializableKeyValuePair> ToDebugList<TKey, TValue>(IReadOnlyDictionary<TKey, TValue> map)
         {
             List<SerializableKeyValuePair> result = new List<SerializableKeyValuePair>();
 
-            foreach (KeyValuePair<string, string> pair in map)
+            foreach (KeyValuePair<TKey, TValue> pair in map)
             {
-                SerializableKeyValuePair entry = new SerializableKeyValuePair(pair.Key, pair.Value);
+                string k = Formatter.ToDebugString(pair.Key);
+                string v = Formatter.ToDebugString(pair.Value);
+
+                SerializableKeyValuePair entry = new SerializableKeyValuePair(k, v);
                 result.Add(entry);
             }
 

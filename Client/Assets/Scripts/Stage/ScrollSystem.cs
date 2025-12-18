@@ -47,21 +47,43 @@ public class ScrollSystem : MonoBehaviour, ISubSystem
     }
 
     /// <summary>
+    /// 상태 플래그 베이킹용 열거형.
+    /// 이 값들을 통해 비트 연산으로 플래그를 설정/해제/조회함.
+    /// ScrollRuntimeEntry.Flags 필드에 저장됨.
+    /// 최종적으로 ScrollObject의 세팅 값이 
+    /// 65(-> 8비트마스킹 후 72)바이트에서 
+    /// 64바이트로 CPU 캐시 정렬 최적화됨.
+    /// </summary>
+    [Flags]
+    private enum EntryFlags : uint
+    {
+        None = 0,
+
+        HasAutoScroll = 1u << 0,
+
+        UseParallaxX = 1u << 1,
+        UseParallaxY = 1u << 2,
+
+        UseInfinityX = 1u << 3,
+        UseInfinityY = 1u << 4,
+
+        InfinityRefFollow = 1u << 5,
+    }
+
+    /// <summary>
     /// 런타임에서 계산에 쓰는 값 타입 엔트리.
     /// Transform 참조 + 스크롤 관련 파라미터
     /// </summary>
     private struct ScrollRuntimeEntry
     {
-        public Transform Segment;
-        public Transform Root;
-        public Vector2 Size;
-        public Vector2 AutoScrollSpeed;
-        public float WeightX;
-        public float WeightY;
-        public ScrollMode ScrollMode;
-        public ParallaxMode ParallaxMode;
-        public bool UseAutoScroll;
-        public Vector3 CenterPos;
+        public Transform Segment;        // 8
+        public Vector3 Position;         // 12
+        public Vector3 CenterPos;        // 12
+        public Vector2 Size;             // 8
+        public Vector2 AutoScrollSpeed;  // 8
+        public float WeightX;            // 4
+        public float WeightY;            // 4
+        public EntryFlags Flags;         // 4 (uint)
     }
 
     [Header("Follow target")]
@@ -70,10 +92,12 @@ public class ScrollSystem : MonoBehaviour, ISubSystem
     [Header("Scroll Authoring Entries")]
     [SerializeField] private List<ScrollAuthoring> scrollObjects = new List<ScrollAuthoring>();
 
-    private readonly List<ScrollRuntimeEntry> _entries = new List<ScrollRuntimeEntry>();
+    private ScrollRuntimeEntry[] _entries = Array.Empty<ScrollRuntimeEntry>();
 
     private Vector3 lastFollowPosition;
     private bool isInitialized;
+
+    private const float FollowDeltaSqrThreshold = 0.00001f;
 
     private void Awake()
     {
@@ -117,7 +141,7 @@ public class ScrollSystem : MonoBehaviour, ISubSystem
             Vector3 current = follow.position;
             followDelta = current - lastFollowPosition;
 
-            if (followDelta.sqrMagnitude > Mathf.Epsilon)
+            if (followDelta.sqrMagnitude > FollowDeltaSqrThreshold)
             {
                 hasFollowDelta = true;
                 lastFollowPosition = current;
@@ -129,7 +153,7 @@ public class ScrollSystem : MonoBehaviour, ISubSystem
 
     public void ShutdownSubSystem()
     {
-        int count = _entries.Count;
+        int count = _entries.Length;
 
         for (int i = 0; i < count; i++)
         {
@@ -146,7 +170,7 @@ public class ScrollSystem : MonoBehaviour, ISubSystem
             }
         }
 
-        _entries.Clear();
+        _entries = Array.Empty<ScrollRuntimeEntry>();
         isInitialized = false;
     }
 
@@ -162,11 +186,10 @@ public class ScrollSystem : MonoBehaviour, ISubSystem
 
     private void BuildRuntimeEntries()
     {
-        _entries.Clear();
+        int authoringCount = scrollObjects.Count;
+        int totalEntryCount = 0;
 
-        int count = scrollObjects.Count;
-
-        for (int i = 0; i < count; i++)
+        for (int i = 0; i < authoringCount; i++)
         {
             ScrollAuthoring authoring = scrollObjects[i];
 
@@ -180,24 +203,40 @@ public class ScrollSystem : MonoBehaviour, ISubSystem
                 continue;
             }
 
-            SetupAuthoring(authoring);
+            totalEntryCount += GetSegmentCount(authoring.scrollMode);
+        }
+
+        _entries = new ScrollRuntimeEntry[totalEntryCount];
+
+        int writeIndex = 0;
+
+        for (int i = 0; i < authoringCount; i++)
+        {
+            ScrollAuthoring authoring = scrollObjects[i];
+
+            if (authoring == null)
+            {
+                continue;
+            }
+
+            if (authoring.scrollObject == null)
+            {
+                continue;
+            }
+
+            SetupAuthoring(authoring, ref writeIndex);
         }
     }
 
-    private void SetupAuthoring(ScrollAuthoring authoring)
+    private void SetupAuthoring(ScrollAuthoring authoring, ref int writeIndex)
     {
         Transform root = authoring.scrollObject.transform;
 
-        // 세그먼트 개수 산정
         int segmentCount = GetSegmentCount(authoring.scrollMode);
-
-        // 실제 렌더러 크기 얻기
         Vector2 size = GetSize(root);
 
-        // 0번 세그먼트는 원본
-        RegisterRuntimeEntry(authoring, root, size, 0);
+        WriteEntry(authoring, root, size, root, ref writeIndex);
 
-        // 나머지 세그먼트는 클론 생성
         for (int i = 1; i < segmentCount; i++)
         {
             Transform clone = Instantiate(root, root.parent);
@@ -206,8 +245,84 @@ public class ScrollSystem : MonoBehaviour, ISubSystem
 
             PositionClone(authoring.scrollMode, root, clone, size, i);
 
-            RegisterRuntimeEntry(authoring, clone, size, i);
+            WriteEntry(authoring, clone, size, root, ref writeIndex);
         }
+    }
+
+    private void WriteEntry(ScrollAuthoring authoring, Transform seg, Vector2 size, Transform root, ref int writeIndex)
+    {
+        Vector3 centerPos = Vector3.zero;
+
+        if (root != null)
+        {
+            centerPos = root.position;
+        }
+        else if (seg != null)
+        {
+            centerPos = seg.position;
+        }
+
+        EntryFlags flags = EntryFlags.None;
+
+        bool hasAutoScroll = authoring.useAutoScroll == true &&
+                             authoring.autoScrollSpeed != Vector2.zero;
+
+        if (hasAutoScroll == true)
+        {
+            flags |= EntryFlags.HasAutoScroll;
+        }
+
+        bool useParallaxX = authoring.parallaxMode == ParallaxMode.Horizontal ||
+                            authoring.parallaxMode == ParallaxMode.Both;
+
+        bool useParallaxY = authoring.parallaxMode == ParallaxMode.Vertical ||
+                            authoring.parallaxMode == ParallaxMode.Both;
+
+        if (useParallaxX == true && Mathf.Approximately(authoring.weightX, 0.0f) == false)
+        {
+            flags |= EntryFlags.UseParallaxX;
+        }
+
+        if (useParallaxY == true && Mathf.Approximately(authoring.weightY, 0.0f) == false)
+        {
+            flags |= EntryFlags.UseParallaxY;
+        }
+
+        bool useInfinityX = authoring.scrollMode == ScrollMode.Horizontal ||
+                            authoring.scrollMode == ScrollMode.Both;
+
+        bool useInfinityY = authoring.scrollMode == ScrollMode.Vertical ||
+                            authoring.scrollMode == ScrollMode.Both;
+
+        if (useInfinityX == true && size.x > 0.0f)
+        {
+            flags |= EntryFlags.UseInfinityX;
+        }
+
+        if (useInfinityY == true && size.y > 0.0f)
+        {
+            flags |= EntryFlags.UseInfinityY;
+        }
+
+        if ((flags & (EntryFlags.UseInfinityX | EntryFlags.UseInfinityY)) != 0 &&
+            authoring.parallaxMode != ParallaxMode.None)
+        {
+            flags |= EntryFlags.InfinityRefFollow;
+        }
+
+        _entries[writeIndex] = new ScrollRuntimeEntry
+        {
+            Segment = seg,
+            Position = seg != null ? seg.position : Vector3.zero,
+            CenterPos = centerPos,
+            Size = size,
+            AutoScrollSpeed = authoring.autoScrollSpeed,
+            WeightX = authoring.weightX,
+            WeightY = authoring.weightY,
+            Flags = flags
+        };
+
+        writeIndex++;
     }
 
     private int GetSegmentCount(ScrollMode mode)
@@ -265,7 +380,6 @@ public class ScrollSystem : MonoBehaviour, ISubSystem
 
         if (mode == ScrollMode.Horizontal)
         {
-            // [0][1]
             if (index == 1)
             {
                 pos.x += size.x;
@@ -273,8 +387,6 @@ public class ScrollSystem : MonoBehaviour, ISubSystem
         }
         else if (mode == ScrollMode.Vertical)
         {
-            // [1]
-            // [0]
             if (index == 1)
             {
                 pos.y += size.y;
@@ -282,8 +394,6 @@ public class ScrollSystem : MonoBehaviour, ISubSystem
         }
         else if (mode == ScrollMode.Both)
         {
-            //  [2][3]
-            //  [0][1]
             if (index == 1)
             {
                 pos.x += size.x;
@@ -302,33 +412,9 @@ public class ScrollSystem : MonoBehaviour, ISubSystem
         clone.position = pos;
     }
 
-    private void RegisterRuntimeEntry(ScrollAuthoring authoring, Transform seg, Vector2 size, int indexInStrip)
-    {
-        Transform root = authoring.scrollObject != null
-            ? authoring.scrollObject.transform
-            : seg;
-
-        ScrollRuntimeEntry entry = new ScrollRuntimeEntry
-        {
-            Segment = seg,
-            Root = root,
-            Size = size,
-            AutoScrollSpeed = authoring.autoScrollSpeed,
-            WeightX = authoring.weightX,
-            WeightY = authoring.weightY,
-            ScrollMode = authoring.scrollMode,
-            ParallaxMode = authoring.parallaxMode,
-            UseAutoScroll = authoring.useAutoScroll,
-            CenterPos = root.position
-        };
-
-        _entries.Add(entry);
-    }
-
-
     private void UpdateScrolling(Vector3 followDelta, float deltaTime, bool hasFollowDelta)
     {
-        int count = _entries.Count;
+        int count = _entries.Length;
 
         if (count <= 0)
         {
@@ -344,7 +430,7 @@ public class ScrollSystem : MonoBehaviour, ISubSystem
 
         for (int i = 0; i < count; i++)
         {
-            ScrollRuntimeEntry entry = _entries[i];
+            ref ScrollRuntimeEntry entry = ref _entries[i];
             Transform seg = entry.Segment;
 
             if (seg == null)
@@ -352,112 +438,65 @@ public class ScrollSystem : MonoBehaviour, ISubSystem
                 continue;
             }
 
-            Vector3 pos = seg.position;
+            EntryFlags flags = entry.Flags;
 
-            // 1) Auto Scroll (항상 독립적으로 적용)
-            if (entry.UseAutoScroll == true &&
-                entry.AutoScrollSpeed != Vector2.zero)
+            Vector3 pos = entry.Position;
+
+            if ((flags & EntryFlags.HasAutoScroll) != 0)
             {
                 pos.x += entry.AutoScrollSpeed.x * deltaTime;
                 pos.y += entry.AutoScrollSpeed.y * deltaTime;
             }
 
-            // 2) Parallax (followDelta가 있을 때만)
-            if (hasFollowDelta == true)
+            if (hasFollowDelta == true &&
+                (flags & (EntryFlags.UseParallaxX | EntryFlags.UseParallaxY)) != 0)
             {
                 ApplyParallax(ref pos, entry, followDelta);
             }
 
-            // 3) Infinity Scroll
-            if (entry.ScrollMode != ScrollMode.None &&
-                entry.Size != Vector2.zero)
+            if ((flags & (EntryFlags.UseInfinityX | EntryFlags.UseInfinityY)) != 0)
             {
                 ApplyInfinity(ref pos, entry, followPos);
             }
 
+            entry.Position = pos;
             seg.position = pos;
         }
     }
 
     private void ApplyParallax(ref Vector3 pos, ScrollRuntimeEntry entry, Vector3 followDelta)
     {
-        if (follow == null)
+        EntryFlags flags = entry.Flags;
+
+        if ((flags & EntryFlags.UseParallaxX) != 0)
         {
-            return;
+            pos.x += followDelta.x * entry.WeightX;
         }
 
-        if (entry.ParallaxMode == ParallaxMode.None)
+        if ((flags & EntryFlags.UseParallaxY) != 0)
         {
-            return;
+            pos.y += followDelta.y * entry.WeightY;
         }
-
-        bool useHorizontal =
-            entry.ParallaxMode == ParallaxMode.Horizontal ||
-            entry.ParallaxMode == ParallaxMode.Both;
-
-        bool useVertical =
-            entry.ParallaxMode == ParallaxMode.Vertical ||
-            entry.ParallaxMode == ParallaxMode.Both;
-
-        float moveX = 0.0f;
-        float moveY = 0.0f;
-
-        if (useHorizontal == true &&
-            Mathf.Approximately(entry.WeightX, 0.0f) == false)
-        {
-            moveX = followDelta.x * entry.WeightX;
-        }
-
-        if (useVertical == true &&
-            Mathf.Approximately(entry.WeightY, 0.0f) == false)
-        {
-            moveY = followDelta.y * entry.WeightY;
-        }
-
-        if (Mathf.Approximately(moveX, 0.0f) == true &&
-            Mathf.Approximately(moveY, 0.0f) == true)
-        {
-            return;
-        }
-
-        pos.x += moveX;
-        pos.y += moveY;
     }
 
     private void ApplyInfinity(ref Vector3 pos, ScrollRuntimeEntry entry, Vector3 followPos)
     {
-        float width = entry.Size.x;
-        float height = entry.Size.y;
-
-        bool useHorizontal =
-            entry.ScrollMode == ScrollMode.Horizontal ||
-            entry.ScrollMode == ScrollMode.Both;
-
-        bool useVertical =
-            entry.ScrollMode == ScrollMode.Vertical ||
-            entry.ScrollMode == ScrollMode.Both;
-
-        if (width <= 0.0f && height <= 0.0f)
-        {
-            return;
-        }
+        EntryFlags flags = entry.Flags;
 
         Vector3 referencePos;
 
-        // 패럴랙스를 사용하는 배경이라면 카메라 기준 래핑
-        if (follow != null &&
-            entry.ParallaxMode != ParallaxMode.None)
+        if ((flags & EntryFlags.InfinityRefFollow) != 0 && follow != null)
         {
             referencePos = followPos;
         }
         else
         {
-            // 그렇지 않은 배경은 고정 기준점(CenterPos) 기준 래핑
             referencePos = entry.CenterPos;
         }
 
-        if (useHorizontal == true && width > 0.0f)
+        if ((flags & EntryFlags.UseInfinityX) != 0)
         {
+            float width = entry.Size.x;
             float dx = referencePos.x - pos.x;
 
             if (dx > width)
@@ -470,8 +509,9 @@ public class ScrollSystem : MonoBehaviour, ISubSystem
             }
         }
 
-        if (useVertical == true && height > 0.0f)
+        if ((flags & EntryFlags.UseInfinityY) != 0)
         {
+            float height = entry.Size.y;
             float dy = referencePos.y - pos.y;
 
             if (dy > height)

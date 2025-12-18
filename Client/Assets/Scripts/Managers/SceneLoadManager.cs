@@ -1,10 +1,21 @@
+using Assets.Scripts.Data;
 using Assets.Scripts.Interface;
+using Assets.Scripts.Utility;
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
+/// <summary>
+/// 씬을 로드하고 종속성 컨텐츠를 처리하는 매니저.
+/// </summary>
 public class SceneLoadManager : MonoBehaviour
 {
     public static SceneLoadManager instance;
+
+#if UNITY_EDITOR
+    private Dictionary<string, uint> sceneMap = new Dictionary<string, uint>();
+#endif
 
     private void Awake()
     {
@@ -16,7 +27,10 @@ public class SceneLoadManager : MonoBehaviour
         else
         {
             Destroy(gameObject);
+            return;
         }
+
+        Initialize();
         SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
@@ -25,39 +39,106 @@ public class SceneLoadManager : MonoBehaviour
         SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
-    /// <summary>
-    /// 씬 로드 전 
-    /// 어드레서블 애셋의 로드 보장을 위한
-    /// 씬매니저의 래퍼 함수
-    /// </summary>
-    /// <param name="sceneName"></param>
-    public static void LoadScene(string sceneName)
+    private void Initialize()
     {
-        // 어드레서블 애셋 로드
+        sceneMap.Clear();
 
+#if UNITY_EDITOR
+        // 기본 씬 매핑
+        // 추후 RM에서 씬 정보를 불러와서 매핑하도록 변경 필요.
+        // domain, ContentGroup(DlcIndex), role(stageRole), class(StageIndex{Main/Sub}), instance
+        // TitleScene  : 0.0
+        // Stage0Scene : 1.0
+        // Stage1Scene : 1.1
+        sceneMap["TitleScene"] = DomainKey.GetStaticId(
+            DomainKey.Make(Domain.Scene, 0, (byte)SceneRole.UnityScene, ClassCodec.Pack(0, 0), 0)
+        );
 
-        // 애셋 로드 완료 후 씬 로드
-        SceneManager.LoadScene(sceneName);
+        sceneMap["Stage0Scene"] = DomainKey.GetStaticId(
+            DomainKey.Make(Domain.Scene, 0, (byte)SceneRole.UnityScene, ClassCodec.Pack(0, 0), 0)
+        );
+
+        sceneMap["Stage1Scene"] = DomainKey.GetStaticId(
+            DomainKey.Make(Domain.Scene, 0, (byte)SceneRole.UnityScene, ClassCodec.Pack(1, 0), 0)
+        );
+#endif
+    }
+
+    public void RegisterScene(string sceneName, uint sceneStaticId)
+    {
+        if (string.IsNullOrEmpty(sceneName) == true)
+        {
+            return;
+        }
+
+        if (sceneMap.ContainsKey(sceneName) == true)
+        {
+            return;
+        }
+
+        sceneMap[sceneName] = sceneStaticId;
     }
 
     /// <summary>
-    /// 씬 로드 완료 후 호출되는 콜백 메서드
+    /// 외부에서 호출하는 진입점.
+    /// 실제 코루틴 실행은 내부 인스턴스가 담당.
     /// </summary>
-    /// <param name="scene"></param>
-    /// <param name="mode"></param>
+    public static void LoadScene(string sceneName)
+    {
+        if (instance == null)
+        {
+            Debug.LogWarning("[SceneLoadManager] instance is null.");
+            return;
+        }
+
+        instance.StartCoroutine(instance.C_LoadScene(sceneName));
+    }
+
+    private IEnumerator C_LoadScene(string sceneName)
+    {
+        uint sceneStaticId;
+
+        if (sceneMap.TryGetValue(sceneName, out sceneStaticId) == false)
+        {
+            Debug.LogWarning("[SceneLoadManager] SceneId not found : " + sceneName);
+            yield break;
+        }
+
+        if (ResourceManager.instance != null)
+        {
+            yield return StartCoroutine(ResourceManager.instance.C_LoadSceneData(sceneStaticId));
+        }
+
+        AsyncOperation op = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Single);
+
+        while (op.isDone == false)
+        {
+            yield return null;
+        }
+    }
+
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        switch (scene.name)
+        uint sceneStaticId;
+
+        if (sceneMap.TryGetValue(scene.name, out sceneStaticId) == false)
         {
-            case "TitleScene":
-                Intro intro = FindFirstObjectByType<Intro>();
-                if (intro != null && intro is IPlayable)
-                {
-                    StartCoroutine(((IPlayable)intro).C_Play());
-                }
-                break;
-            default:
-                break;
+            sceneStaticId = 0u;
+        }
+
+        if (StageManager.instance == null)
+        {
+            Debug.LogError("[CriticalError] StageManager is null.");
+            return;
+        }
+
+        StageManager.instance.OnSceneLoaded(scene.name, sceneStaticId);
+
+        GameManager.instance.ChangeGameState(Types.GameState.Ready);
+        if (scene.name == "TitleScene")
+        {
+            IPlayable intro = GameObject.Find("Intro").GetComponent<IPlayable>();
+            StartCoroutine(intro.C_Play());
         }
     }
 }

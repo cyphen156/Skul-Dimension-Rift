@@ -1,0 +1,41 @@
+Branch #12 StageManager 구현    
+
+Commit 
+    [Refactor] 부트스트랩 플로우 정비, 컨텐츠 메타 & 매니페스트 검증로직도입
+
+    
+변경 요약
+
+    콘텐츠 로딩 초기 구간의 책임과 흐름을 재정리했습니다.
+    부트스트랩 단계에서 ContentManifest와 Meta 검증을 명확히 분리하고,
+    ResourceManager 초기화가 완료되기 전까지
+    다음 매니저들이 진행되지 않도록 게이트 구조를 확정했습니다.
+
+    Manifest는 항상 로컬에 존재하는 부트스트랩 데이터로 취급하고,
+    실제 업데이트 판단은 Meta 비교를 통해서만 이루어지도록 고정했습니다
+
+상세 변경 내용
+
+    BootStrap 초기화 흐름 정리
+        Awake 단계에서 코루틴 기반 초기화로 전환
+        ResourceManager 메타 검증 완료 전까지 이후 매니저 초기화 차단
+        정적 instance 접근 대신 PromoteOrCreate 반환 참조 기반으로 흐름 제어
+
+    ContentManifest 로딩 규칙 고정
+        Persistent 경로에 Manifest가 없을 경우
+        Resources 내 DefaultManifest를 폴백으로 복사하여 항상 존재 보장
+        Manifest는 서버 좌표계 및 콘텐츠 구조 정의용 데이터로만 사용
+
+    Meta 검증 기준 명확화
+        검증 대상은 Manifest 본문이 아닌 ContentMeta
+        sha256 비교를 기준으로 UpToDate / Outdated / Failed 판정
+        네트워크 실패 및 파싱 실패는 Failed로 일관 처리
+
+    ResourceManager 책임 범위 정리
+        로컬 Meta 로드 → 원격 Meta 검증까지를 부트스트랩 단계에서 수행
+        콘텐츠 실제 갱신 로직은 C_UpdateContent()로 분리하여 추후 확장 가능하도록 스텁 처리
+        Addressables 초기화 의존성 제거
+
+    유틸리티/구조적 정리
+        ContentVerifier는 순수 Meta 검증 유틸리티로 유지
+        상태 전달은 ContentVerifyState 단일 구조체를 통해 처리

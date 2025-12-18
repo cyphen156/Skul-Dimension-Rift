@@ -1,0 +1,28 @@
+Branch #12 StageManager 구현    
+
+Commit f2afd69
+    [Utility] [Refactor] Serializer 제네릭 지원
+
+변경 요약
+    유니티 인스펙터에서 확인할 수 있도록 
+    딕셔너리 내용을 string 기반 KeyValuePair 리스트로 변환하던 
+    Serializer 유틸리티를 개선했습니다.
+    입력 매개변수를 
+    Dictionary<string, string>에 고정하지 않고 
+    IReadOnlyDictionary<TKey, TValue>를 받도록 제네릭화하여, 
+    다양한 키/값 타입을 동일한 디버그 출력 경로로 처리할 수 있습니다.
+
+상세 변경 내용
+    - SerializableKeyValuePair는 인스펙터 표시 목적을 유지하기 위해 
+        string key/value 구조를 그대로 사용합니다.
+
+    - Serializer.ToDebugList의 입력을 
+        IReadOnlyDictionary<TKey, TValue>로 변경하여 
+        Dictionary/ReadOnlyDictionary 등 
+        읽기 전용 컬렉션을 모두 지원합니다.
+
+    - TKey/TValue는 ToString() 기반으로 문자열화되어 
+        SerializableKeyValuePair 리스트로 변환됩니다.
+
+    - 불필요한 Dictionary 복사 없이, 
+        순회만으로 변환하도록 유지했습니다.

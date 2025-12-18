@@ -1,9 +1,11 @@
+using Assets.Scripts.Content;
 using Assets.Scripts.Data;
+using Assets.Scripts.Utility;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
-using UnityEngine.AddressableAssets;
 using UnityEngine.InputSystem;
 using static Types;
 using Object = UnityEngine.Object;
@@ -17,13 +19,14 @@ public class ResourceManager : MonoBehaviour
     public static ResourceManager instance;
 
     [Header("Paths")]
-    // 플랫폼별 빌드 파일이 다를 수 있으므로 리소스 경로는 조합으로 구성
-    // 원격 리소스 경로 URL = server IP OR baseURL + Platform + Contents
-    [SerializeField] private string baseURL = "Your Server URL Here";       // 서버 URL
-    [SerializeField] private string contentPath = "Your Content Path Here"; // 컨텐츠 패스
     [SerializeField] private string defaultInputActionPath = "Input/InputActions";
-    private const string userDataFileName = "UserData.json";
-    private string userDataPath => Path.Combine(Application.persistentDataPath, userDataFileName);
+    
+    [SerializeField] private string contentManifestPath = "Data/ContentManifest";
+    private const string contentManifestFileName = "contentManifest.json";
+
+    private const string userDataFileName = "UserData.json"; 
+    private string userDataPath;
+    private string contentManifestPersistentPath;
 
     private readonly Dictionary<string, string> controlPaths = new()
     {
@@ -35,13 +38,24 @@ public class ResourceManager : MonoBehaviour
         { "Gamepad_Switch", "Control/GamePad/NintendoSwitch" },
     };
 
-    [Header("Optional DLC Catalogs")]
-    [SerializeField] private List<string> dlcCatalogUrls = new List<string>();
-
+    [Header("ContentPacks")]
+    private ContentManifest contentManifest;
+    private ContentMeta localMeta;
+    private ContentVerifyState verifyState;
+    private Dictionary<string, string> catalogPaths;
+    
+    [Header("DomainProvider")]
+    [SerializeField] private DomainAddressResolver domainAddressResolver;
+#if UNITY_EDITOR
+    [SerializeField]
+    private List<SerializableKeyValuePair> domainResolverDebugList
+        = new List<SerializableKeyValuePair>();
+#endif
     [Header("Resources")]
     private Dictionary<string, GameObject> prefabs = new Dictionary<string, GameObject>();
     private Dictionary<string, AudioClip> bgmClips = new Dictionary<string, AudioClip>();
     private Dictionary<string, AudioClip> sfxClips = new Dictionary<string, AudioClip>();
+    private Dictionary<uint, StageData> stageDatas = new Dictionary<uint, StageData>();
     private readonly Dictionary<string, string> controlBindings = new Dictionary<string, string>();
     private readonly Dictionary<string, Sprite> controlSprites = new Dictionary<string, Sprite>();
     private Sprite placeHolderSprite;
@@ -50,9 +64,6 @@ public class ResourceManager : MonoBehaviour
     private readonly Dictionary<uint, Sprite> itemSprites = new Dictionary<uint, Sprite>();
     private readonly Dictionary<uint, Sprite> monsterSprites = new Dictionary<uint, Sprite>();
     private readonly Dictionary<uint, Sprite> worldObjectSprites = new Dictionary<uint, Sprite>();
-
-    [Header("Runtime System Data")]
-    [SerializeField] private string controlDeviceInfo;
 
     [Header("UserDatas")]
     [SerializeField] private UserData userData;
@@ -81,19 +92,41 @@ public class ResourceManager : MonoBehaviour
             Destroy(gameObject);
             return;
         }
+        userDataPath = Path.Combine(Application.persistentDataPath, userDataFileName);
+        contentManifestPersistentPath =
+                Path.Combine(
+                    Application.persistentDataPath,
+                    contentManifestPath,
+                    contentManifestFileName
+                );
         Initialize();
+        
+        domainAddressResolver = new DomainAddressResolver();
+        uint titleStaticKey = DomainKey.GetStaticId(
+            DomainKey.Make(
+                Domain.Scene,
+                0,
+                (byte)SceneRole.StagePrefab,
+                ClassCodec.Pack(0, 0),
+                0
+            )
+        );
+
+        domainAddressResolver.Register(titleStaticKey, "Prefab/StageTitle_0");
+#if UNITY_EDITOR
+        domainResolverDebugList = Serializer.ToDebugList<uint, string>(domainAddressResolver.Map);
+#endif
     }
 
     #endregion Unity Methods
 
     #region Initialization
+    /// <summary>
+    /// Resources에 존재하는 필수 데이터들 초기화
+    /// </summary>
     private void Initialize()
     {
         // 시스템 리소스 로드
-
-        // 어드레서블 초기화
-        Addressables.InitializeAsync().WaitForCompletion();
-
         prefabs.Clear();
         var Prefabs = Resources.LoadAll<GameObject>("Prefab");
         foreach (var pref in Prefabs)
@@ -171,10 +204,94 @@ public class ResourceManager : MonoBehaviour
 
         // 컨트롤 이미지 불러오기
         controlSprites.Clear();
+        // 콘텐츠 매니페스트 로드
+        if (!LoadContentManifest(out contentManifest))
+        {
+            Debug.LogError("Error : contentManifest Not Exists!");
+            UnityEditor.EditorApplication.isPlaying = false;
+            return;
+        }
+        localMeta = null;
+
+        string localMetaPath = Path.Combine(Application.persistentDataPath, contentManifest.verify.manifestMetaPath);
+
+        if (File.Exists(localMetaPath) == true)
+        {
+            string json = File.ReadAllText(localMetaPath);
+
+            if (string.IsNullOrEmpty(json) == false)
+            {
+                localMeta = JsonUtility.FromJson<ContentMeta>(json);
+            }
+        }
+    }
+
+    public IEnumerator C_VerifyContentMeta()
+    {
+        if (verifyState == null)
+        {
+            verifyState = new ContentVerifyState();
+        }
+
+        if (contentManifest == null ||
+       contentManifest.verify == null ||
+       string.IsNullOrEmpty(contentManifest.serverRoot) == true ||
+       string.IsNullOrEmpty(contentManifest.verify.manifestMetaPath) == true)
+        {
+            yield break;
+        }
+
+        string root = contentManifest.serverRoot;
+
+        if (root.EndsWith("/") == false)
+        {
+            root += "/";
+        }
+
+        string rel = contentManifest.verify.manifestMetaPath.Replace('\\', '/');
+
+        if (rel.StartsWith("/") == true)
+        {
+            rel = rel.Substring(1);
+        }
+
+        string remoteMetaUri = root + rel;
+
+        yield return ContentVerifier.VerifyMeta(
+            remoteMetaUri,
+            localMeta,
+            verifyState
+        );
+
+        if (verifyState.result != ContentVerifyResult.UpToDate)
+        {
+            yield break;
+        }
+    }
+
+    public IEnumerator C_UpdateContent()
+    {
+        yield return null;
     }
     #endregion
 
     #region Resource Accessors
+    public StageData GetStageData(uint stageDataKey)
+    {
+        StageData data = null;
+        stageDatas.TryGetValue(stageDataKey, out data);
+        return data;
+    }
+
+    public GameObject GetDomainObject(uint staticKey)
+    {
+        if (staticKey == default)
+        {
+            return null;
+        }
+        return null;
+    }
+
     public T GetResource<T>(string resourceName) where T : Object
     {
         // how to Resource??
@@ -218,19 +335,19 @@ public class ResourceManager : MonoBehaviour
             return null;
         }
 
-        ObjectDomain domain = ObjectKey.GetDomain(objectKey);
+        Domain domain = DomainKey.GetDomain(objectKey);
 
         switch (domain)
         {
-            case ObjectDomain.Item:
+            case Domain.Item:
                 {
                     return GetItemSprite(objectKey);
                 }
-            case ObjectDomain.Monster:
+            case Domain.Monster:
                 {
                     return GetMonsterSprite(objectKey);
                 }
-            case ObjectDomain.WorldObject:
+            case Domain.WorldObject:
                 {
                     return GetWorldObjectSprite(objectKey);
                 }
@@ -250,8 +367,7 @@ public class ResourceManager : MonoBehaviour
             return sprite;
         }
 
-        // 파일 네이밍 규칙은 프로젝트에 맞게 조정
-        string hex = ObjectKey.ToHex8(objectKey);
+        string hex = DomainKey.ToHex8(objectKey);
         string path = "Sprite/Item/Item_" + hex;
 
         sprite = Resources.Load<Sprite>(path);
@@ -278,8 +394,7 @@ public class ResourceManager : MonoBehaviour
             return sprite;
         }
 
-        // 예) Sprite/Monster/Monster_FF000001
-        string hex = ObjectKey.ToHex8(objectKey);
+        string hex = DomainKey.ToHex8(objectKey);
         string path = "Sprite/Monster/Monster_" + hex;
 
         sprite = Resources.Load<Sprite>(path);
@@ -307,7 +422,7 @@ public class ResourceManager : MonoBehaviour
         }
 
         // 예) Sprite/WorldObject/WorldObject_FF000001
-        string hex = ObjectKey.ToHex8(objectKey);
+        string hex = DomainKey.ToHex8(objectKey);
         string path = "Sprite/WorldObject/WorldObject_" + hex;
 
         sprite = Resources.Load<Sprite>(path);
@@ -438,9 +553,6 @@ public class ResourceManager : MonoBehaviour
             {
                 throw new Exception("JSON parse failed");
             }
-#if UNITY_EDITOR
-            Debug.Log("User Data has been Loaded");
-#endif
             return loaded;
         }
         catch (Exception e)
@@ -448,6 +560,58 @@ public class ResourceManager : MonoBehaviour
             Debug.Log($"Loading UserData Failed : {e}");
             return null;
         }
+    }
+
+    private bool LoadContentManifest(out ContentManifest manifest)
+    {
+        manifest = null;
+
+        if (File.Exists(contentManifestPersistentPath) == false)
+        {
+            string resourcesManifestPath = Path.Combine(contentManifestPath, "ContentManifest");
+
+            TextAsset defaultAsset = Resources.Load<TextAsset>(resourcesManifestPath);
+
+            if (defaultAsset == null)
+            {
+                return false;
+            }
+
+            string directory = Path.GetDirectoryName(contentManifestPersistentPath);
+
+            if (string.IsNullOrEmpty(directory) == false &&
+                Directory.Exists(directory) == false)
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            File.WriteAllText(contentManifestPersistentPath, defaultAsset.text);
+        }
+
+        if (File.Exists(contentManifestPersistentPath) == false)
+        {
+            return false;
+        }
+
+        string json = File.ReadAllText(contentManifestPersistentPath);
+
+        if (string.IsNullOrEmpty(json) == true)
+        {
+            return false;
+        }
+
+        manifest = JsonUtility.FromJson<ContentManifest>(json);
+        return manifest != null;
+    }
+
+
+    /// <summary>
+    /// Addressable 애셋 로드
+    /// </summary>
+    /// <param name="id"></param>
+    public IEnumerator C_LoadSceneData(uint sceneId)
+    {
+        yield return null;
     }
 
     public void ChangeResource(string dictionaryName, string ResourceTarget)
@@ -462,7 +626,6 @@ public class ResourceManager : MonoBehaviour
         {
             case "controlSprites":
                 {
-                    controlDeviceInfo = ResourceTarget;
                     controlSprites.Clear();
                     controlPaths.TryGetValue(ResourceTarget, out var targetPath);
                     string path = "Sprite/" + targetPath;
@@ -542,20 +705,6 @@ public class ResourceManager : MonoBehaviour
     #endregion
 
     #region Utility Methods
-    private void CacheClear(Exception e = null)
-    {
-        // 에러가 발생했으면 전체 캐시를 강제로 삭제
-        if (e != null)
-        {
-            Debug.LogError($"ResourceManager Cache Clear Exception: {e.Message}");
-
-            Caching.ClearCache();
-        }
-
-        // 이 외에는 사용하지 않는 캐시만 삭제
-        Addressables.CleanBundleCache();
-    }
-
     /// <summary>
     /// 플랫폼 정보를 정규화하여 리턴합니다.
     /// 어드레서블 데이터를 다운로드 할때 사용할 예정입니다.

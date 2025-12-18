@@ -69,7 +69,7 @@ Commit 044cb29
 Commit 
     [Resource] Stage0_1 프리팹 업로드
     
-변경 요약
+변경 요약 c375322
     1. Stage Template를 이용한 Stage0_1 업로드 
 
     2. Stage0.prefab 이름 변경

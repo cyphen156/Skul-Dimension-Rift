@@ -121,6 +121,21 @@ public class CameraManager : MonoBehaviour
         vcam.LookAt = playerTransform;
     }
 
+    public void ClearPlayerFollow()
+    {
+        playerTransform = null;
+
+        CinemachineCamera vcam = GetCamera(playerFollowCameraName);
+
+        if (vcam == null)
+        {
+            return;
+        }
+
+        vcam.Follow = null;
+        vcam.LookAt = null;
+    }
+
     public void SetBounds(PolygonCollider2D bounds)
     {
         currentBounds = bounds;
@@ -153,5 +168,6 @@ public class CameraManager : MonoBehaviour
         }
 
         confiner.BoundingShape2D = currentBounds;
+        confiner.InvalidateBoundingShapeCache();
     }
 }

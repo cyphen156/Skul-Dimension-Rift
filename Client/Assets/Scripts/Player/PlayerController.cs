@@ -37,10 +37,6 @@ public class PlayerController : NetworkBehaviour
         baseScale = transform.localScale;
         isFlipped = false;
         coyoteTime = 0.1f;
-        if (CameraManager.instance != null)
-        {
-            CameraManager.instance.SetPlayerFollow(transform);
-        }
     }
 
     private void OnEnable()
@@ -51,19 +47,44 @@ public class PlayerController : NetworkBehaviour
         }
     }
 
-    
+    public override void OnNetworkSpawn()
+    {
+        base.OnNetworkSpawn();
+
+        if (!IsOwner)
+        {
+            return;
+        }
+
+        if (InputManager.instance != null)
+        {
+            InputManager.instance.RegisterPlayerInputAction(this);
+        }
+
+        if (CameraManager.instance != null)
+        {
+            CameraManager.instance.SetPlayerFollow(transform);
+        }
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        base.OnNetworkDespawn();
+
+        if (!IsOwner)
+        {
+            return;
+        }
+
+        InputManager.instance.UnregisterPlayerInputAction(this);
+        CameraManager.instance.ClearPlayerFollow();
+    }
+
     private void OnDisable()
     {
         if (detector != null)
         {
             detector.OnTargetChanged -= HandleTargetChanged;
-        }
-    }
-    private void Start()
-    {
-        if (InputManager.instance != null)
-        {
-            InputManager.instance.RegisterPlayerInputAction(this);
         }
     }
 

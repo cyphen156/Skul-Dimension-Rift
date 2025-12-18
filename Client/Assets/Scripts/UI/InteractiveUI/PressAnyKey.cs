@@ -50,7 +50,7 @@ public class PressAnyKey : MonoBehaviour, IInteractive
     {
         if (ctx.performed)
         {
-            GameManager.instance.ChangeGameState(GameState.Playing);
+            GameManager.instance.RequestChangeScene("Stage0Scene");
         }
     }
 }

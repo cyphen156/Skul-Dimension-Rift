@@ -3,7 +3,7 @@ using Assets.Scripts.Interface;
 
 namespace Assets.Scripts.Item
 {
-    public class ItemView : ViewObject, IInteractable
+    public class ItemView : StageView, IInteractable
     {
         public void Interact()
         {

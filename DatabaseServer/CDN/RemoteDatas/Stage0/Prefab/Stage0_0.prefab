@@ -3672,7 +3672,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6391395143895102102}
   m_Layer: 0
-  m_Name: NPC_5_Point (2)
+  m_Name: NPC_7_Point
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
