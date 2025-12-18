@@ -1,7 +1,8 @@
 {
   "version": 1,
   "debugUri": "RemoteDatas/",
-  "baseUri": "DatabaseServer/CDN/{Platform}/",
+  "serverRoot": "http://127.0.0.1/",
+  "basePath": "CDN/{Platform}/",
    "verify": {
     "manifestMetaPath": "meta/contentManifest.meta.json"
   },

@@ -2,15 +2,8 @@
 
 namespace Assets.Scripts.Content
 {
-    public enum ContentVerifyResult
-    {
-        UpToDate,
-        Outdated,
-        Failed
-    }
-
     [Serializable]
-    public sealed class ContentManifestMeta
+    public sealed class ContentMeta
     {
         public int version;
         public string sha256;

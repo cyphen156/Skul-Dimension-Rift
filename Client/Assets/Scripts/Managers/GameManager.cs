@@ -39,7 +39,7 @@ public class GameManager : NetworkBehaviour
         }
     }
 
-    public void Boot()
+    private void Start()
     {
         InitializeGame();
     }

@@ -20,8 +20,11 @@ namespace Assets.Scripts.Content
     public sealed class ContentManifest
     {
         public int version = 1;
+
         public string debugUri;
-        public string baseUri;
+        public string serverRoot;
+        public string basePath; 
+        
         public ContentVerifyInfo verify;
         public List<ContentManifestCatalog> catalogs = new List<ContentManifestCatalog>();
     }

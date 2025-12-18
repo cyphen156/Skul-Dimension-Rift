@@ -1,3 +1,4 @@
+using Assets.Scripts.Content;
 using Assets.Scripts.Data;
 using Assets.Scripts.Utility;
 using System;
@@ -5,7 +6,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
-using UnityEngine.AddressableAssets;
 using UnityEngine.InputSystem;
 using static Types;
 using Object = UnityEngine.Object;
@@ -19,11 +19,14 @@ public class ResourceManager : MonoBehaviour
     public static ResourceManager instance;
 
     [Header("Paths")]
-    [SerializeField] private string CDNServerUri = "Assets/RemoteDatas/";
     [SerializeField] private string defaultInputActionPath = "Input/InputActions";
-    [SerializeField] private string contentManifestPath = "Data/contentManifest";
+    
+    [SerializeField] private string contentManifestPath = "Data/ContentManifest";
+    private const string contentManifestFileName = "contentManifest.json";
+
     private const string userDataFileName = "UserData.json"; 
-    private string userDataPath => Path.Combine(Application.persistentDataPath, userDataFileName);
+    private string userDataPath;
+    private string contentManifestPersistentPath;
 
     private readonly Dictionary<string, string> controlPaths = new()
     {
@@ -34,8 +37,11 @@ public class ResourceManager : MonoBehaviour
         { "Gamepad_PS",     "Control/GamePad/PlayStation" },
         { "Gamepad_Switch", "Control/GamePad/NintendoSwitch" },
     };
-    
+
+    [Header("ContentPacks")]
     private ContentManifest contentManifest;
+    private ContentMeta localMeta;
+    private ContentVerifyState verifyState;
     private Dictionary<string, string> catalogPaths;
     
     [Header("DomainProvider")]
@@ -86,6 +92,13 @@ public class ResourceManager : MonoBehaviour
             Destroy(gameObject);
             return;
         }
+        userDataPath = Path.Combine(Application.persistentDataPath, userDataFileName);
+        contentManifestPersistentPath =
+                Path.Combine(
+                    Application.persistentDataPath,
+                    contentManifestPath,
+                    contentManifestFileName
+                );
         Initialize();
         
         domainAddressResolver = new DomainAddressResolver();
@@ -108,12 +121,12 @@ public class ResourceManager : MonoBehaviour
     #endregion Unity Methods
 
     #region Initialization
+    /// <summary>
+    /// Resources에 존재하는 필수 데이터들 초기화
+    /// </summary>
     private void Initialize()
     {
         // 시스템 리소스 로드
-        // 어드레서블 초기화
-        Addressables.InitializeAsync().WaitForCompletion();
-
         prefabs.Clear();
         var Prefabs = Resources.LoadAll<GameObject>("Prefab");
         foreach (var pref in Prefabs)
@@ -191,11 +204,74 @@ public class ResourceManager : MonoBehaviour
 
         // 컨트롤 이미지 불러오기
         controlSprites.Clear();
-
         // 콘텐츠 매니페스트 로드
-        contentManifest = LoadContentManifest();
+        if (!LoadContentManifest(out contentManifest))
+        {
+            Debug.LogError("Error : contentManifest Not Exists!");
+            UnityEditor.EditorApplication.isPlaying = false;
+            return;
+        }
+        localMeta = null;
 
+        string localMetaPath = Path.Combine(Application.persistentDataPath, contentManifest.verify.manifestMetaPath);
 
+        if (File.Exists(localMetaPath) == true)
+        {
+            string json = File.ReadAllText(localMetaPath);
+
+            if (string.IsNullOrEmpty(json) == false)
+            {
+                localMeta = JsonUtility.FromJson<ContentMeta>(json);
+            }
+        }
+    }
+
+    public IEnumerator C_VerifyContentMeta()
+    {
+        if (verifyState == null)
+        {
+            verifyState = new ContentVerifyState();
+        }
+
+        if (contentManifest == null ||
+       contentManifest.verify == null ||
+       string.IsNullOrEmpty(contentManifest.serverRoot) == true ||
+       string.IsNullOrEmpty(contentManifest.verify.manifestMetaPath) == true)
+        {
+            yield break;
+        }
+
+        string root = contentManifest.serverRoot;
+
+        if (root.EndsWith("/") == false)
+        {
+            root += "/";
+        }
+
+        string rel = contentManifest.verify.manifestMetaPath.Replace('\\', '/');
+
+        if (rel.StartsWith("/") == true)
+        {
+            rel = rel.Substring(1);
+        }
+
+        string remoteMetaUri = root + rel;
+
+        yield return ContentVerifier.VerifyMeta(
+            remoteMetaUri,
+            localMeta,
+            verifyState
+        );
+
+        if (verifyState.result != ContentVerifyResult.UpToDate)
+        {
+            yield break;
+        }
+    }
+
+    public IEnumerator C_UpdateContent()
+    {
+        yield return null;
     }
     #endregion
 
@@ -486,23 +562,48 @@ public class ResourceManager : MonoBehaviour
         }
     }
 
-    private ContentManifest LoadContentManifest()
+    private bool LoadContentManifest(out ContentManifest manifest)
     {
-        TextAsset asset = Resources.Load<TextAsset>(contentManifestPath);
+        manifest = null;
 
-        if (asset == null)
+        if (File.Exists(contentManifestPersistentPath) == false)
         {
-            return null;
+            string resourcesManifestPath = Path.Combine(contentManifestPath, "ContentManifest");
+
+            TextAsset defaultAsset = Resources.Load<TextAsset>(resourcesManifestPath);
+
+            if (defaultAsset == null)
+            {
+                return false;
+            }
+
+            string directory = Path.GetDirectoryName(contentManifestPersistentPath);
+
+            if (string.IsNullOrEmpty(directory) == false &&
+                Directory.Exists(directory) == false)
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            File.WriteAllText(contentManifestPersistentPath, defaultAsset.text);
         }
 
-        ContentManifest json = JsonUtility.FromJson<ContentManifest>(asset.text);
-        return json;
+        if (File.Exists(contentManifestPersistentPath) == false)
+        {
+            return false;
+        }
+
+        string json = File.ReadAllText(contentManifestPersistentPath);
+
+        if (string.IsNullOrEmpty(json) == true)
+        {
+            return false;
+        }
+
+        manifest = JsonUtility.FromJson<ContentManifest>(json);
+        return manifest != null;
     }
-     
-    private IEnumerator C_LoadContentManifest()
-    {
-        ServerUri 
-    }
+
 
     /// <summary>
     /// Addressable 애셋 로드

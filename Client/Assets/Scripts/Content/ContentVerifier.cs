@@ -1,62 +1,104 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
 using UnityEngine.Networking;
 
 namespace Assets.Scripts.Content
 {
+    public enum ContentVerifyResult
+    {
+        UpToDate,
+        Outdated,
+        Failed
+    }
+
+    public sealed class ContentVerifyState
+    {
+        public ContentVerifyResult result = ContentVerifyResult.Failed;
+        public ContentMeta remoteMeta = null;
+    }
+
     public static class ContentVerifier
     {
-        public static IEnumerator VerifyManifest(
+        public static IEnumerator VerifyMeta(
             string remoteMetaUri,
-            ContentManifestMeta localMeta,
-            Action<ContentVerifyResult, ContentManifestMeta> onComplete
+            ContentMeta localMeta,
+            ContentVerifyState verifyState
         )
         {
-            UnityWebRequest request = UnityWebRequest.Get(remoteMetaUri);
-
-            yield return request.SendWebRequest();
-
-            if (request.result != UnityWebRequest.Result.Success)
+            if (verifyState == null)
             {
-                onComplete(ContentVerifyResult.Failed, null);
                 yield break;
             }
 
-            ContentManifestMeta remoteMeta =
-                JsonUtility.FromJson<ContentManifestMeta>(request.downloadHandler.text);
+            verifyState.result = ContentVerifyResult.Failed;
+            verifyState.remoteMeta = null;
 
-            if (remoteMeta == null)
+            if (string.IsNullOrEmpty(remoteMetaUri) == true)
             {
-                onComplete(ContentVerifyResult.Failed, null);
                 yield break;
             }
 
-            if (string.IsNullOrEmpty(remoteMeta.sha256) == true)
-            {
-                onComplete(ContentVerifyResult.Failed, null);
-                yield break;
-            }
+            UnityWebRequest request = null;
 
-            if (localMeta == null)
+            try
             {
-                onComplete(ContentVerifyResult.Outdated, remoteMeta);
-                yield break;
-            }
+                request = UnityWebRequest.Get(remoteMetaUri);
 
-            if (string.IsNullOrEmpty(localMeta.sha256) == true)
+                yield return request.SendWebRequest();
+
+                if (request.result != UnityWebRequest.Result.Success)
+                {
+                    yield break;
+                }
+
+                string text = request.downloadHandler.text;
+
+                if (string.IsNullOrEmpty(text) == true)
+                {
+                    yield break;
+                }
+
+                ContentMeta remoteMeta = JsonUtility.FromJson<ContentMeta>(text);
+
+                if (remoteMeta == null)
+                {
+                    yield break;
+                }
+
+                if (string.IsNullOrEmpty(remoteMeta.sha256) == true)
+                {
+                    yield break;
+                }
+
+                verifyState.remoteMeta = remoteMeta;
+
+                if (localMeta == null)
+                {
+                    verifyState.result = ContentVerifyResult.Outdated;
+                    yield break;
+                }
+
+                if (string.IsNullOrEmpty(localMeta.sha256) == true)
+                {
+                    verifyState.result = ContentVerifyResult.Outdated;
+                    yield break;
+                }
+
+                if (string.Equals(localMeta.sha256, remoteMeta.sha256, System.StringComparison.Ordinal) == true)
+                {
+                    verifyState.result = ContentVerifyResult.UpToDate;
+                    yield break;
+                }
+
+                verifyState.result = ContentVerifyResult.Outdated;
+            }
+            finally
             {
-                onComplete(ContentVerifyResult.Outdated, remoteMeta);
-                yield break;
+                if (request != null)
+                {
+                    request.Dispose();
+                }
             }
-
-            if (localMeta.sha256 == remoteMeta.sha256)
-            {
-                onComplete(ContentVerifyResult.UpToDate, remoteMeta);
-                yield break;
-            }
-
-            onComplete(ContentVerifyResult.Outdated, remoteMeta);
         }
     }
 }

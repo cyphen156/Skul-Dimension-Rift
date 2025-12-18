@@ -1,3 +1,4 @@
+using System.Collections;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
 using UnityEngine;
@@ -36,8 +37,7 @@ public class BootStrap : MonoBehaviour
             return;
         }
 
-        InitializeManagers();
-        GameManager.instance.Boot();
+        StartCoroutine(C_InitializeManagers());
     }
 
     #endregion Unity Methods
@@ -47,7 +47,7 @@ public class BootStrap : MonoBehaviour
     /// <summary>
     /// 매니저들을 순서대로 초기화
     /// </summary>
-    private void InitializeManagers()
+    private IEnumerator C_InitializeManagers()
     {
         // 1. NetworkManager 초기화
         NetworkManager ngo = FindFirstObjectByType<NetworkManager>(FindObjectsInactive.Include);
@@ -73,7 +73,8 @@ public class BootStrap : MonoBehaviour
         ngo.NetworkConfig.NetworkTransport = utp;
 
         // 2. ResourceManager 초기화
-        PromoteOrCreate<ResourceManager>("ResourceManager");
+        ResourceManager rm = PromoteOrCreate<ResourceManager>("ResourceManager");
+        yield return rm.C_VerifyContentMeta();
         // 3. PoolManager 초기화
         PromoteOrCreate<PoolManager>("PoolManager");
         // 4. GraphicManager 초기화
