@@ -1,0 +1,40 @@
+[
+  {
+    "ContainingType": "ApiServer.API.MetaApi",
+    "Method": "GetMeta",
+    "RelativePath": "api/meta",
+    "HttpMethod": "GET",
+    "IsController": false,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "Key",
+        "Type": "System.String",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Void",
+        "MediaTypes": [],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "ApiServer.API.HealthApi",
+    "Method": "GetHealth",
+    "RelativePath": "health",
+    "HttpMethod": "GET",
+    "IsController": false,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Void",
+        "MediaTypes": [],
+        "StatusCode": 200
+      }
+    ]
+  }
+]

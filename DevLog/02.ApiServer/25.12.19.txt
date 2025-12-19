@@ -1,0 +1,131 @@
+Branch #11 ApiServer 개발
+
+Commit f24bd03
+    [Refactor][Server] Meta API 기반 콘텐츠 메타 제공 구조 확정
+
+변경 요약
+    서버 프로젝트 솔루션 이름이 변경되었습니다.
+        DatabaseServer -> ApiServer
+
+    콘텐츠 Meta 검증 흐름을 클라이언트 단독 책임에서 서버 연계 구조로 확장했습니다.
+    Meta 파일을 Key 기반으로 조회하는 API 서버 구조를 도입하고,
+    클라이언트–서버 간 Meta 교환 규칙을 명확히 고정했습니다.
+        서버는 Meta 저장소 역할만 수행
+        클라이언트가 검증 주체
+        서버는 Key에 대응하는 Meta JSON을 제공
+
+상세 변경 내용
+    1. Meta API 서버 구조 확정
+        .NET 8 Minimal API 기반 Meta 전용 API 서버 구현
+        서버 역할 명확화
+        콘텐츠 검증 판단 ❌
+        파일 다운로드 ❌
+        Meta 제공 ⭕
+        /api/meta?Key={Key} 단일 엔드포인트로 통일
+            요청:  /api/meta?Key=ContentManifest
+            응답:  Meta/ContentManifest.meta.json
+
+    2. 서버측 MetaIndex 도입
+        서버 시작 시 Meta/ 디렉터리를 스캔하여
+        {Key}.meta.json → absolutePath 인덱스 구성
+        런타임 중 파일 시스템 접근 최소화
+        Key 중복 방지 및 대소문자 무시 비교 적용
+
+        Meta/
+        ├─ ContentManifest.meta.json
+        ├─ Common_Catalog.meta.json
+        └─ Stage0_Catalog.meta.json
+
+    3. Meta 파일 저장 규칙 확정 (서버)
+        모든 Meta 파일은 단일 Meta 디렉터리에 평탄화(flat) 저장
+        디렉터리 구조를 Key로 인코딩하여 파일명으로 사용
+        예: Common/catalog.json
+            → Common_Catalog.meta.json
+        서버는 파일 구조를 해석하지 않음
+        Key → Meta 파일 매핑만 수행
+
+PR #12 [Need for Client] Meta 저장소 및 Key 기반 조회 API 도입
+Merged At {} into Main
+
+배경 / 목적
+
+    클라이언트의 콘텐츠 업데이트 판단 로직을 안정적으로 유지하기 위해서는,  
+    서버가 보유한 최신 Meta”를 단일 기준점(Source of Truth) 으로 제공할 필요가 있습니다.
+
+    다만 API 서버는 콘텐츠의 최신 여부를 판단하거나  
+    파일 다운로드를 수행하는 주체가 되어서는 안 됩니다.
+
+    본 PR은 API 서버를 Meta 제공 전용 서버로 명확히 한정하고,  
+    클라이언트가 Key 기반으로 Meta를 조회할 수 있는  
+    최소한의 API 구조를 확정하는 것을 목표로 합니다.
+
+목표
+
+    API 서버를 **Meta 저장소 + 조회 전용 서버**로 정의합니다.
+    서버는 **검증 판단 / 업데이트 / 다운로드를 수행하지 않습니다.**
+    클라이언트가 **Key 기반으로 Meta JSON을 조회**할 수 있는 API를 제공합니다.
+    이후 클라이언트의 Meta 검증 플로우와 자연스럽게 결합될 수 있는 구조를 마련합니다.
+
+변경 요약
+
+    1) 서버 프로젝트 정체성 확정
+
+    프로젝트 명칭 변경
+        `DatabaseServer` → `ApiServer`
+
+    서버 책임 범위 고정
+        | 항목 | 수행 여부 |
+        | --- | --- |
+        | Meta 저장 | O |
+        | Meta 제공 | O |
+        | 콘텐츠 검증 판단 | X |
+        | 파일 다운로드 | X |
+        | 업데이트 수행 | X |
+
+    2) Meta 저장 구조 도입
+
+        서버는 Key를 기준으로 Meta JSON을 보관합니다.
+        Meta는 **정적 데이터**로 취급하며, 서버 내부에서 상태 판단을 하지 않습니다.
+        Meta의 구조, 버전 비교, 해시 판단은 **클라이언트 책임**입니다.
+
+    3) Key 기반 Meta 조회 API 제공
+
+        클라이언트는 **Key**를 통해 Meta를 요청합니다.
+        서버는 요청된 Key에 대응하는 **Meta JSON만 반환**합니다.
+
+        서버의 역할은 다음으로 제한됩니다.
+            요청 수신
+            Key 매핑
+            Meta JSON 반환
+
+        “최신 여부”, “업데이트 필요 여부”에 대한 판단 로직은 **절대 포함하지 않습니다.**
+
+API 스펙
+    .NET 8 Minimal API 기반
+    RESTful 구조
+    Endpoint 예시
+        `/meta/{key}`
+
+    응답 특성
+        JSON
+        캐시 가능한 정적 데이터
+        CDN 연계 가능 구조
+
+영향 범위
+    서버
+        API Server의 역할을 Meta 제공 전용으로 명확히 고정
+        이후 확장 시에도 책임 범위가 흐려지지 않는 기준선 확보
+
+    클라이언트
+        서버 연계 Meta 검증 플로우 구현 가능
+        “서버는 판단하지 않는다”는 전제 하에 로직 단순화
+
+테스트 / 검증
+    정상 Key 요청 시 Meta JSON 반환 확인
+    존재하지 않는 Key 요청 시 처리 정책 확인
+    서버가 콘텐츠 검증 또는 업데이트 판단을 수행하지 않는지 확인
+
+비고
+    본 PR은 **API 서버의 책임과 경계를 확정하는 PR**입니다.
+    실제 콘텐츠 다운로드, 업데이트 판단 로직은  
+    클라이언트 측 PR에서 구현됩니다.
