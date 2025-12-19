@@ -1,10 +1,10 @@
 {
   "version": 1,
   "debugUri": "RemoteDatas/",
-  "serverRoot": "http://127.0.0.1/",
+  "serverRoot": "http://127.0.0.1:5001",
   "basePath": "CDN/{Platform}/",
-   "verify": {
-    "manifestMetaPath": "meta/contentManifest.meta.json"
+  "verify": {
+  "metaApi": "api/meta?Key={Key}"
   },
   "catalogs": [
     {

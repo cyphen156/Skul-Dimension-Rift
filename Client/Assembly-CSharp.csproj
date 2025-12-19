@@ -135,6 +135,7 @@
     <Compile Include="Assets\Scripts\UI\InteractiveUI\Scroll.cs" />
     <Compile Include="Assets\TextMesh Pro\Examples &amp; Extras\Scripts\TMP_ExampleScript_01.cs" />
     <Compile Include="Assets\TextMesh Pro\Examples &amp; Extras\Scripts\TMPro_InstructionOverlay.cs" />
+    <Compile Include="Assets\Scripts\Utility\ContentPath.cs" />
     <Compile Include="Assets\TextMesh Pro\Examples &amp; Extras\Scripts\TMP_UiFrameRateCounter.cs" />
     <Compile Include="Assets\Scripts\Interface\IContainerEventHandler.cs" />
     <Compile Include="Assets\Scripts\Data\StageData.cs" />
