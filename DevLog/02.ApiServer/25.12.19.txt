@@ -1,0 +1,46 @@
+Branch #11 ApiServer 개발
+
+Commit
+    [Refactor][Server] Meta API 기반 콘텐츠 메타 제공 구조 확정
+
+변경 요약
+    서버 프로젝트 솔루션 이름이 변경되었습니다.
+        DatabaseServer -> ApiServer
+
+    콘텐츠 Meta 검증 흐름을 클라이언트 단독 책임에서 서버 연계 구조로 확장했습니다.
+    Meta 파일을 Key 기반으로 조회하는 API 서버 구조를 도입하고,
+    클라이언트–서버 간 Meta 교환 규칙을 명확히 고정했습니다.
+        서버는 Meta 저장소 역할만 수행
+        클라이언트가 검증 주체
+        서버는 Key에 대응하는 Meta JSON을 제공
+
+상세 변경 내용
+    1. Meta API 서버 구조 확정
+        .NET 8 Minimal API 기반 Meta 전용 API 서버 구현
+        서버 역할 명확화
+        콘텐츠 검증 판단 ❌
+        파일 다운로드 ❌
+        Meta 제공 ⭕
+        /api/meta?Key={Key} 단일 엔드포인트로 통일
+            요청:  /api/meta?Key=ContentManifest
+            응답:  Meta/ContentManifest.meta.json
+
+    2. 서버측 MetaIndex 도입
+        서버 시작 시 Meta/ 디렉터리를 스캔하여
+        {Key}.meta.json → absolutePath 인덱스 구성
+        런타임 중 파일 시스템 접근 최소화
+        Key 중복 방지 및 대소문자 무시 비교 적용
+
+        Meta/
+        ├─ ContentManifest.meta.json
+        ├─ Common_Catalog.meta.json
+        └─ Stage0_Catalog.meta.json
+
+    3. Meta 파일 저장 규칙 확정 (서버)
+        모든 Meta 파일은 단일 Meta 디렉터리에 평탄화(flat) 저장
+        디렉터리 구조를 Key로 인코딩하여 파일명으로 사용
+        예: Common/catalog.json
+            → Common_Catalog.meta.json
+        서버는 파일 구조를 해석하지 않음
+        Key → Meta 파일 매핑만 수행
+

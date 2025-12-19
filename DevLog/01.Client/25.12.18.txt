@@ -1,6 +1,6 @@
 Branch #12 StageManager 구현    
 
-Commit 
+Commit 64f82c6
     [Refactor] 부트스트랩 플로우 정비, 컨텐츠 메타 & 매니페스트 검증로직도입
 
     
