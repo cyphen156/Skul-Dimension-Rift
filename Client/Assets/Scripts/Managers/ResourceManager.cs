@@ -22,7 +22,7 @@ public class ResourceManager : MonoBehaviour
     [SerializeField] private string defaultInputActionPath = "Input/InputActions";
     
     [SerializeField] private string contentManifestPath = "Data/ContentManifest";
-    private const string contentManifestFileName = "contentManifest.json";
+    private const string contentManifestFileName = "ContentManifest.json";
 
     private const string userDataFileName = "UserData.json"; 
     private string userDataPath;
@@ -207,22 +207,9 @@ public class ResourceManager : MonoBehaviour
         // ÄÜÅÙÃ÷ ¸Å´ÏÆä½ºÆ® ·Îµå
         if (!LoadContentManifest(out contentManifest))
         {
-            Debug.LogError("Error : contentManifest Not Exists!");
+            Debug.LogError("Error : ContentManifest Not Exists!");
             UnityEditor.EditorApplication.isPlaying = false;
             return;
-        }
-        localMeta = null;
-
-        string localMetaPath = Path.Combine(Application.persistentDataPath, contentManifest.verify.manifestMetaPath);
-
-        if (File.Exists(localMetaPath) == true)
-        {
-            string json = File.ReadAllText(localMetaPath);
-
-            if (string.IsNullOrEmpty(json) == false)
-            {
-                localMeta = JsonUtility.FromJson<ContentMeta>(json);
-            }
         }
     }
 
@@ -234,28 +221,40 @@ public class ResourceManager : MonoBehaviour
         }
 
         if (contentManifest == null ||
-       contentManifest.verify == null ||
-       string.IsNullOrEmpty(contentManifest.serverRoot) == true ||
-       string.IsNullOrEmpty(contentManifest.verify.manifestMetaPath) == true)
+            contentManifest.verify == null ||
+            string.IsNullOrEmpty(contentManifest.serverRoot) == true ||
+            string.IsNullOrEmpty(contentManifest.verify.metaApi) == true)
+        {
+            yield break;
+        }
+        string key = "ContentManifest";
+        string remoteMetaUri = ContentPath.BuildMetaUri(
+        contentManifest.serverRoot,
+        contentManifest.verify.metaApi,
+        key
+        );
+
+        if (string.IsNullOrEmpty(remoteMetaUri) == true)
         {
             yield break;
         }
 
-        string root = contentManifest.serverRoot;
+        string localMetaPath = ContentPath.BuildLocalMetaPath(
+            Application.persistentDataPath,
+            key
+        );
 
-        if (root.EndsWith("/") == false)
+        localMeta = null;
+
+        if (File.Exists(localMetaPath) == true)
         {
-            root += "/";
+            string json = File.ReadAllText(localMetaPath);
+
+            if (string.IsNullOrEmpty(json) == false)
+            {
+                localMeta = JsonUtility.FromJson<ContentMeta>(json);
+            }
         }
-
-        string rel = contentManifest.verify.manifestMetaPath.Replace('\\', '/');
-
-        if (rel.StartsWith("/") == true)
-        {
-            rel = rel.Substring(1);
-        }
-
-        string remoteMetaUri = root + rel;
 
         yield return ContentVerifier.VerifyMeta(
             remoteMetaUri,
@@ -263,6 +262,14 @@ public class ResourceManager : MonoBehaviour
             verifyState
         );
 
+        if (verifyState.result == ContentVerifyResult.Failed)
+        {
+            yield break;
+        }
+        if (verifyState.result == ContentVerifyResult.Outdated)
+        {
+            yield break;
+        }
         if (verifyState.result != ContentVerifyResult.UpToDate)
         {
             yield break;

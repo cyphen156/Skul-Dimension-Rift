@@ -7,84 +7,146 @@ using UnityEngine;
 
 public static class ContentMetaGenerator
 {
-    [MenuItem("Tools/Content/Generate Meta")]
-    public static void GenerateMeta()
+    private const string MetaFolderName = "Meta";
+    private const string MetaExtension = ".meta.json";
+
+    [MenuItem("Tools/Content/Generate Meta (RemoteDatasRoot)")]
+    public static void GenerateAll()
     {
-        string sourcePath = EditorUtility.OpenFilePanel(
-            "Select Content JSON",
-            Application.dataPath,
-            "json"
-        );
-
-        if (string.IsNullOrEmpty(sourcePath) == true)
-        {
-            return;
-        }
-
-        string json = File.ReadAllText(sourcePath, Encoding.UTF8);
-
-        if (string.IsNullOrEmpty(json) == true)
-        {
-            Debug.LogError("Error : Source JSON is empty");
-            return;
-        }
-
-        string metaRelativePath = TryGetMetaRelativePath(json);
-
-        if (string.IsNullOrEmpty(metaRelativePath) == true)
-        {
-            Debug.LogError("Error : Meta path not found in JSON (verify.manifestMetaPath)");
-            return;
-        }
-
-        string rootFolder = EditorUtility.OpenFolderPanel(
-            "Select Output Root Folder (e.g. RemoteDatas)",
+        string remoteDatasRoot = EditorUtility.OpenFolderPanel(
+            "Select RemoteDatas Root Folder",
             Application.dataPath,
             string.Empty
         );
 
-        if (string.IsNullOrEmpty(rootFolder) == true)
+        if (string.IsNullOrEmpty(remoteDatasRoot) == true)
         {
             return;
         }
 
-        byte[] data = File.ReadAllBytes(sourcePath);
-        string hash = ComputeSha256(data);
+        string rootFull = Path.GetFullPath(remoteDatasRoot);
+        string metaRoot = Path.Combine(rootFull, MetaFolderName);
 
-        ContentMeta meta = new ContentMeta();
-        meta.version = 1;
-        meta.sha256 = hash;
-
-        string metaJson = JsonUtility.ToJson(meta, true);
-
-        string metaOutputPath = Path.Combine(rootFolder, metaRelativePath);
-
-        string directory = Path.GetDirectoryName(metaOutputPath);
-
-        if (string.IsNullOrEmpty(directory) == false &&
-            Directory.Exists(directory) == false)
+        if (Directory.Exists(metaRoot) == false)
         {
-            Directory.CreateDirectory(directory);
+            Directory.CreateDirectory(metaRoot);
         }
 
-        File.WriteAllText(metaOutputPath, metaJson, Encoding.UTF8);
+        string[] files = Directory.GetFiles(
+            rootFull,
+            "*",
+            SearchOption.AllDirectories
+        );
+
+        int generated = 0;
+
+        for (int i = 0; i < files.Length; i++)
+        {
+            string absPath = files[i];
+
+            if (ShouldSkip(absPath) == true)
+            {
+                continue;
+            }
+
+            byte[] data = File.ReadAllBytes(absPath);
+
+            if (data == null || data.Length == 0)
+            {
+                continue;
+            }
+
+            string relPath = Path.GetRelativePath(rootFull, absPath);
+            relPath = relPath.Replace('\\', '/');
+
+            string key = ToKeyFromRelativePath(relPath);
+
+            if (string.IsNullOrEmpty(key) == true)
+            {
+                continue;
+            }
+
+            string metaOutputPath = Path.Combine(metaRoot, key + MetaExtension);
+
+            string hash = ComputeSha256(data);
+
+            ContentMeta meta = new ContentMeta();
+            meta.version = 1;
+            meta.sha256 = hash;
+
+            string metaJson = JsonUtility.ToJson(meta, true);
+
+            File.WriteAllText(metaOutputPath, metaJson, Encoding.UTF8);
+            generated++;
+        }
 
         AssetDatabase.Refresh();
-        Debug.Log("Meta generated : " + metaOutputPath);
+        Debug.Log("Meta generated (count): " + generated);
     }
 
-    private static string TryGetMetaRelativePath(string json)
+    private static bool ShouldSkip(string absolutePath)
     {
-        ContentManifest manifest = JsonUtility.FromJson<ContentManifest>(json);
+        if (File.Exists(absolutePath) == false)
+        {
+            return true;
+        }
 
-        if (manifest == null ||
-            manifest.verify == null ||
-            string.IsNullOrEmpty(manifest.verify.manifestMetaPath) == true)
+        string normalized = absolutePath.Replace('\\', '/');
+
+        if (normalized.Contains("/" + MetaFolderName + "/") == true)
+        {
+            return true;
+        }
+
+        if (normalized.EndsWith(".meta") == true)
+        {
+            return true;
+        }
+
+        if (normalized.EndsWith(MetaExtension) == true)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static string ToKeyFromRelativePath(string relativePath)
+    {
+        if (string.IsNullOrEmpty(relativePath) == true)
         {
             return string.Empty;
         }
 
-        return manifest.verify.manifestMetaPath.Replace('\\', '/');
+        string p = relativePath.Trim();
+        p = p.Replace('\\', '/');
+
+        while (p.StartsWith("/") == true)
+        {
+            p = p.Substring(1);
+        }
+
+        while (p.Contains("//") == true)
+        {
+            p = p.Replace("//", "/");
+        }
+
+        if (p.Contains("..") == true)
+        {
+            return string.Empty;
+        }
+
+        string withoutExt = Path.ChangeExtension(p, null);
+        withoutExt = withoutExt.Replace('\\', '/');
+
+        string key = withoutExt.Replace('/', '_');
+
+        if (string.IsNullOrEmpty(key) == true)
+        {
+            return string.Empty;
+        }
+
+        return key;
     }
 
     private static string ComputeSha256(byte[] data)

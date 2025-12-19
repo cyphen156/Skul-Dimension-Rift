@@ -13,7 +13,7 @@ namespace Assets.Scripts.Content
     [Serializable]
     public class ContentVerifyInfo
     {
-        public string manifestMetaPath;
+        public string metaApi;
     }
 
     [Serializable]
