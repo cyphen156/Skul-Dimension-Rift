@@ -45,7 +45,7 @@ Commit f24bd03
         Key → Meta 파일 매핑만 수행
 
 PR #12 [Need for Client] Meta 저장소 및 Key 기반 조회 API 도입
-Merged At {} into Main
+Merged At 391b084 into Main
 
 배경 / 목적
 

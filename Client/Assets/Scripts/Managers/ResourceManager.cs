@@ -19,11 +19,14 @@ public class ResourceManager : MonoBehaviour
     public static ResourceManager instance;
 
     [Header("Paths")]
-    [SerializeField] private string defaultInputActionPath = "Input/InputActions";
-    
-    [SerializeField] private string contentManifestPath = "Data/ContentManifest";
-    private const string contentManifestFileName = "ContentManifest.json";
+    [SerializeField] private string resourcesContentManifestPath = "Data/ContentManifest/ContentManifest";
+    private const string ManifestKey = "ContentManifest";
+    private ContentManifest contentManifest;
+    private ContentMeta localMeta;
+    private ContentVerifyState verifyState;
 
+    [SerializeField] private string defaultInputActionPath = "Input/InputActions";
+  
     private const string userDataFileName = "UserData.json"; 
     private string userDataPath;
     private string contentManifestPersistentPath;
@@ -39,9 +42,6 @@ public class ResourceManager : MonoBehaviour
     };
 
     [Header("ContentPacks")]
-    private ContentManifest contentManifest;
-    private ContentMeta localMeta;
-    private ContentVerifyState verifyState;
     private Dictionary<string, string> catalogPaths;
     
     [Header("DomainProvider")]
@@ -229,9 +229,9 @@ public class ResourceManager : MonoBehaviour
         }
         string key = "ContentManifest";
         string remoteMetaUri = ContentPath.BuildMetaUri(
-        contentManifest.serverRoot,
-        contentManifest.verify.metaApi,
-        key
+            contentManifest.serverRoot,
+            contentManifest.verify.metaApi,
+            key
         );
 
         if (string.IsNullOrEmpty(remoteMetaUri) == true)

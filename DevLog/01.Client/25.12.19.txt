@@ -1,6 +1,6 @@
 Branch #10 리소스 로드 시스템 어드레서블 개편
 
-Commit
+Commit 0c77101
     [Refactor][Client] Key 기반 Meta 검증 플로우 및 텐츠 로딩 규칙 확정
 
 변경 요약
@@ -73,7 +73,7 @@ Commit
 
 
 PR #11 [Need for API Server] Key 기반 Meta 검증 플로우 및 컨텐츠 로딩 규칙 확정
-Merged At {} into Main
+Merged At 4cdae41 into Main
 
 배경 / 문제
     콘텐츠 업데이트 판단을 클라이언트 단독으로만 처리하면, “서버가 가진 최신 Meta”를 기준으로 한 일관된 검증이 어렵습니다.
