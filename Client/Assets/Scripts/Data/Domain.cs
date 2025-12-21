@@ -177,7 +177,8 @@ namespace Assets.Scripts.Data
         Hidden = 0x2,
         Shop = 0x3,
         MidBoss = 0x4,
-        Boss = 0x5,
+        BossEntry = 0x5,
+        Boss = 0x6,
     }
 
     // Class (8bit)에 대한 규약은 별도 파일/주석에서 관리
