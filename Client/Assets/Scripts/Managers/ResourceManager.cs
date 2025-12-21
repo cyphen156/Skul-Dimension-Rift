@@ -750,5 +750,88 @@ public class ResourceManager : MonoBehaviour
                 break;
         }
     }
+
+    public static bool TryLoad<T>(string path, out T output)
+    {
+        output = default;
+
+        if (string.IsNullOrEmpty(path) == true)
+        {
+            return false;
+        }
+
+        if (File.Exists(path) == false)
+        {
+            return false;
+        }
+
+        string text = File.ReadAllText(path);
+
+        if (string.IsNullOrEmpty(text) == true)
+        {
+            return false;
+        }
+
+        output = JsonUtility.FromJson<T>(text);
+
+        if (output == null)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    public static bool WriteAllTextAtomic(string finalPath, string text)
+    {
+        if (string.IsNullOrEmpty(finalPath) == true)
+        {
+            return false;
+        }
+
+        if (string.IsNullOrEmpty(text) == true)
+        {
+            return false;
+        }
+
+        string dir = Path.GetDirectoryName(finalPath);
+
+        if (string.IsNullOrEmpty(dir) == false)
+        {
+            Directory.CreateDirectory(dir);
+        }
+
+        string tmpPath = finalPath + ".tmp";
+
+        File.WriteAllText(tmpPath, text);
+
+        if (File.Exists(finalPath) == true)
+        {
+            File.Delete(finalPath);
+        }
+
+        File.Move(tmpPath, finalPath);
+        return true;
+    }
+
+    private string GetLocalMetaPath(string schema, string id)
+    {
+        return Path.Combine(
+            Application.persistentDataPath,
+            "Cache",
+            schema,
+            id + ".meta.json"
+        );
+    }
+
+    private string GetLocalDataPath(string schema, string id)
+    {
+        return Path.Combine(
+            Application.persistentDataPath,
+            "Cache",
+            schema,
+            id + ".json"
+        );
+    }
     #endregion
 }

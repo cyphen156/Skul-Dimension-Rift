@@ -1,19 +1,19 @@
 {
   "version": 1,
-  "debugUri": "RemoteDatas/",
-  "serverRoot": "http://127.0.0.1:5001",
-  "basePath": "CDN/{Platform}/",
-  "verify": {
-  "metaApi": "api/meta?Key={Key}"
-  },
+  "verifyRoot": "http://127.0.0.1:5001",
+  "metaApi": "api/meta?id={Id}&schema={Schema}",
+  "id" : "ContentManifest",
+  "schema": "Manifest",
   "catalogs": [
     {
       "id": "COMMON",
-      "catalogPath": "Common/catalog.json"
+      "schema": "Catalog",
+      "requiredOnBoot": true
     },
     {
       "id": "STAGE0",
-      "catalogPath": "Stage0/catalog.json"
+      "schema": "Catalog",
+      "requiredOnBoot": false
     }
   ]
 }
