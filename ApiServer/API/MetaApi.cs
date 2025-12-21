@@ -4,28 +4,43 @@ namespace ApiServer.API
 {
     public static class MetaApi
     {
-        public static async Task<IResult> GetMeta(string Key, MetaIndex metaIndex)
+        public static async Task<IResult> GetMeta(string id, string schema, MetaIndex metaIndex)
         {
-            if (string.IsNullOrWhiteSpace(Key) == true)
+            if (string.IsNullOrWhiteSpace(id) == true)
             {
                 return Results.BadRequest(
                     new
                     {
-                        error = "missing key",
-                        key = string.Empty
+                        error = "missing id",
+                        id = string.Empty,
+                        schema = schema ?? string.Empty
                     }
                 );
             }
 
-            string k = Key.Trim();
+            if (string.IsNullOrWhiteSpace(schema) == true)
+            {
+                return Results.BadRequest(
+                    new
+                    {
+                        error = "missing schema",
+                        id = id ?? string.Empty,
+                        schema = string.Empty
+                    }
+                );
+            }
 
-            if (metaIndex.TryGetMetaPath(k, out string metaAbsPath) == false)
+            string i = id.Trim();
+            string s = schema.Trim();
+
+            if (metaIndex.TryGetMetaPath(s, i, out string metaAbsPath) == false)
             {
                 return Results.NotFound(
                     new
                     {
                         error = "meta not found",
-                        key = k
+                        id = i,
+                        schema = s
                     }
                 );
             }
@@ -38,7 +53,8 @@ namespace ApiServer.API
                     new
                     {
                         error = "meta not found",
-                        key = k
+                        id = i,
+                        schema = s
                     }
                 );
             }
