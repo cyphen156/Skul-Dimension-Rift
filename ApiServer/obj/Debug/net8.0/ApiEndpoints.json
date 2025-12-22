@@ -8,7 +8,12 @@
     "Order": 0,
     "Parameters": [
       {
-        "Name": "Key",
+        "Name": "id",
+        "Type": "System.String",
+        "IsRequired": true
+      },
+      {
+        "Name": "schema",
         "Type": "System.String",
         "IsRequired": true
       }

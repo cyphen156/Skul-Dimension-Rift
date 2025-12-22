@@ -4,7 +4,7 @@ namespace ApiServer.API
 {
     public static class MetaApi
     {
-        public static async Task<IResult> GetMeta(string id, string schema, MetaIndex metaIndex)
+        public static IResult GetMeta(string id, string schema, MetaIndex metaIndex)
         {
             if (string.IsNullOrWhiteSpace(id) == true)
             {
@@ -45,21 +45,7 @@ namespace ApiServer.API
                 );
             }
 
-            string json = await FileTextProvider.ReadAllTextAsync(metaAbsPath).ConfigureAwait(false);
-
-            if (string.IsNullOrEmpty(json) == true)
-            {
-                return Results.NotFound(
-                    new
-                    {
-                        error = "meta not found",
-                        id = i,
-                        schema = s
-                    }
-                );
-            }
-
-            return Results.Text(json, "application/json; charset=utf-8");
+            return Results.File(metaAbsPath, "application/json; charset=utf-8");
         }
     }
 }

@@ -10,9 +10,7 @@ namespace ApiServer
             WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
             string cdnRoot = Path.Combine(AppContext.BaseDirectory, "CDN");
-
             string verifyRoot = Path.Combine(cdnRoot, "Verify");
-
             string metaRoot = Path.Combine(verifyRoot, "Meta");
 
             MetaIndex metaIndex = new MetaIndex(metaRoot);

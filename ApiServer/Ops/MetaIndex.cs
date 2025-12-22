@@ -5,7 +5,7 @@ namespace ApiServer.Ops
     public sealed class MetaIndex
     {
         private readonly string metaRootAbs;
-        private readonly Dictionary<string, string> map = new Dictionary<string, string>();
+        private Dictionary<string, string> map = new Dictionary<string, string>();
 
         public MetaIndex(string metaRootAbs)
         {
@@ -14,84 +14,96 @@ namespace ApiServer.Ops
 
         public void Build()
         {
-            map.Clear();
-
-            if (string.IsNullOrEmpty(metaRootAbs) == true)
+            if (string.IsNullOrEmpty(metaRootAbs))
             {
                 return;
             }
 
-            if (Directory.Exists(metaRootAbs) == false)
+            if (!Directory.Exists(metaRootAbs))
             {
                 return;
             }
 
-            string[] files = Directory.GetFiles(metaRootAbs, "*.meta.json", SearchOption.AllDirectories);
+            Dictionary<string, string> newMap = new Dictionary<string, string>();
 
-            for (int i = 0; i < files.Length; i++)
+            string[] schemaDirs = Directory.GetDirectories(metaRootAbs);
+
+            for (int si = 0; si < schemaDirs.Length; si++)
             {
-                string abs = files[i];
+                string schemaPath = schemaDirs[si];
 
-                if (string.IsNullOrEmpty(abs) == true)
+                if (string.IsNullOrEmpty(schemaPath))
                 {
                     continue;
                 }
 
-                string rel = Path.GetRelativePath(metaRootAbs, abs);
-                rel = rel.Replace('\\', '/');
+                string schema = Path.GetFileName(schemaPath);
 
-                if (string.IsNullOrEmpty(rel) == true)
+                if (string.IsNullOrWhiteSpace(schema))
                 {
                     continue;
                 }
 
-                string[] tokens = rel.Split('/');
+                schema = schema.Trim();
 
-                if (tokens.Length != 2)
+                if (!IsSafeToken(schema))
                 {
                     continue;
                 }
 
-                string schema = tokens[0].Trim();
-                string file = tokens[1].Trim();
+                string[] files = Directory.GetFiles(schemaPath, "*.meta.json", SearchOption.TopDirectoryOnly);
 
-                if (string.IsNullOrEmpty(schema) == true)
+                for (int fi = 0; fi < files.Length; fi++)
                 {
-                    continue;
+                    string abs = files[fi];
+
+                    if (string.IsNullOrEmpty(abs))
+                    {
+                        continue;
+                    }
+
+                    string fileName = Path.GetFileName(abs);
+
+                    if (string.IsNullOrWhiteSpace(fileName))
+                    {
+                        continue;
+                    }
+
+                    if (!fileName.EndsWith(".meta.json", System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    string id = fileName.Substring(0, fileName.Length - ".meta.json".Length).Trim();
+
+                    if (string.IsNullOrWhiteSpace(id))
+                    {
+                        continue;
+                    }
+
+                    if (!IsSafeToken(id))
+                    {
+                        continue;
+                    }
+
+                    string key = MakeKey(schema, id);
+                    newMap[key] = abs;
                 }
-
-                if (string.IsNullOrEmpty(file) == true)
-                {
-                    continue;
-                }
-
-                if (file.EndsWith(".meta.json", System.StringComparison.OrdinalIgnoreCase) == false)
-                {
-                    continue;
-                }
-
-                string id = file.Substring(0, file.Length - ".meta.json".Length).Trim();
-
-                if (string.IsNullOrEmpty(id) == true)
-                {
-                    continue;
-                }
-
-                string key = MakeKey(schema, id);
-                map[key] = abs;
             }
+
+            map = newMap;
         }
 
         public bool TryGetMetaPath(string schema, string id, out string metaAbsPath)
         {
             metaAbsPath = string.Empty;
 
-            if (string.IsNullOrWhiteSpace(schema) == true)
+            if (string.IsNullOrWhiteSpace(schema))
             {
                 return false;
             }
 
-            if (string.IsNullOrWhiteSpace(id) == true)
+            if (string.IsNullOrWhiteSpace(id))
             {
                 return false;
             }
@@ -99,24 +111,24 @@ namespace ApiServer.Ops
             string s = schema.Trim();
             string i = id.Trim();
 
-            if (IsSafeToken(s) == false)
+            if (!IsSafeToken(s))
             {
                 return false;
             }
 
-            if (IsSafeToken(i) == false)
+            if (!IsSafeToken(i))
             {
                 return false;
             }
 
             string key = MakeKey(s, i);
 
-            if (map.TryGetValue(key, out string abs) == false)
+            if (!map.TryGetValue(key, out string abs))
             {
                 return false;
             }
 
-            if (File.Exists(abs) == false)
+            if (!File.Exists(abs))
             {
                 return false;
             }
@@ -132,27 +144,27 @@ namespace ApiServer.Ops
 
         private static bool IsSafeToken(string value)
         {
-            if (string.IsNullOrWhiteSpace(value) == true)
+            if (string.IsNullOrWhiteSpace(value))
             {
                 return false;
             }
 
-            if (value.Contains("/") == true)
+            if (value.Contains("/"))
             {
                 return false;
             }
 
-            if (value.Contains("\\") == true)
+            if (value.Contains("\\"))
             {
                 return false;
             }
 
-            if (value.Contains("..") == true)
+            if (value.Contains(".."))
             {
                 return false;
             }
 
-            if (value.Contains(":") == true)
+            if (value.Contains(":"))
             {
                 return false;
             }

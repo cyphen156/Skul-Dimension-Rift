@@ -1,6 +1,6 @@
 Branch #11 ApiServer 개발
 
-Commit 
+Commit 2843cde
     [Refactor][Server][API] Meta Api 계약 수정사항 반영
 
 변경 요약
@@ -53,8 +53,8 @@ Commit
             CDN/
             └─ Verify/
                 └─ Meta/
-                ├─ Manifest/
-                │  └─ ContentManifest.meta.json
-                └─ Catalog/
-                    ├─ COMMON.meta.json
-                    └─ STAGE0.meta.json
+                    ├─ ContentManifest/
+                    │  └─ ContentManifest.meta.json
+                    └─ Catalog/
+                        ├─ COMMON.meta.json
+                        └─ STAGE0.meta.json
