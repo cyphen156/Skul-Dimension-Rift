@@ -1,0 +1,32 @@
+Branch #11 ApiServer 개발
+
+Commit  
+    [Infra][CDN] Local Nginx CDN + Meta API 연동 완료
+
+
+변경 요약
+
+    로컬 환경에서 Nginx 기반 CDN을 구성하고,
+    API Meta 검증 플로우와의 연동을 완료했습니다.
+
+    Manifest → Meta → Catalog → 실제 파일 다운로드까지
+    전체 콘텐츠 검증 및 로딩 체인을 로컬 환경에서 실증하였으며,
+    플랫폼 분기 및 경로 계약을 확정했습니다.
+
+
+상세 변경 내용
+
+    1. 로컬 Nginx CDN 구성
+        - /CDN 정적 서빙 경로 추가
+        - Common / Stage0 콘텐츠 디렉터리 구조 적용
+        - 플랫폼 분기(Windows) 디렉터리 구조 확정
+
+    2. API 서버 Meta 연동 검증
+        - /api/meta 프록시 연동 확인
+        - ContentMeta.version 변경 시 Outdated 트리거 동작 검증
+        - dataUri 기반 Catalog 본문 다운로드 체인 검증
+
+    3. 콘텐츠 경로 계약 확정
+        - Catalog는 플랫폼 비독립 구조 유지
+        - 플랫폼 분기는 최종 파일 경로 단계에서 적용
+        - URI 조합 규칙 고정
