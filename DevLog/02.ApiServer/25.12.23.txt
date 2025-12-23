@@ -1,6 +1,6 @@
 Branch #11 ApiServer 개발
 
-Commit  
+Commit ee7afa9
     [Infra][CDN] Local Nginx CDN + Meta API 연동 완료
 
 
@@ -30,3 +30,73 @@ Commit
         - Catalog는 플랫폼 비독립 구조 유지
         - 플랫폼 분기는 최종 파일 경로 단계에서 적용
         - URI 조합 규칙 고정
+
+
+PR #13 [Infra][Api][CDN] Local CDN/Nginx + Meta 검증 체인 확정 및 클라이언트 연동 준비
+Merged At {} into Main
+
+배경 / 목적
+
+    클라이언트의 콘텐츠 로딩 및 업데이트 판단 로직을 안정적으로 구성하기 위해,
+    Meta → Catalog → 실제 파일로 이어지는 콘텐츠 제공 체인을
+    로컬 환경에서 실증할 필요가 있었습니다.
+
+    본 PR은 로컬 환경에서
+    Nginx 기반 CDN 정적 서빙,
+    Meta API 조회,
+    플랫폼 분기(Windows)를 실제로 연결하여,
+    클라이언트가 의존하게 될 콘텐츠 경로 및 책임 분리 계약을 확정하는 것을 목적으로 합니다.
+
+목표
+    로컬 환경에서 CDN + Meta 기반 콘텐츠 제공 체인 실증
+    서버는 Meta 제공만 수행하고, 판단/다운로드는 수행하지 않음
+    Catalog는 플랫폼 비독립 구조로 유지
+    플랫폼 분기는 최종 파일 경로 단계에서만 적용
+    Unity 클라이언트 로직 수정의 기준 계약(Source of Truth) 확보
+
+변경 요약
+    1) 로컬 CDN(Nginx) 기반 콘텐츠 서빙 도입
+        Nginx를 이용한 /CDN 정적 서빙 구성
+        Common / Stage0 콘텐츠 디렉터리 구조 확정
+        플랫폼 분기 디렉터리(Windows) 파일 서빙 검증
+        서버는 파일을 제공만 하며,
+        콘텐츠의 최신 여부나 사용 시점에 관여하지 않습니다.
+
+    2) Meta → Catalog → File 체인 검증
+        Meta API(/api/meta)를 통한 Meta JSON 조회
+        Meta version 변경 시 Outdated 트리거 동작 확인
+        Meta의 dataUri를 통해 Catalog JSON 다운로드 검증
+        Catalog entry의 relativePath 기반 실제 파일 접근 검증
+
+    3) 콘텐츠 경로 계약 확정
+        Catalog는 플랫폼 정보를 포함하지 않음
+        플랫폼 분기는 최종 파일 URI 조합 단계에서만 적용
+        최종 파일 URI 규칙은 다음과 같이 고정합니다.
+        {catalog.json 디렉터리}/{platform}/{relativePath}
+
+    예시:
+        http://localhost/CDN/Common/catalog.json
+        → http://localhost/CDN/Common/Windows/test.txt
+
+    영향 범위
+
+        서버
+            CDN은 정적 파일 제공만 담당
+            API 서버는 Meta 제공 전용 역할 유지
+            콘텐츠 검증/업데이트/다운로드 로직은 포함하지 않음
+
+        클라이언트
+            Meta를 기준으로 한 검증 플로우 구현 가능
+            Catalog 파싱 및 플랫폼 분기 로직 단순화
+            이후 Unity 클라이언트 콘텐츠 로딩 로직 수정의 기준선 확보
+
+    테스트 / 검증
+        /CDN/Common/catalog.json → 200 OK
+        /CDN/Common/Windows/test.txt → 200 OK
+        /api/meta?id=Common&schema=Catalog → 200 OK
+        Meta version 변경 시 Outdated 판정 동작 확인
+
+    비고
+        본 PR은 로컬 실험 결과를 기준 계약으로 확정하는 PR입니다.
+        실제 콘텐츠 다운로드 및 업데이트 판단 로직은
+        Unity 클라이언트 측 PR에서 구현됩니다.
