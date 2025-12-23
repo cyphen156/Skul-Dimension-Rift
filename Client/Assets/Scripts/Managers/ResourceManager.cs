@@ -7,8 +7,6 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using static Types;
-using Object = UnityEngine.Object;
 
 /// <summary>
 /// 어드레서블 리소스 관리를 위한 매니저 클래스
@@ -19,11 +17,11 @@ public class ResourceManager : MonoBehaviour
     public static ResourceManager instance;
 
     [Header("Paths")]
-    [SerializeField] private string resourcesContentManifestPath = "Data/ContentManifest/ContentManifest";
+    [SerializeField] private string resourcesContentManifestPath = "Data/ContentManifest/";
     private const string ManifestKey = "ContentManifest";
     private ContentManifest contentManifest;
     private ContentMeta localMeta;
-    private ContentVerifyState verifyState;
+    private VerifyState verifyState;
 
     [SerializeField] private string defaultInputActionPath = "Input/InputActions";
   
@@ -93,12 +91,7 @@ public class ResourceManager : MonoBehaviour
             return;
         }
         userDataPath = Path.Combine(Application.persistentDataPath, userDataFileName);
-        contentManifestPersistentPath =
-                Path.Combine(
-                    Application.persistentDataPath,
-                    contentManifestPath,
-                    contentManifestFileName
-                );
+
         Initialize();
         
         domainAddressResolver = new DomainAddressResolver();
@@ -112,6 +105,12 @@ public class ResourceManager : MonoBehaviour
             )
         );
 
+        contentManifestPersistentPath = Path.Combine(
+            Application.persistentDataPath,
+            "Content",
+            "Manifest",
+            "ContentManifest.json"
+        );
         domainAddressResolver.Register(titleStaticKey, "Prefab/StageTitle_0");
 #if UNITY_EDITOR
         domainResolverDebugList = Serializer.ToDebugList<uint, string>(domainAddressResolver.Map);
@@ -297,20 +296,6 @@ public class ResourceManager : MonoBehaviour
             return null;
         }
         return null;
-    }
-
-    public T GetResource<T>(string resourceName) where T : Object
-    {
-        // how to Resource??
-        if (string.IsNullOrEmpty(resourceName))
-        {
-            return null;
-        }
-        else
-        {
-            // return caching data in ResourceManager
-            return (T)Resources.Load<T>(resourceName);
-        }
     }
 
     public InputActionAsset GetUserInputActions()
@@ -573,9 +558,9 @@ public class ResourceManager : MonoBehaviour
     {
         manifest = null;
 
-        if (File.Exists(contentManifestPersistentPath) == false)
+        if (!File.Exists(contentManifestPersistentPath))
         {
-            string resourcesManifestPath = Path.Combine(contentManifestPath, "ContentManifest");
+            string resourcesManifestPath = Path.Combine(resourcesContentManifestPath, "ContentManifest");
 
             TextAsset defaultAsset = Resources.Load<TextAsset>(resourcesManifestPath);
 
@@ -749,89 +734,6 @@ public class ResourceManager : MonoBehaviour
             default:
                 break;
         }
-    }
-
-    public static bool TryLoad<T>(string path, out T output)
-    {
-        output = default;
-
-        if (string.IsNullOrEmpty(path) == true)
-        {
-            return false;
-        }
-
-        if (File.Exists(path) == false)
-        {
-            return false;
-        }
-
-        string text = File.ReadAllText(path);
-
-        if (string.IsNullOrEmpty(text) == true)
-        {
-            return false;
-        }
-
-        output = JsonUtility.FromJson<T>(text);
-
-        if (output == null)
-        {
-            return false;
-        }
-
-        return true;
-    }
-
-    public static bool WriteAllTextAtomic(string finalPath, string text)
-    {
-        if (string.IsNullOrEmpty(finalPath) == true)
-        {
-            return false;
-        }
-
-        if (string.IsNullOrEmpty(text) == true)
-        {
-            return false;
-        }
-
-        string dir = Path.GetDirectoryName(finalPath);
-
-        if (string.IsNullOrEmpty(dir) == false)
-        {
-            Directory.CreateDirectory(dir);
-        }
-
-        string tmpPath = finalPath + ".tmp";
-
-        File.WriteAllText(tmpPath, text);
-
-        if (File.Exists(finalPath) == true)
-        {
-            File.Delete(finalPath);
-        }
-
-        File.Move(tmpPath, finalPath);
-        return true;
-    }
-
-    private string GetLocalMetaPath(string schema, string id)
-    {
-        return Path.Combine(
-            Application.persistentDataPath,
-            "Cache",
-            schema,
-            id + ".meta.json"
-        );
-    }
-
-    private string GetLocalDataPath(string schema, string id)
-    {
-        return Path.Combine(
-            Application.persistentDataPath,
-            "Cache",
-            schema,
-            id + ".json"
-        );
     }
     #endregion
 }

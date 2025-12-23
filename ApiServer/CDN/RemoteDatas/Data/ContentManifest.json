@@ -1,17 +1,22 @@
 {
-  "version": 1,
+  "version": 2,
   "verifyRoot": "http://127.0.0.1:5001",
   "metaApi": "api/meta?id={Id}&schema={Schema}",
-  "id" : "ContentManifest",
+  "id": "ContentManifest",
   "schema": "Manifest",
   "catalogs": [
     {
-      "id": "COMMON",
+      "id": "Common",
       "schema": "Catalog",
       "requiredOnBoot": true
     },
     {
-      "id": "STAGE0",
+      "id": "Stage0",
+      "schema": "Catalog",
+      "requiredOnBoot": false
+    },
+    {
+      "id": "Stage1",
       "schema": "Catalog",
       "requiredOnBoot": false
     }

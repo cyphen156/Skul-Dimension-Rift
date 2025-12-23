@@ -6,12 +6,12 @@
   "schema": "Manifest",
   "catalogs": [
     {
-      "id": "COMMON",
+      "id": "Common",
       "schema": "Catalog",
       "requiredOnBoot": true
     },
     {
-      "id": "STAGE0",
+      "id": "Stage0",
       "schema": "Catalog",
       "requiredOnBoot": false
     }
