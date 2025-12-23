@@ -1,0 +1,60 @@
+Branch #11 ApiServer 개발
+
+Commit 2843cde
+    [Refactor][Server][API] Meta Api 계약 수정사항 반영
+
+변경 요약
+    콘텐츠 Meta 제공 API의 계약 구조를 수정하여
+    클라이언트 ContentManifest 모델과 1:1로 대응되는 형태로 정렬했습니다.
+
+    기존 Key 기반 조회 방식에서
+    id + schema 기반 조회 방식으로 전환하여,
+    클라이언트–서버 간 Meta 식별 규칙을 명확히 고정했습니다.
+
+    서버는 Meta 저장소 역할만 수행
+    클라이언트는 검증 주체
+    서버는 id / schema에 대응하는 Meta JSON만 제공
+
+상세 변경 내용
+
+    1. Meta API 계약 수정
+        기존
+        /api/meta?Key={Key}
+            Key 단일 문자열 기반 조회
+            Key ↔ 파일명 매핑 규칙을 서버가 보유
+
+        변경 후
+        /api/meta?id={Id}&schema={Schema}
+            ContentManifest와 동일한 개념 단위(id, schema) 사용
+            클라이언트 모델과 API 계약을 직접적으로 정렬
+
+        요청 예시
+            /api/meta?id=ContentManifest&schema=Manifest
+            /api/meta?id=COMMON&schema=Catalog
+
+
+        응답
+        Verify/Meta/{Schema}/{Id}.meta.json
+
+    2. 서버측 MetaIndex 조회 방식 변경
+        기존
+            평탄화된 Key 기반 조회
+            {Key}.meta.json
+            디렉터리 구조를 파일명에 인코딩
+            Meta/
+            ├─ ContentManifest.meta.json
+            ├─ Common_Catalog.meta.json
+            └─ Stage0_Catalog.meta.json
+
+        변경 후
+            (schema, id) 기반 조회
+            디렉터리 구조 자체가 의미를 가짐
+
+            CDN/
+            └─ Verify/
+                └─ Meta/
+                    ├─ ContentManifest/
+                    │  └─ ContentManifest.meta.json
+                    └─ Catalog/
+                        ├─ COMMON.meta.json
+                        └─ STAGE0.meta.json

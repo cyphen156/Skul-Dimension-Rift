@@ -9,16 +9,9 @@ namespace ApiServer
         {
             WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-            string remoteDatasRoot = Path.Combine(
-                AppContext.BaseDirectory,
-                "CDN",
-                "RemoteDatas"
-            );
-
-            string metaRoot = Path.Combine(
-                remoteDatasRoot,
-                "Meta"
-            );
+            string cdnRoot = Path.Combine(AppContext.BaseDirectory, "CDN");
+            string verifyRoot = Path.Combine(cdnRoot, "Verify");
+            string metaRoot = Path.Combine(verifyRoot, "Meta");
 
             MetaIndex metaIndex = new MetaIndex(metaRoot);
             metaIndex.Build();
