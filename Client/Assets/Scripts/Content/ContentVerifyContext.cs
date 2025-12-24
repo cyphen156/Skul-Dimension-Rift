@@ -26,6 +26,8 @@
 
     public sealed class ContentVerifyContext
     {
+        public bool dataUpdateSucceeded = false;
+
         public string targetId = string.Empty;
         public string targetSchema = string.Empty;
 

@@ -224,18 +224,36 @@ public class ResourceManager : MonoBehaviour
             contentVerifyContext.Clear();
         }
 
-        LoadContentMeta(out localMeta);
+        LoadContentMeta(out localMeta, contentManifest);
 
         // 2. 서버와 비교 검증
         yield return VerifyContentMeta(localMeta, contentVerifyContext);
 
         // 3, 결과 처리
-        if (contentVerifyContext.result == VerifyResult.Outdated)
+        switch (contentVerifyContext.result)
         {
-            yield return C_UpdateContentManifest(contentVerifyContext.remoteMeta);
-            // 메타 정보도 갱신
-            localMeta = contentVerifyContext.remoteMeta;
-            SaveContentMeta(localMeta);
+            case VerifyResult.None:
+                Debug.LogWarning("[ResourceManager] Content verify result is None");
+                yield break;
+            case VerifyResult.Failed:
+                // 검증 실패
+                // 로컬 데이터 사용
+                Debug.LogWarning($"[ResourceManager] Content verify failed: {contentVerifyContext.failReason}");
+                yield break;
+            case VerifyResult.UpToDate:
+                yield break;
+            case VerifyResult.Outdated:
+                yield return C_UpdateContentManifest(contentVerifyContext.remoteMeta, contentVerifyContext);
+                // 메타 정보도 갱신
+                if (contentVerifyContext.dataUpdateSucceeded == true)
+                {
+                    SaveContentMeta(contentVerifyContext.remoteMeta, contentVerifyContext);
+                }
+
+                yield break;
+            default:
+                Debug.LogWarning("[ResourceManager] Unknown content verify result");
+                yield break;
         }
     }
 
@@ -337,8 +355,10 @@ public class ResourceManager : MonoBehaviour
         ctx.result = VerifyResult.Outdated;
     }
 
-    private IEnumerator C_UpdateContentManifest(ContentMeta remoteMeta)
+    private IEnumerator C_UpdateContentManifest(ContentMeta remoteMeta, ContentVerifyContext ctx)
     {
+        ctx.dataUpdateSucceeded = false;
+
         if (remoteMeta == null || string.IsNullOrEmpty(remoteMeta.dataUri) == true)
         {
             yield break;
@@ -353,15 +373,15 @@ public class ResourceManager : MonoBehaviour
             yield break;
         }
 
-        string directory = Path.GetDirectoryName(contentManifestPersistentPath);
-        if (string.IsNullOrEmpty(directory) == false && Directory.Exists(directory) == false)
+
+        ContentManifest remote = JsonUtility.FromJson<ContentManifest>(req.downloadHandler.text);
+        if (!SaveContentManifest(remote))
         {
-            Directory.CreateDirectory(directory);
+            yield break;
         }
 
-        File.WriteAllText(contentManifestPersistentPath, req.downloadHandler.text);
-
-        LoadContentManifest(out contentManifest);
+        contentManifest = remote;
+        ctx.dataUpdateSucceeded = true;
     }
 
     public IEnumerator C_UpdateContent()
@@ -702,11 +722,16 @@ public class ResourceManager : MonoBehaviour
         }
     }
 
-    private bool LoadContentMeta(out ContentMeta meta)
+    private bool LoadContentMeta(out ContentMeta meta, ContentManifest payLoad)
     {
         meta = null;
 
-        string metaPath = Path.ChangeExtension(contentManifestPersistentPath, ".meta.json");
+        string metaPath = Path.Combine(
+                        Application.persistentDataPath,
+                        "Meta",
+                        payLoad.schema,
+                        payLoad.id + ".meta.json"
+                    );
 
         if (!File.Exists(metaPath))
         {
@@ -724,7 +749,7 @@ public class ResourceManager : MonoBehaviour
         return meta != null;
     }
 
-    private bool SaveContentMeta(ContentMeta meta)
+    private bool SaveContentMeta(ContentMeta meta, ContentVerifyContext ctx)
     {
         try
         {
@@ -734,7 +759,12 @@ public class ResourceManager : MonoBehaviour
             }
 
             string json = JsonUtility.ToJson(meta, true);
-            string metaPath = Path.ChangeExtension(contentManifestPersistentPath, ".meta.json");
+            string metaPath = Path.Combine(
+                Application.persistentDataPath,
+                "Meta",
+                ctx.targetSchema,
+                ctx.targetId + ".meta.json"
+            );
             string directory = Path.GetDirectoryName(metaPath);
 
             if (string.IsNullOrEmpty(directory) == false && Directory.Exists(directory) == false)
