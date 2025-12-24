@@ -24,14 +24,15 @@
         ParseError
     }
 
-    public sealed class VerifyState
+    public sealed class ContentVerifyContext
     {
         public string targetId = string.Empty;
         public string targetSchema = string.Empty;
 
         public VerifyResult result = VerifyResult.None;
         public VerifyFailReason failReason = VerifyFailReason.None;
-        public ContentMeta remoteMeta = null;
+
+        public ContentMeta remoteMeta;
 
         public void Clear()
         {
@@ -40,6 +41,7 @@
 
             result = VerifyResult.None;
             failReason = VerifyFailReason.None;
+
             remoteMeta = null;
         }
     }

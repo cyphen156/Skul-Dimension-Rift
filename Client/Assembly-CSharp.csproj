@@ -74,6 +74,7 @@
     <Compile Include="Assets\TextMesh Pro\Examples &amp; Extras\Scripts\VertexJitter.cs" />
     <Compile Include="Assets\Scripts\Interface\IWidget.cs" />
     <Compile Include="Assets\TextMesh Pro\Examples &amp; Extras\Scripts\VertexZoom.cs" />
+    <Compile Include="Assets\Scripts\Content\ContentVerifyContext.cs" />
     <Compile Include="Assets\Scripts\Managers\UIManager.cs" />
     <Compile Include="Assets\Scripts\Stage\VirtualCamera.cs" />
     <Compile Include="Assets\Scripts\UI\InteractiveUI\Control.cs" />
@@ -166,7 +167,6 @@
     <Compile Include="Assets\Scripts\Stage\StageBehaviour.cs" />
     <Compile Include="Assets\Scripts\UI\UIProxy.cs" />
     <Compile Include="Assets\Scripts\Interface\IMoveable.cs" />
-    <Compile Include="Assets\Scripts\Content\VerifyState.cs" />
     <Compile Include="Assets\TextMesh Pro\Examples &amp; Extras\Scripts\TextMeshProFloatingText.cs" />
     <Compile Include="Assets\Scripts\UI\InteractiveUI\Menu.cs" />
     <Compile Include="Assets\Scripts\UI\InteractiveUI\PopUp.cs" />

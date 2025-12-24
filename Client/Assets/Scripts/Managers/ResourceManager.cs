@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Networking;
 
 /// <summary>
 /// 어드레서블 리소스 관리를 위한 매니저 클래스
@@ -16,18 +17,18 @@ public class ResourceManager : MonoBehaviour
 {
     public static ResourceManager instance;
 
-    [Header("Paths")]
-    [SerializeField] private string resourcesContentManifestPath = "Data/ContentManifest/";
-    private const string ManifestKey = "ContentManifest";
+    [Header("ContentManifest")]
+    private const string contentManifestPath = "Data/Manifest/";
+    private const string contentManifestKey = "ContentManifest";
+    private string contentManifestPersistentPath;
     private ContentManifest contentManifest;
     private ContentMeta localMeta;
-    private VerifyState verifyState;
+    private ContentVerifyContext contentVerifyContext;
 
     [SerializeField] private string defaultInputActionPath = "Input/InputActions";
   
     private const string userDataFileName = "UserData.json"; 
     private string userDataPath;
-    private string contentManifestPersistentPath;
 
     private readonly Dictionary<string, string> controlPaths = new()
     {
@@ -91,7 +92,13 @@ public class ResourceManager : MonoBehaviour
             return;
         }
         userDataPath = Path.Combine(Application.persistentDataPath, userDataFileName);
-
+        
+        contentManifestPersistentPath = Path.Combine(
+            Application.persistentDataPath,
+            contentManifestPath,
+            contentManifestKey + ".json"
+        );
+        
         Initialize();
         
         domainAddressResolver = new DomainAddressResolver();
@@ -104,13 +111,7 @@ public class ResourceManager : MonoBehaviour
                 0
             )
         );
-
-        contentManifestPersistentPath = Path.Combine(
-            Application.persistentDataPath,
-            "Content",
-            "Manifest",
-            "ContentManifest.json"
-        );
+        
         domainAddressResolver.Register(titleStaticKey, "Prefab/StageTitle_0");
 #if UNITY_EDITOR
         domainResolverDebugList = Serializer.ToDebugList<uint, string>(domainAddressResolver.Map);
@@ -203,7 +204,7 @@ public class ResourceManager : MonoBehaviour
 
         // 컨트롤 이미지 불러오기
         controlSprites.Clear();
-        // 콘텐츠 매니페스트 로드
+        // 콘텐츠 매니페스트 로드 => PersistentDataPath 우선, 없으면 Resources 폴더에서 로드
         if (!LoadContentManifest(out contentManifest))
         {
             Debug.LogError("Error : ContentManifest Not Exists!");
@@ -211,74 +212,163 @@ public class ResourceManager : MonoBehaviour
             return;
         }
     }
-
-    public IEnumerator C_VerifyContentMeta()
+    public IEnumerator C_SyncContentManifest()
     {
-        if (verifyState == null)
+        // 1. 로컬 데이터 세팅
+        if (contentVerifyContext == null)
         {
-            verifyState = new ContentVerifyState();
+            contentVerifyContext = new ContentVerifyContext();
+        }
+        else
+        {
+            contentVerifyContext.Clear();
         }
 
-        if (contentManifest == null ||
-            contentManifest.verify == null ||
-            string.IsNullOrEmpty(contentManifest.serverRoot) == true ||
-            string.IsNullOrEmpty(contentManifest.verify.metaApi) == true)
+        LoadContentMeta(out localMeta);
+
+        // 2. 서버와 비교 검증
+        yield return VerifyContentMeta(localMeta, contentVerifyContext);
+
+        // 3, 결과 처리
+        if (contentVerifyContext.result == VerifyResult.Outdated)
+        {
+            yield return C_UpdateContentManifest(contentVerifyContext.remoteMeta);
+            // 메타 정보도 갱신
+            localMeta = contentVerifyContext.remoteMeta;
+            SaveContentMeta(localMeta);
+        }
+    }
+
+    private IEnumerator VerifyContentMeta(ContentMeta localMeta, ContentVerifyContext ctx)
+    {
+        if (ctx == null)
         {
             yield break;
         }
-        string key = "ContentManifest";
+
+        ctx.targetId = contentManifest.id;
+        ctx.targetSchema = contentManifest.schema;
+
         string remoteMetaUri = ContentPath.BuildMetaUri(
-            contentManifest.serverRoot,
-            contentManifest.verify.metaApi,
-            key
+            contentManifest.verifyRoot,
+            contentManifest.metaApi,
+            contentManifest.id,
+            contentManifest.schema
         );
 
-        if (string.IsNullOrEmpty(remoteMetaUri) == true)
+        if (string.IsNullOrEmpty(remoteMetaUri))
         {
+            ctx.result = VerifyResult.Failed;
+            ctx.failReason = VerifyFailReason.InvalidPath;
             yield break;
         }
 
-        string localMetaPath = ContentPath.BuildLocalMetaPath(
-            Application.persistentDataPath,
-            key
-        );
+        UnityWebRequest webRequest = UnityWebRequest.Get(remoteMetaUri);
+        yield return webRequest.SendWebRequest();
 
-        localMeta = null;
-
-        if (File.Exists(localMetaPath) == true)
+        if (webRequest.result != UnityWebRequest.Result.Success)
         {
-            string json = File.ReadAllText(localMetaPath);
+            long code = webRequest.responseCode;
 
-            if (string.IsNullOrEmpty(json) == false)
+            ctx.result = VerifyResult.Failed;
+
+            if (webRequest.result == UnityWebRequest.Result.ProtocolError)
             {
-                localMeta = JsonUtility.FromJson<ContentMeta>(json);
+                if (code >= 400 && code < 500)
+                {
+                    ctx.failReason = VerifyFailReason.Http4xx;
+                }
+                else if (code >= 500 && code < 600)
+                {
+                    ctx.failReason = VerifyFailReason.Http5xx;
+                }
+                else
+                {
+                    ctx.failReason = VerifyFailReason.InvalidResponse;
+                }
             }
+            else
+            {
+                ctx.failReason = VerifyFailReason.NetworkError;
+            }
+
+            yield break;
         }
 
-        yield return ContentVerifier.VerifyMeta(
-            remoteMetaUri,
-            localMeta,
-            verifyState
-        );
+        string json = webRequest.downloadHandler.text;
 
-        if (verifyState.result == ContentVerifyResult.Failed)
+        if (string.IsNullOrEmpty(json))
+        {
+            ctx.result = VerifyResult.Failed;
+            ctx.failReason = VerifyFailReason.InvalidResponse;
+            yield break;
+        }
+
+        ContentMeta remoteMeta = JsonUtility.FromJson<ContentMeta>(json);
+
+        if (remoteMeta == null)
+        {
+            ctx.result = VerifyResult.Failed;
+            ctx.failReason = VerifyFailReason.ParseError;
+            yield break;
+        }
+
+        if (string.IsNullOrEmpty(remoteMeta.dataUri) == true)
+        {
+            ctx.result = VerifyResult.Failed;
+            ctx.failReason = VerifyFailReason.InvalidResponse;
+            yield break;
+        }
+
+        ctx.remoteMeta = remoteMeta;
+
+        if (localMeta == null || string.IsNullOrEmpty(localMeta.sha256) == true)
+        {
+            ctx.result = VerifyResult.Outdated;
+            yield break;
+        }
+
+        if (string.Equals(localMeta.sha256, remoteMeta.sha256))
+        {
+            ctx.result = VerifyResult.UpToDate;
+            yield break;
+        }
+
+        ctx.result = VerifyResult.Outdated;
+    }
+
+    private IEnumerator C_UpdateContentManifest(ContentMeta remoteMeta)
+    {
+        if (remoteMeta == null || string.IsNullOrEmpty(remoteMeta.dataUri) == true)
         {
             yield break;
         }
-        if (verifyState.result == ContentVerifyResult.Outdated)
+
+        UnityWebRequest req = UnityWebRequest.Get(remoteMeta.dataUri);
+        yield return req.SendWebRequest();
+
+        if (req.result != UnityWebRequest.Result.Success)
         {
+            Debug.LogWarning($"[ResourceManager] Failed to download Manifest data: {req.error}");
             yield break;
         }
-        if (verifyState.result != ContentVerifyResult.UpToDate)
+
+        string directory = Path.GetDirectoryName(contentManifestPersistentPath);
+        if (string.IsNullOrEmpty(directory) == false && Directory.Exists(directory) == false)
         {
-            yield break;
+            Directory.CreateDirectory(directory);
         }
+
+        File.WriteAllText(contentManifestPersistentPath, req.downloadHandler.text);
+
+        LoadContentManifest(out contentManifest);
     }
 
     public IEnumerator C_UpdateContent()
     {
         yield return null;
     }
+
     #endregion
 
     #region Resource Accessors
@@ -558,44 +648,109 @@ public class ResourceManager : MonoBehaviour
     {
         manifest = null;
 
-        if (!File.Exists(contentManifestPersistentPath))
+        if (File.Exists(contentManifestPersistentPath))
         {
-            string resourcesManifestPath = Path.Combine(resourcesContentManifestPath, "ContentManifest");
+            string json = File.ReadAllText(contentManifestPersistentPath);
 
-            TextAsset defaultAsset = Resources.Load<TextAsset>(resourcesManifestPath);
-
-            if (defaultAsset == null)
+            if (string.IsNullOrEmpty(json) == true)
             {
                 return false;
             }
 
-            string directory = Path.GetDirectoryName(contentManifestPersistentPath);
+            manifest = JsonUtility.FromJson<ContentManifest>(json);
+            return manifest != null;
+        }
 
+        string defaultManifestPath = Path.Combine(
+            contentManifestPath,
+            contentManifestKey
+        );
+
+        TextAsset defaultAsset = Resources.Load<TextAsset>(defaultManifestPath);
+
+        if (defaultAsset == null)
+        {
+            return false;
+        }
+
+        manifest = JsonUtility.FromJson<ContentManifest>(defaultAsset.text);
+        return manifest != null;
+    }
+
+    private bool SaveContentManifest(ContentManifest manifest)
+    {
+        try
+        {
+            if (manifest == null)
+            {
+                return false;
+            }
+            string json = JsonUtility.ToJson(manifest, true);
+            string directory = Path.GetDirectoryName(contentManifestPersistentPath);
             if (string.IsNullOrEmpty(directory) == false &&
                 Directory.Exists(directory) == false)
             {
                 Directory.CreateDirectory(directory);
             }
-
-            File.WriteAllText(contentManifestPersistentPath, defaultAsset.text);
+            File.WriteAllText(contentManifestPersistentPath, json);
+            return true;
         }
-
-        if (File.Exists(contentManifestPersistentPath) == false)
+        catch (Exception e)
         {
+            Debug.LogWarning($"[ResourceManager] SaveContentManifest failed: {e.Message}");
             return false;
         }
-
-        string json = File.ReadAllText(contentManifestPersistentPath);
-
-        if (string.IsNullOrEmpty(json) == true)
-        {
-            return false;
-        }
-
-        manifest = JsonUtility.FromJson<ContentManifest>(json);
-        return manifest != null;
     }
 
+    private bool LoadContentMeta(out ContentMeta meta)
+    {
+        meta = null;
+
+        string metaPath = Path.ChangeExtension(contentManifestPersistentPath, ".meta.json");
+
+        if (!File.Exists(metaPath))
+        {
+            return false;
+        }
+
+        string json = File.ReadAllText(metaPath);
+
+        if (string.IsNullOrEmpty(json))
+        {
+            return false;
+        }
+
+        meta = JsonUtility.FromJson<ContentMeta>(json);
+        return meta != null;
+    }
+
+    private bool SaveContentMeta(ContentMeta meta)
+    {
+        try
+        {
+            if (meta == null)
+            {
+                return false;
+            }
+
+            string json = JsonUtility.ToJson(meta, true);
+            string metaPath = Path.ChangeExtension(contentManifestPersistentPath, ".meta.json");
+            string directory = Path.GetDirectoryName(metaPath);
+
+            if (string.IsNullOrEmpty(directory) == false && Directory.Exists(directory) == false)
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            File.WriteAllText(metaPath, json);
+            return true;
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[ResourceManager] SaveContentMeta failed: {e.Message}");
+            return false;
+        }
+    }
 
     /// <summary>
     /// Addressable 애셋 로드
