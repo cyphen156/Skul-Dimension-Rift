@@ -92,7 +92,6 @@
     <Compile Include="Assets\Scripts\Common\Pool.cs" />
     <Compile Include="Assets\Scripts\Data\PromptType.cs" />
     <Compile Include="Assets\Scripts\Utility\ComponentRegistrar.cs" />
-    <Compile Include="Assets\Scripts\Stage\ScrollSystem.cs" />
     <Compile Include="Assets\Scripts\Data\Domain.cs" />
     <Compile Include="Assets\TextMesh Pro\Examples &amp; Extras\Scripts\TMP_FrameRateCounter.cs" />
     <Compile Include="Assets\Scripts\TitleScene\Intro.cs" />
@@ -133,6 +132,7 @@
     <Compile Include="Assets\Scripts\Content\ContentManifest.cs" />
     <Compile Include="Assets\Scripts\Managers\GameManager.cs" />
     <Compile Include="Assets\Scripts\UI\InteractiveUI\Scroll.cs" />
+    <Compile Include="Assets\Scripts\SubSystems\ContentSystem.cs" />
     <Compile Include="Assets\TextMesh Pro\Examples &amp; Extras\Scripts\TMP_ExampleScript_01.cs" />
     <Compile Include="Assets\TextMesh Pro\Examples &amp; Extras\Scripts\TMPro_InstructionOverlay.cs" />
     <Compile Include="Assets\Scripts\Utility\ContentPath.cs" />
@@ -167,6 +167,7 @@
     <Compile Include="Assets\Scripts\Stage\StageBehaviour.cs" />
     <Compile Include="Assets\Scripts\UI\UIProxy.cs" />
     <Compile Include="Assets\Scripts\Interface\IMoveable.cs" />
+    <Compile Include="Assets\Scripts\SubSystems\ScrollSystem.cs" />
     <Compile Include="Assets\TextMesh Pro\Examples &amp; Extras\Scripts\TextMeshProFloatingText.cs" />
     <Compile Include="Assets\Scripts\UI\InteractiveUI\Menu.cs" />
     <Compile Include="Assets\Scripts\UI\InteractiveUI\PopUp.cs" />

@@ -15,9 +15,9 @@ MonoBehaviour:
   m_DefaultGroup: b938d3a47222098498442ec55767dd5a
   m_currentHash:
     serializedVersion: 2
-    Hash: ede512e906b69c9d7b1ef59da2935cb7
+    Hash: 00000000000000000000000000000000
   m_OptimizeCatalogSize: 0
-  m_BuildRemoteCatalog: 0
+  m_BuildRemoteCatalog: 1
   m_CatalogRequestsTimeout: 0
   m_DisableCatalogUpdateOnStart: 0
   m_InternalIdNamingMode: 0
@@ -51,9 +51,9 @@ MonoBehaviour:
   m_CheckForContentUpdateRestrictionsOption: 0
   m_MonoScriptBundleCustomNaming: 
   m_RemoteCatalogBuildPath:
-    m_Id: 
+    m_Id: 68994878383dbc840afa20d968ac82d1
   m_RemoteCatalogLoadPath:
-    m_Id: 
+    m_Id: 5367281ceefb5ae47baf3a87015b33c8
   m_ContentStateBuildPathProfileVariableName: <default settings path>
   m_CustomContentStateBuildPath: 
   m_ContentStateBuildPath: 
@@ -81,6 +81,20 @@ MonoBehaviour:
         m_Value: '[UnityEngine.AddressableAssets.Addressables.BuildPath]/[BuildTarget]'
       - m_Id: d54f80c2b589f5d4ba5a0c1d0ee5d800
         m_Value: '[UnityEditor.EditorUserBuildSettings.activeBuildTarget]'
+    - m_InheritedParent: 
+      m_Id: 6a7c3567652d85441ad7053215840b73
+      m_ProfileName: Skul_Dimension_Rift
+      m_Values:
+      - m_Id: 2d1ef1f8a8a0848468bfac2740780598
+        m_Value: <undefined>
+      - m_Id: 5367281ceefb5ae47baf3a87015b33c8
+        m_Value: C:\Project\Skul-Dimension-Rift\ApiServer\CDN\RemoteDatas
+      - m_Id: 68994878383dbc840afa20d968ac82d1
+        m_Value: C:\Project\Skul-Dimension-Rift\ApiServer\CDN\RemoteDatas
+      - m_Id: d54d60ecdcd5a7f4398038fc4f991947
+        m_Value: 'ServerData/[BuildTarget]'
+      - m_Id: d54f80c2b589f5d4ba5a0c1d0ee5d800
+        m_Value: '[UnityEditor.EditorUserBuildSettings.activeBuildTarget]'
     m_ProfileEntryNames:
     - m_Id: 2d1ef1f8a8a0848468bfac2740780598
       m_Name: Local.LoadPath
@@ -105,8 +119,10 @@ MonoBehaviour:
   m_GroupTemplateObjects:
   - {fileID: 11400000, guid: 92a59299ddb5e4d429656001e98bd71f, type: 2}
   - {fileID: 11400000, guid: 54107c86bd8670b4fb76f66bb8cbaf38, type: 2}
+  - {fileID: 11400000, guid: 54107c86bd8670b4fb76f66bb8cbaf38, type: 2}
   m_InitializationObjects:
   - {fileID: 11400000, guid: 9a8057600e7cf7346864457d591c5a21, type: 2}
+  - {fileID: 11400000, guid: b911f26bec303554ab3aad9356a7aa43, type: 2}
   m_CertificateHandlerType:
     m_AssemblyName: 
     m_ClassName: 
@@ -115,4 +131,5 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 4e1b8eec90101864797e554151e27e76, type: 2}
   - {fileID: 11400000, guid: 0ffe4b90d5f6151429ad4c54f8aeb2eb, type: 2}
   - {fileID: 11400000, guid: 3d753e3991cbe204e946d3f2cf1d6d33, type: 2}
-  m_ActiveProfileId: a37bc2971562db147934a6814ff32866
+  - {fileID: 11400000, guid: 7f73dcd46e55cb646a6bf73d17fd2110, type: 2}
+  m_ActiveProfileId: 6a7c3567652d85441ad7053215840b73
