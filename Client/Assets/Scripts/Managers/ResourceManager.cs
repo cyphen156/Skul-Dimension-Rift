@@ -238,18 +238,20 @@ public class ResourceManager : MonoBehaviour
             case VerifyResult.Failed:
                 // 검증 실패
                 // 로컬 데이터 사용
+#if UNITY_EDITOR
                 Debug.LogWarning($"[ResourceManager] Content verify failed: {contentVerifyContext.failReason}");
+#endif
                 yield break;
             case VerifyResult.UpToDate:
                 yield break;
             case VerifyResult.Outdated:
+                Debug.Log("[ResourceManager] Content is outdated, updating...");
                 yield return C_UpdateContentManifest(contentVerifyContext.remoteMeta, contentVerifyContext);
                 // 메타 정보도 갱신
                 if (contentVerifyContext.dataUpdateSucceeded == true)
                 {
                     SaveContentMeta(contentVerifyContext.remoteMeta, contentVerifyContext);
                 }
-
                 yield break;
             default:
                 Debug.LogWarning("[ResourceManager] Unknown content verify result");

@@ -38,6 +38,8 @@
 
         public void Clear()
         {
+            dataUpdateSucceeded = false;
+
             targetId = string.Empty;
             targetSchema = string.Empty;
 

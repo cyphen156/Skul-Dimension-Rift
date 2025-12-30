@@ -96,6 +96,9 @@ public class BootStrap : MonoBehaviour
         PromoteOrCreate<StageManager>("StageManager");
         // 11. GameManager √ ±‚»≠
         PromoteOrCreate<GameManager>("GameManager");
+#if UNITY_EDITOR
+        Debug.Log("[BootStrap] All Managers Initialized.");
+#endif
     }
    private T PromoteOrCreate<T>(string goName) where T : Component
     {
