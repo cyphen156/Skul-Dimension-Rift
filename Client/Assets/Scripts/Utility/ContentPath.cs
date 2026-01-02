@@ -1,20 +1,22 @@
-﻿namespace Assets.Scripts.Utility
+﻿using System;
+
+namespace Assets.Scripts.Utility
 {
     public static class ContentPath
     {
         public static string BuildMetaUri(string verifyRoot, string metaApiTemplate, string id, string schema)
         {
-            if (string.IsNullOrEmpty(metaApiTemplate) == true)
+            if (string.IsNullOrEmpty(metaApiTemplate))
             {
                 return string.Empty;
             }
 
-            if (string.IsNullOrEmpty(id) == true)
+            if (string.IsNullOrEmpty(id))
             {
                 return string.Empty;
             }
 
-            if (string.IsNullOrEmpty(schema) == true)
+            if (string.IsNullOrEmpty(schema))
             {
                 return string.Empty;
             }
@@ -23,7 +25,7 @@
             string rel = templ.Replace("{Id}", id.Trim()).Replace("{Schema}", schema.Trim());
             rel = NormalizeRelativePath(rel);
 
-            if (string.IsNullOrEmpty(rel) == true)
+            if (string.IsNullOrEmpty(rel))
             {
                 return string.Empty;
             }
@@ -35,7 +37,7 @@
 
             string root = NormalizeServerRoot(verifyRoot);
 
-            if (string.IsNullOrEmpty(root) == true)
+            if (string.IsNullOrEmpty(root))
             {
                 return string.Empty;
             }
@@ -45,14 +47,14 @@
 
         public static string NormalizeServerRoot(string serverRoot)
         {
-            if (string.IsNullOrEmpty(serverRoot) == true)
+            if (string.IsNullOrEmpty(serverRoot))
             {
                 return string.Empty;
             }
 
             string root = serverRoot.Trim();
 
-            while (root.EndsWith("/") == true)
+            while (root.EndsWith("/"))
             {
                 root = root.Substring(0, root.Length - 1);
             }
@@ -62,7 +64,7 @@
 
         public static string NormalizeRelativePath(string path)
         {
-            if (string.IsNullOrEmpty(path) == true)
+            if (string.IsNullOrEmpty(path))
             {
                 return string.Empty;
             }
@@ -70,12 +72,12 @@
             string p = path.Trim();
             p = p.Replace('\\', '/');
 
-            while (p.StartsWith("/") == true)
+            while (p.StartsWith("/"))
             {
                 p = p.Substring(1);
             }
 
-            while (p.Contains("//") == true)
+            while (p.Contains("//"))
             {
                 p = p.Replace("//", "/");
             }
@@ -85,17 +87,17 @@
 
         private static bool IsAbsoluteHttpUri(string uri)
         {
-            if (string.IsNullOrEmpty(uri) == true)
+            if (string.IsNullOrEmpty(uri))
             {
                 return false;
             }
 
-            if (uri.StartsWith("http://", System.StringComparison.OrdinalIgnoreCase) == true)
+            if (uri.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }
 
-            if (uri.StartsWith("https://", System.StringComparison.OrdinalIgnoreCase) == true)
+            if (uri.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }

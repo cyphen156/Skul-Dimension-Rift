@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace Assets.Scripts.Content
 {
     [Serializable]
-    public sealed class ContentManifestCatalog
+    public sealed class ContentCatalogEntry
     {
         public string id;
         public string schema;
@@ -22,6 +22,6 @@ namespace Assets.Scripts.Content
         public string id;
         public string schema;
 
-        public List<ContentManifestCatalog> catalogs = new List<ContentManifestCatalog>();
+        public List<ContentCatalogEntry> contentCatalogs = new List<ContentCatalogEntry>();
     }
 }

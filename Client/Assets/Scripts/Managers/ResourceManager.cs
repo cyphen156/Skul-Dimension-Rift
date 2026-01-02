@@ -23,7 +23,7 @@ public class ResourceManager : MonoBehaviour
     private string contentManifestPersistentPath;
     private ContentManifest contentManifest;
     private ContentMeta localMeta;
-    private ContentVerifyContext contentVerifyContext;
+    private ContentVerifyContext contentVerifyContext;  // Manifest 검증용 컨텍스트 -> 유지 이유 : RequiredOnBoot 옵션에 따른 지연 검증 처리
 
     [SerializeField] private string defaultInputActionPath = "Input/InputActions";
   
@@ -215,6 +215,8 @@ public class ResourceManager : MonoBehaviour
     public IEnumerator C_SyncContentManifest()
     {
         // 1. 로컬 데이터 세팅
+        LoadContentMeta(out localMeta, contentManifest.id, contentManifest.schema);
+
         if (contentVerifyContext == null)
         {
             contentVerifyContext = new ContentVerifyContext();
@@ -223,11 +225,9 @@ public class ResourceManager : MonoBehaviour
         {
             contentVerifyContext.Clear();
         }
-
-        LoadContentMeta(out localMeta, contentManifest);
-
+        
         // 2. 서버와 비교 검증
-        yield return VerifyContentMeta(localMeta, contentVerifyContext);
+        yield return C_VerifyContentMeta(localMeta, contentManifest.id, contentManifest.schema, contentVerifyContext);
 
         // 3, 결과 처리
         switch (contentVerifyContext.result)
@@ -246,11 +246,37 @@ public class ResourceManager : MonoBehaviour
                 yield break;
             case VerifyResult.Outdated:
                 Debug.Log("[ResourceManager] Content is outdated, updating...");
-                yield return C_UpdateContentManifest(contentVerifyContext.remoteMeta, contentVerifyContext);
+                yield return C_UpdateContent(contentVerifyContext.remoteMeta, contentManifest.id, contentManifest.schema, contentVerifyContext);
                 // 메타 정보도 갱신
-                if (contentVerifyContext.dataUpdateSucceeded == true)
+                if (contentVerifyContext.dataUpdateSucceeded)
                 {
-                    SaveContentMeta(contentVerifyContext.remoteMeta, contentVerifyContext);
+                    SaveContentMeta(contentVerifyContext);
+                }
+
+                foreach (var catalog in contentManifest.contentCatalogs)
+                {
+                    // 카탈로그별 업데이트 코루틴 실행
+                    if (catalog.requiredOnBoot)
+                    {
+                        // 필수 카탈로그만 우선 처리
+                        localMeta.Clear();
+                        
+                        LoadContentMeta(out localMeta, catalog.id, catalog.schema);
+
+                        ContentVerifyContext ctx = new ContentVerifyContext();
+
+                        yield return C_VerifyContentMeta(localMeta, catalog.id, catalog.schema, ctx);
+
+                        if (ctx.result == VerifyResult.Outdated)
+                        {
+                            yield return C_UpdateContent(ctx.remoteMeta, catalog.id, catalog.schema, ctx);
+
+                            if (ctx.dataUpdateSucceeded)
+                            {
+                                SaveContentMeta(ctx);
+                            }
+                        }
+                    }
                 }
                 yield break;
             default:
@@ -259,21 +285,23 @@ public class ResourceManager : MonoBehaviour
         }
     }
 
-    private IEnumerator VerifyContentMeta(ContentMeta localMeta, ContentVerifyContext ctx)
+    private IEnumerator C_VerifyContentMeta(ContentMeta localMeta, string id, string schema, ContentVerifyContext ctx)
     {
         if (ctx == null)
         {
             yield break;
         }
 
-        ctx.targetId = contentManifest.id;
-        ctx.targetSchema = contentManifest.schema;
+        ctx.Clear();
+
+        ctx.targetId = id;
+        ctx.targetSchema = schema;
 
         string remoteMetaUri = ContentPath.BuildMetaUri(
             contentManifest.verifyRoot,
             contentManifest.metaApi,
-            contentManifest.id,
-            contentManifest.schema
+            id,
+            schema
         );
 
         if (string.IsNullOrEmpty(remoteMetaUri))
@@ -333,7 +361,7 @@ public class ResourceManager : MonoBehaviour
             yield break;
         }
 
-        if (string.IsNullOrEmpty(remoteMeta.dataUri) == true)
+        if (string.IsNullOrEmpty(remoteMeta.dataUri))
         {
             ctx.result = VerifyResult.Failed;
             ctx.failReason = VerifyFailReason.InvalidResponse;
@@ -342,7 +370,7 @@ public class ResourceManager : MonoBehaviour
 
         ctx.remoteMeta = remoteMeta;
 
-        if (localMeta == null || string.IsNullOrEmpty(localMeta.sha256) == true)
+        if (localMeta == null || string.IsNullOrEmpty(localMeta.sha256))
         {
             ctx.result = VerifyResult.Outdated;
             yield break;
@@ -357,11 +385,24 @@ public class ResourceManager : MonoBehaviour
         ctx.result = VerifyResult.Outdated;
     }
 
-    private IEnumerator C_UpdateContentManifest(ContentMeta remoteMeta, ContentVerifyContext ctx)
+    /// <summary>
+    /// 콘텐츠 본문 업데이트
+    /// </summary>
+    /// <param name="remoteMeta"></param>
+    /// <param name="id"></param>
+    /// <param name="schema"></param>
+    /// <param name="ctx"></param>
+    /// <returns></returns>
+    private IEnumerator C_UpdateContent(ContentMeta remoteMeta, string id, string schema, ContentVerifyContext ctx)
     {
+        if (ctx == null)
+        {
+            yield break;
+        }
+
         ctx.dataUpdateSucceeded = false;
 
-        if (remoteMeta == null || string.IsNullOrEmpty(remoteMeta.dataUri) == true)
+        if (remoteMeta == null || string.IsNullOrEmpty(remoteMeta.dataUri))
         {
             yield break;
         }
@@ -371,26 +412,29 @@ public class ResourceManager : MonoBehaviour
 
         if (req.result != UnityWebRequest.Result.Success)
         {
-            Debug.LogWarning($"[ResourceManager] Failed to download Manifest data: {req.error}");
+            ctx.result = VerifyResult.Failed;
+            ctx.failReason = VerifyFailReason.NetworkError;
             yield break;
         }
 
+        string json = req.downloadHandler.text;
 
-        ContentManifest remote = JsonUtility.FromJson<ContentManifest>(req.downloadHandler.text);
-        if (!SaveContentManifest(remote))
+        if (string.IsNullOrEmpty(json))
         {
+            ctx.result = VerifyResult.Failed;
+            ctx.failReason = VerifyFailReason.InvalidResponse;
             yield break;
         }
 
-        contentManifest = remote;
+        if (!SaveContentManifest(contentManifest))
+        {
+            ctx.result = VerifyResult.Failed;
+            ctx.failReason = VerifyFailReason.InvalidResponse;
+            yield break;
+        }
+
         ctx.dataUpdateSucceeded = true;
     }
-
-    public IEnumerator C_UpdateContent()
-    {
-        yield return null;
-    }
-
     #endregion
 
     #region Resource Accessors
@@ -466,7 +510,7 @@ public class ResourceManager : MonoBehaviour
     {
         Sprite sprite;
 
-        if (itemSprites.TryGetValue(objectKey, out sprite) == true)
+        if (itemSprites.TryGetValue(objectKey, out sprite))
         {
             return sprite;
         }
@@ -493,7 +537,7 @@ public class ResourceManager : MonoBehaviour
     {
         Sprite sprite;
 
-        if (monsterSprites.TryGetValue(objectKey, out sprite) == true)
+        if (monsterSprites.TryGetValue(objectKey, out sprite))
         {
             return sprite;
         }
@@ -520,7 +564,7 @@ public class ResourceManager : MonoBehaviour
     {
         Sprite sprite;
 
-        if (worldObjectSprites.TryGetValue(objectKey, out sprite) == true)
+        if (worldObjectSprites.TryGetValue(objectKey, out sprite))
         {
             return sprite;
         }
@@ -674,7 +718,7 @@ public class ResourceManager : MonoBehaviour
         {
             string json = File.ReadAllText(contentManifestPersistentPath);
 
-            if (string.IsNullOrEmpty(json) == true)
+            if (string.IsNullOrEmpty(json))
             {
                 return false;
             }
@@ -724,15 +768,15 @@ public class ResourceManager : MonoBehaviour
         }
     }
 
-    private bool LoadContentMeta(out ContentMeta meta, ContentManifest payLoad)
+    private bool LoadContentMeta(out ContentMeta meta, string id, string schema)
     {
         meta = null;
 
         string metaPath = Path.Combine(
                         Application.persistentDataPath,
                         "Meta",
-                        payLoad.schema,
-                        payLoad.id + ".meta.json"
+                        schema,
+                        id + ".meta.json"
                     );
 
         if (!File.Exists(metaPath))
@@ -751,16 +795,16 @@ public class ResourceManager : MonoBehaviour
         return meta != null;
     }
 
-    private bool SaveContentMeta(ContentMeta meta, ContentVerifyContext ctx)
+    private bool SaveContentMeta(ContentVerifyContext ctx)
     {
         try
         {
-            if (meta == null)
+            if (ctx.remoteMeta == null)
             {
                 return false;
             }
 
-            string json = JsonUtility.ToJson(meta, true);
+            string json = JsonUtility.ToJson(ctx.remoteMeta, true);
             string metaPath = Path.Combine(
                 Application.persistentDataPath,
                 "Meta",
