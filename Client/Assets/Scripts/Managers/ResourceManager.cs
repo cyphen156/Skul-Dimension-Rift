@@ -23,7 +23,7 @@ public class ResourceManager : MonoBehaviour
     private string contentManifestPersistentPath;
     private ContentManifest contentManifest;
     private ContentMeta localMeta;
-    private ContentVerifyContext contentVerifyContext;  // Manifest 검증용 컨텍스트 -> 유지 이유 : RequiredOnBoot 옵션에 따른 지연 검증 처리
+    private ContentVerifyContext manifestVerifyContext;  // Manifest 검증용 컨텍스트 -> 유지 이유 : RequiredOnBoot 옵션에 따른 지연 검증 처리
 
     [SerializeField] private string defaultInputActionPath = "Input/InputActions";
   
@@ -212,25 +212,26 @@ public class ResourceManager : MonoBehaviour
             return;
         }
     }
+
     public IEnumerator C_SyncContentManifest()
     {
         // 1. 로컬 데이터 세팅
         LoadContentMeta(out localMeta, contentManifest.id, contentManifest.schema);
 
-        if (contentVerifyContext == null)
+        if (manifestVerifyContext == null)
         {
-            contentVerifyContext = new ContentVerifyContext();
+            manifestVerifyContext = new ContentVerifyContext();
         }
         else
         {
-            contentVerifyContext.Clear();
+            manifestVerifyContext.Clear();
         }
         
         // 2. 서버와 비교 검증
-        yield return C_VerifyContentMeta(localMeta, contentManifest.id, contentManifest.schema, contentVerifyContext);
+        yield return C_VerifyContentMeta(localMeta, contentManifest.id, contentManifest.schema, manifestVerifyContext);
 
         // 3, 결과 처리
-        switch (contentVerifyContext.result)
+        switch (manifestVerifyContext.result)
         {
             case VerifyResult.None:
                 Debug.LogWarning("[ResourceManager] Content verify result is None");
@@ -239,23 +240,25 @@ public class ResourceManager : MonoBehaviour
                 // 검증 실패
                 // 로컬 데이터 사용
 #if UNITY_EDITOR
-                Debug.LogWarning($"[ResourceManager] Content verify failed: {contentVerifyContext.failReason}");
+                Debug.LogWarning($"[ResourceManager] Content verify failed: {manifestVerifyContext.failReason}");
 #endif
                 yield break;
             case VerifyResult.UpToDate:
+                // 최신 상태
                 yield break;
             case VerifyResult.Outdated:
                 Debug.Log("[ResourceManager] Content is outdated, updating...");
-                yield return C_UpdateContent(contentVerifyContext.remoteMeta, contentManifest.id, contentManifest.schema, contentVerifyContext);
-                // 메타 정보도 갱신
-                if (contentVerifyContext.dataUpdateSucceeded)
+                // 3_1 매니페스트 본문 업데이트
+                yield return C_UpdateContent(manifestVerifyContext.remoteMeta, contentManifest.id, contentManifest.schema, manifestVerifyContext);
+                if (manifestVerifyContext.dataUpdateSucceeded)
                 {
-                    SaveContentMeta(contentVerifyContext);
+                    // 메타 정보도 갱신
+                    SaveContentMeta(manifestVerifyContext);
                 }
 
+                // 3_2 카탈로그별 업데이트 처리
                 foreach (var catalog in contentManifest.contentCatalogs)
                 {
-                    // 카탈로그별 업데이트 코루틴 실행
                     if (catalog.requiredOnBoot)
                     {
                         // 필수 카탈로그만 우선 처리
@@ -426,14 +429,15 @@ public class ResourceManager : MonoBehaviour
             yield break;
         }
 
-        if (!SaveContentManifest(contentManifest))
-        {
-            ctx.result = VerifyResult.Failed;
-            ctx.failReason = VerifyFailReason.InvalidResponse;
-            yield break;
-        }
+        ContentManifest remoteManifest = JsonUtility.FromJson<ContentManifest>(json);
 
+        contentManifest = remoteManifest;
         ctx.dataUpdateSucceeded = true;
+    }
+
+    private IEnumerator C_UpdateContentBundle(ContentMeta remoteMeta, string id, string schema, ContentVerifyContext ctx)
+    {
+
     }
     #endregion
 
