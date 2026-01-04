@@ -208,7 +208,9 @@ public class ResourceManager : MonoBehaviour
         if (!LoadContentManifest(out contentManifest))
         {
             Debug.LogError("Error : ContentManifest Not Exists!");
+#if UNITY_EDITOR
             UnityEditor.EditorApplication.isPlaying = false;
+#endif
             return;
         }
     }
@@ -250,51 +252,91 @@ public class ResourceManager : MonoBehaviour
                     // 3_1 매니페스트 본문 캐시 업데이트
                     yield return C_UpdateContentManifest(manifestVerifyContext);
 
-                    // 3_2 캐시를 이용하여 카탈로그 업데이트 처리
-                    foreach (var catalog in contentManifest.contentCatalogs)
+                    if (manifestVerifyContext.dataUpdateSucceeded == false)
                     {
-                        if (catalog.requiredOnBoot)
+                        // 매니페스트 업데이트 실패시 중단
+                        // -> 로컬 폴백
+                        yield break;
+                    }
+
+                    bool isContentConsistent = true;
+
+                    // 3_2 캐시를 이용하여 카탈로그 업데이트 처리
+                    foreach (ContentCatalogEntry catalogEntry in contentManifest.contentCatalogs)
+                    {
+                        // 필수 항목이 아닌 경우 스킵 
+                        // -> 런타임 시점에 필요시점에 검증 처리(SceenLoad 시점)
+                        if (catalogEntry.requiredOnBoot == false)
                         {
-                            // 필수 카탈로그만 우선 메타 검증 처리
-                            localMeta.Clear();
-                            LoadContentMeta(out localMeta, catalog.id, catalog.schema);
-                            ContentVerifyContext ctx = new ContentVerifyContext();
-                            yield return C_VerifyContentMeta(localMeta, catalog.id, catalog.schema, ctx);
-                            ContentCatalog localCatalog = LoadContentPayload<ContentCatalog>(catalog.id, catalog.schema);
-                            // 카탈로그 본문이 최신이 아니라면 업데이트 진행
-                            if (ctx.result == VerifyResult.Outdated)
-                            {
-                                // 카탈로그 업데이트 
-                                yield return C_UpdateContentCatalog(ctx);
-
-                                if (ctx.dataUpdateSucceeded)
-                                {
-
-                                }
-                                if (ctx.dataUpdateSucceeded)
-                                {
-                                    yield return C_UpdateContentBundle(ctx);
-                                    SaveContentMeta(ctx);
-                                }
-                            }
-                            // 이 외의 경우 로컬 데이터 사용
-                            else
-                            {
-
-                            }
+                            continue;
                         }
 
-                        // 번들 업데이트 성공시 최신 카탈로그 저장
+                        localMeta.Clear();
+                        LoadContentMeta(out localMeta, catalogEntry.id, catalogEntry.schema);
+
+                        ContentVerifyContext ctx = new ContentVerifyContext();
+                        yield return C_VerifyContentMeta(localMeta, catalogEntry.id, catalogEntry.schema, ctx);
+
+                        if (ctx.result == VerifyResult.Failed)
+                        {
+                            isContentConsistent = false;
+                            break;
+                        }
+
+                        if (ctx.result == VerifyResult.UpToDate)
+                        {
+                            // 메타가 최신이면 로컬 payload가 반드시 있어야 함
+                            ContentCatalog localCatalog = LoadContentPayload<ContentCatalog>(catalogEntry.id, catalogEntry.schema);
+                            if (localCatalog == null)
+                            {
+                                isContentConsistent = false;
+                                break;
+                            }
+
+                            continue;
+                        }
+
+                        if (ctx.result != VerifyResult.Outdated)
+                        {
+                            isContentConsistent = false;
+                            break;
+                        }
+
+                        yield return C_UpdateContentCatalog(ctx);
+
+                        if (ctx.dataUpdateSucceeded == false)
+                        {
+                            isContentConsistent = false;
+                            break;
+                        }
+
+                        ContentCatalog catalog = LoadContentPayload<ContentCatalog>(catalogEntry.id, catalogEntry.schema);
+                        if (catalog == null)
+                        {
+                            isContentConsistent = false;
+                            break;
+                        }
+
+                        yield return C_UpdateContentBundle(ctx, catalog);
+
+                        if (ctx.dataUpdateSucceeded == false)
+                        {
+                            isContentConsistent   = false;
+                            break;
+                        }
+
+                        SaveContentMeta(ctx);
                     }
 
-
-                    // 업데이트가 끝났다면 매니페스트 저장
-                    if (manifestVerifyContext.dataUpdateSucceeded)
+                    // 업데이트 도중에 문제가 발생했다면 중단
+                    if (isContentConsistent == false)
                     {
-                        // 메타 정보도 갱신
-                        SaveContentManifest(contentManifest);
-                        SaveContentMeta(manifestVerifyContext);
+                        yield break;
                     }
+
+                    SaveContentManifest(contentManifest);
+                    SaveContentMeta(manifestVerifyContext);
+
                     yield break;
                 }
             default:
@@ -404,10 +446,8 @@ public class ResourceManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 콘텐츠 본문 업데이트
+    /// 매니페스트  본문 업데이트
     /// </summary>
-    /// <param name="ctx">검증 절차가 완료된 컨텍스트</param>
-    /// <returns></returns>
     private IEnumerator C_UpdateContentManifest(ContentVerifyContext ctx)
     {
         if (ctx == null)
@@ -443,10 +483,20 @@ public class ResourceManager : MonoBehaviour
 
         ContentManifest remoteManifest = JsonUtility.FromJson<ContentManifest>(json);
 
-        ctx.dataUpdateSucceeded = true;
+        if (remoteManifest == null)
+        {
+            ctx.result = VerifyResult.Failed;
+            ctx.failReason = VerifyFailReason.ParseError;
+            yield break;
+        }
+
         contentManifest = remoteManifest;
+        ctx.dataUpdateSucceeded = true;
     }
 
+    /// <summary>
+    /// 카탈로그 본문 다운로드 + 로컬 저장
+    /// </summary>
     private IEnumerator C_UpdateContentCatalog(ContentVerifyContext ctx)
     {
         if (ctx == null)
@@ -480,6 +530,63 @@ public class ResourceManager : MonoBehaviour
             yield break;
         }
 
+        ContentCatalog remoteCatalog = JsonUtility.FromJson<ContentCatalog>(json);
+        if (remoteCatalog == null)
+        {
+            ctx.result = VerifyResult.Failed;
+            ctx.failReason = VerifyFailReason.ParseError;
+            yield break;
+        }
+
+        // payload 저장
+        string directory = Path.Combine(
+            Application.persistentDataPath,
+            "Data",
+            ctx.targetSchema
+        );
+
+        if (Directory.Exists(directory) == false)
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        string payloadPath = Path.Combine(
+            directory,
+            ctx.targetId + ".json"
+        );
+
+        string tempPath = payloadPath + ".tmp";
+
+        try
+        {
+            File.WriteAllText(tempPath, json);
+
+            if (File.Exists(payloadPath))
+            {
+                File.Delete(payloadPath);
+            }
+
+            File.Move(tempPath, payloadPath);
+        }
+        catch
+        {
+            ctx.result = VerifyResult.Failed;
+            ctx.failReason = VerifyFailReason.InvalidResponse;
+
+            try
+            {
+                if (File.Exists(tempPath))
+                {
+                    File.Delete(tempPath);
+                }
+            }
+            catch
+            {
+            }
+
+            yield break;
+        }
+
         ctx.dataUpdateSucceeded = true;
     }
 
@@ -487,11 +594,163 @@ public class ResourceManager : MonoBehaviour
     /// 콘텐츠 번들 업데이트
     /// 애셋 번들 바이너리를 관리해야 하기 때문에 함수 분리
     /// </summary>
-    /// <param name="ctx"></param>
-    /// <returns></returns>
-    private IEnumerator C_UpdateContentBundle(ContentVerifyContext ctx)
+    private IEnumerator C_UpdateContentBundle(ContentVerifyContext ctx, ContentCatalog catalog)
     {
-        yield return null;
+        if (ctx == null)
+        {
+            yield break;
+        }
+
+        ctx.dataUpdateSucceeded = false;
+
+        if (catalog == null || catalog.bundles == null)
+        {
+            ctx.result = VerifyResult.Failed;
+            ctx.failReason = VerifyFailReason.InvalidResponse;
+            yield break;
+        }
+
+        // 번들 저장 루트
+        string bundleRoot = Path.Combine(
+            Application.persistentDataPath,
+            "Bundles",
+            ctx.targetSchema
+        );
+
+        if (Directory.Exists(bundleRoot) == false)
+        {
+            Directory.CreateDirectory(bundleRoot);
+        }
+
+        for (int i = 0; i < catalog.bundles.Count; i++)
+        {
+            ContentBundleEntry entry = catalog.bundles[i];
+            if (entry == null)
+            {
+                continue;
+            }
+
+            if (string.IsNullOrEmpty(entry.id) || string.IsNullOrEmpty(entry.dataUri) || string.IsNullOrEmpty(entry.sha256))
+            {
+                ctx.result = VerifyResult.Failed;
+                ctx.failReason = VerifyFailReason.InvalidResponse;
+                yield break;
+            }
+
+            // {persistent}/Bundles/{schema}/{bundleId}/{sha256}.bundle
+            string bundleDir = Path.Combine(bundleRoot, entry.id);
+            if (Directory.Exists(bundleDir) == false)
+            {
+                Directory.CreateDirectory(bundleDir);
+            }
+
+            string finalPath = Path.Combine(bundleDir, entry.sha256 + ".bundle");
+            string tempPath = finalPath + ".tmp";
+
+            // 이미 있으면 스킵(사이즈 검증은 sizeBytes가 유효할 때만)
+            if (File.Exists(finalPath))
+            {
+                if (entry.sizeBytes > 0)
+                {
+                    long len = new FileInfo(finalPath).Length;
+                    if (len == entry.sizeBytes)
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        File.Delete(finalPath);
+                    }
+                    catch
+                    {
+                        ctx.result = VerifyResult.Failed;
+                        ctx.failReason = VerifyFailReason.InvalidResponse;
+                        yield break;
+                    }
+                }
+                else
+                {
+                    continue;
+                }
+            }
+
+            if (File.Exists(tempPath))
+            {
+                try
+                {
+                    File.Delete(tempPath);
+                }
+                catch
+                {
+                    ctx.result = VerifyResult.Failed;
+                    ctx.failReason = VerifyFailReason.InvalidResponse;
+                    yield break;
+                }
+            }
+
+            UnityWebRequest req = UnityWebRequest.Get(entry.dataUri);
+            yield return req.SendWebRequest();
+
+            if (req.result != UnityWebRequest.Result.Success)
+            {
+                ctx.result = VerifyResult.Failed;
+                ctx.failReason = VerifyFailReason.NetworkError;
+                yield break;
+            }
+
+            byte[] data = req.downloadHandler.data;
+            if (data == null || data.Length == 0)
+            {
+                ctx.result = VerifyResult.Failed;
+                ctx.failReason = VerifyFailReason.InvalidResponse;
+                yield break;
+            }
+
+            try
+            {
+                File.WriteAllBytes(tempPath, data);
+
+                if (entry.sizeBytes > 0)
+                {
+                    long len = new FileInfo(tempPath).Length;
+                    if (len != entry.sizeBytes)
+                    {
+                        File.Delete(tempPath);
+                        ctx.result = VerifyResult.Failed;
+                        ctx.failReason = VerifyFailReason.InvalidResponse;
+                        yield break;
+                    }
+                }
+
+                if (File.Exists(finalPath))
+                {
+                    File.Delete(finalPath);
+                }
+
+                File.Move(tempPath, finalPath);
+            }
+            catch
+            {
+                ctx.result = VerifyResult.Failed;
+                ctx.failReason = VerifyFailReason.InvalidResponse;
+
+                try
+                {
+                    if (File.Exists(tempPath))
+                    {
+                        File.Delete(tempPath);
+                    }
+                }
+                catch
+                {
+                }
+
+                yield break;
+            }
+        }
+
+        ctx.dataUpdateSucceeded = true;
     }
     #endregion
 
