@@ -3142,7 +3142,7 @@ C:\Project\Skul-Dimension-Rift\ApiServer\obj\Debug\net8.0\refint\ApiServer.dll
 C:\Project\Skul-Dimension-Rift\ApiServer\obj\Debug\net8.0\ApiServer.pdb
 C:\Project\Skul-Dimension-Rift\ApiServer\obj\Debug\net8.0\ApiServer.genruntimeconfig.cache
 C:\Project\Skul-Dimension-Rift\ApiServer\obj\Debug\net8.0\ref\ApiServer.dll
-C:\Project\Skul-Dimension-Rift\ApiServer\bin\Debug\net8.0\CDN\Verify\Meta\Catalog\Common.meta.json
-C:\Project\Skul-Dimension-Rift\ApiServer\bin\Debug\net8.0\CDN\Verify\Meta\Catalog\Stage0.meta.json
-C:\Project\Skul-Dimension-Rift\ApiServer\bin\Debug\net8.0\CDN\Verify\Meta\Catalog\Stage1.meta.json
 C:\Project\Skul-Dimension-Rift\ApiServer\bin\Debug\net8.0\CDN\Verify\Meta\Manifest\ContentManifest.meta.json
+C:\Project\Skul-Dimension-Rift\ApiServer\bin\Debug\net8.0\CDN\Verify\Meta\ContentCatalog\Common.meta.json
+C:\Project\Skul-Dimension-Rift\ApiServer\bin\Debug\net8.0\CDN\Verify\Meta\ContentCatalog\Stage0.meta.json
+C:\Project\Skul-Dimension-Rift\ApiServer\bin\Debug\net8.0\CDN\Verify\Meta\ContentCatalog\Stage1.meta.json

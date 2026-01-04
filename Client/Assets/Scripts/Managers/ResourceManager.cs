@@ -239,49 +239,64 @@ public class ResourceManager : MonoBehaviour
             case VerifyResult.Failed:
                 // 검증 실패
                 // 로컬 데이터 사용
-#if UNITY_EDITOR
                 Debug.LogWarning($"[ResourceManager] Content verify failed: {manifestVerifyContext.failReason}");
-#endif
                 yield break;
             case VerifyResult.UpToDate:
                 // 최신 상태
                 yield break;
             case VerifyResult.Outdated:
-                Debug.Log("[ResourceManager] Content is outdated, updating...");
-                // 3_1 매니페스트 본문 업데이트
-                yield return C_UpdateContent(manifestVerifyContext.remoteMeta, contentManifest.id, contentManifest.schema, manifestVerifyContext);
-                if (manifestVerifyContext.dataUpdateSucceeded)
                 {
-                    // 메타 정보도 갱신
-                    SaveContentMeta(manifestVerifyContext);
-                }
+                    Debug.Log("[ResourceManager] Content is outdated, updating...");
+                    // 3_1 매니페스트 본문 캐시 업데이트
+                    yield return C_UpdateContentManifest(manifestVerifyContext);
 
-                // 3_2 카탈로그별 업데이트 처리
-                foreach (var catalog in contentManifest.contentCatalogs)
-                {
-                    if (catalog.requiredOnBoot)
+                    // 3_2 캐시를 이용하여 카탈로그 업데이트 처리
+                    foreach (var catalog in contentManifest.contentCatalogs)
                     {
-                        // 필수 카탈로그만 우선 처리
-                        localMeta.Clear();
-                        
-                        LoadContentMeta(out localMeta, catalog.id, catalog.schema);
-
-                        ContentVerifyContext ctx = new ContentVerifyContext();
-
-                        yield return C_VerifyContentMeta(localMeta, catalog.id, catalog.schema, ctx);
-
-                        if (ctx.result == VerifyResult.Outdated)
+                        if (catalog.requiredOnBoot)
                         {
-                            yield return C_UpdateContent(ctx.remoteMeta, catalog.id, catalog.schema, ctx);
-
-                            if (ctx.dataUpdateSucceeded)
+                            // 필수 카탈로그만 우선 메타 검증 처리
+                            localMeta.Clear();
+                            LoadContentMeta(out localMeta, catalog.id, catalog.schema);
+                            ContentVerifyContext ctx = new ContentVerifyContext();
+                            yield return C_VerifyContentMeta(localMeta, catalog.id, catalog.schema, ctx);
+                            ContentCatalog localCatalog = LoadContentPayload<ContentCatalog>(catalog.id, catalog.schema);
+                            // 카탈로그 본문이 최신이 아니라면 업데이트 진행
+                            if (ctx.result == VerifyResult.Outdated)
                             {
-                                SaveContentMeta(ctx);
+                                // 카탈로그 업데이트 
+                                yield return C_UpdateContentCatalog(ctx);
+
+                                if (ctx.dataUpdateSucceeded)
+                                {
+
+                                }
+                                if (ctx.dataUpdateSucceeded)
+                                {
+                                    yield return C_UpdateContentBundle(ctx);
+                                    SaveContentMeta(ctx);
+                                }
+                            }
+                            // 이 외의 경우 로컬 데이터 사용
+                            else
+                            {
+
                             }
                         }
+
+                        // 번들 업데이트 성공시 최신 카탈로그 저장
                     }
+
+
+                    // 업데이트가 끝났다면 매니페스트 저장
+                    if (manifestVerifyContext.dataUpdateSucceeded)
+                    {
+                        // 메타 정보도 갱신
+                        SaveContentManifest(contentManifest);
+                        SaveContentMeta(manifestVerifyContext);
+                    }
+                    yield break;
                 }
-                yield break;
             default:
                 Debug.LogWarning("[ResourceManager] Unknown content verify result");
                 yield break;
@@ -391,12 +406,9 @@ public class ResourceManager : MonoBehaviour
     /// <summary>
     /// 콘텐츠 본문 업데이트
     /// </summary>
-    /// <param name="remoteMeta"></param>
-    /// <param name="id"></param>
-    /// <param name="schema"></param>
-    /// <param name="ctx"></param>
+    /// <param name="ctx">검증 절차가 완료된 컨텍스트</param>
     /// <returns></returns>
-    private IEnumerator C_UpdateContent(ContentMeta remoteMeta, string id, string schema, ContentVerifyContext ctx)
+    private IEnumerator C_UpdateContentManifest(ContentVerifyContext ctx)
     {
         if (ctx == null)
         {
@@ -405,12 +417,12 @@ public class ResourceManager : MonoBehaviour
 
         ctx.dataUpdateSucceeded = false;
 
-        if (remoteMeta == null || string.IsNullOrEmpty(remoteMeta.dataUri))
+        if (ctx.remoteMeta == null || string.IsNullOrEmpty(ctx.remoteMeta.dataUri))
         {
             yield break;
         }
 
-        UnityWebRequest req = UnityWebRequest.Get(remoteMeta.dataUri);
+        UnityWebRequest req = UnityWebRequest.Get(ctx.remoteMeta.dataUri);
         yield return req.SendWebRequest();
 
         if (req.result != UnityWebRequest.Result.Success)
@@ -431,13 +443,55 @@ public class ResourceManager : MonoBehaviour
 
         ContentManifest remoteManifest = JsonUtility.FromJson<ContentManifest>(json);
 
+        ctx.dataUpdateSucceeded = true;
         contentManifest = remoteManifest;
+    }
+
+    private IEnumerator C_UpdateContentCatalog(ContentVerifyContext ctx)
+    {
+        if (ctx == null)
+        {
+            yield break;
+        }
+
+        ctx.dataUpdateSucceeded = false;
+
+        if (ctx.remoteMeta == null || string.IsNullOrEmpty(ctx.remoteMeta.dataUri))
+        {
+            yield break;
+        }
+
+        UnityWebRequest req = UnityWebRequest.Get(ctx.remoteMeta.dataUri);
+        yield return req.SendWebRequest();
+
+        if (req.result != UnityWebRequest.Result.Success)
+        {
+            ctx.result = VerifyResult.Failed;
+            ctx.failReason = VerifyFailReason.NetworkError;
+            yield break;
+        }
+
+        string json = req.downloadHandler.text;
+
+        if (string.IsNullOrEmpty(json))
+        {
+            ctx.result = VerifyResult.Failed;
+            ctx.failReason = VerifyFailReason.InvalidResponse;
+            yield break;
+        }
+
         ctx.dataUpdateSucceeded = true;
     }
 
-    private IEnumerator C_UpdateContentBundle(ContentMeta remoteMeta, string id, string schema, ContentVerifyContext ctx)
+    /// <summary>
+    /// 콘텐츠 번들 업데이트
+    /// 애셋 번들 바이너리를 관리해야 하기 때문에 함수 분리
+    /// </summary>
+    /// <param name="ctx"></param>
+    /// <returns></returns>
+    private IEnumerator C_UpdateContentBundle(ContentVerifyContext ctx)
     {
-
+        yield return null;
     }
     #endregion
 
@@ -745,6 +799,33 @@ public class ResourceManager : MonoBehaviour
 
         manifest = JsonUtility.FromJson<ContentManifest>(defaultAsset.text);
         return manifest != null;
+    }
+
+    private T LoadContentPayload<T>(string id, string schema)
+    {
+        T local = default;
+
+        string metaPath = Path.Combine(
+                        Application.persistentDataPath,
+                        "Data",
+                        schema,
+                        id + ".json"
+                    );
+
+        if (!File.Exists(metaPath))
+        {
+            return default;
+        }
+
+        string json = File.ReadAllText(metaPath);
+
+        if (string.IsNullOrEmpty(json))
+        {
+            return default;
+        }
+
+        local = JsonUtility.FromJson<T>(json);
+        return local;
     }
 
     private bool SaveContentManifest(ContentManifest manifest)
