@@ -1,7 +1,7 @@
 {
   "version": 1,
   "verifyRoot": "http://127.0.0.1:5001",
-  "metaApi": "api/meta?id={Id}&schema={Schema}",
+  "metaApi": "api/meta?id={Id}&schema={Schema}&platform={Platform}",
   "id" : "ContentManifest",
   "schema": "Manifest",
   "catalogs": [

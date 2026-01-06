@@ -4,7 +4,7 @@ namespace Assets.Scripts.Utility
 {
     public static class ContentPath
     {
-        public static string BuildMetaUri(string verifyRoot, string metaApiTemplate, string id, string schema)
+        public static string BuildMetaUri(string verifyRoot, string metaApiTemplate, string id, string schema, string platform)
         {
             if (string.IsNullOrEmpty(metaApiTemplate))
             {
@@ -22,7 +22,12 @@ namespace Assets.Scripts.Utility
             }
 
             string templ = metaApiTemplate.Trim();
-            string rel = templ.Replace("{Id}", id.Trim()).Replace("{Schema}", schema.Trim());
+
+            string rel = templ
+                .Replace("{Id}", id.Trim())
+                .Replace("{Schema}", schema.Trim())
+                .Replace("{Platform}", platform.Trim());
+
             rel = NormalizeRelativePath(rel);
 
             if (string.IsNullOrEmpty(rel))
@@ -30,7 +35,7 @@ namespace Assets.Scripts.Utility
                 return string.Empty;
             }
 
-            if (IsAbsoluteHttpUri(rel) == true)
+            if (IsAbsoluteHttpUri(rel))
             {
                 return rel;
             }
@@ -44,6 +49,7 @@ namespace Assets.Scripts.Utility
 
             return root + "/" + rel;
         }
+
 
         public static string NormalizeServerRoot(string serverRoot)
         {

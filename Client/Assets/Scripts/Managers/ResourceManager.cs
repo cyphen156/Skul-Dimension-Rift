@@ -360,11 +360,14 @@ public class ResourceManager : MonoBehaviour
         ctx.targetId = id;
         ctx.targetSchema = schema;
 
+        string platform = GetPlatformFolder();
+
         string remoteMetaUri = ContentPath.BuildMetaUri(
             contentManifest.verifyRoot,
             contentManifest.metaApi,
             id,
-            schema
+            schema,
+            platform
         );
 
         if (string.IsNullOrEmpty(remoteMetaUri))
@@ -379,12 +382,11 @@ public class ResourceManager : MonoBehaviour
 
         if (webRequest.result != UnityWebRequest.Result.Success)
         {
-            long code = webRequest.responseCode;
-
             ctx.result = VerifyResult.Failed;
 
             if (webRequest.result == UnityWebRequest.Result.ProtocolError)
             {
+                long code = webRequest.responseCode;
                 if (code >= 400 && code < 500)
                 {
                     ctx.failReason = VerifyFailReason.Http4xx;
@@ -416,18 +418,10 @@ public class ResourceManager : MonoBehaviour
         }
 
         ContentMeta remoteMeta = JsonUtility.FromJson<ContentMeta>(json);
-
-        if (remoteMeta == null)
+        if (remoteMeta == null || string.IsNullOrEmpty(remoteMeta.dataUri))
         {
             ctx.result = VerifyResult.Failed;
             ctx.failReason = VerifyFailReason.ParseError;
-            yield break;
-        }
-
-        if (string.IsNullOrEmpty(remoteMeta.dataUri))
-        {
-            ctx.result = VerifyResult.Failed;
-            ctx.failReason = VerifyFailReason.InvalidResponse;
             yield break;
         }
 
@@ -1313,11 +1307,11 @@ public class ResourceManager : MonoBehaviour
     {
         return Application.platform switch
         {
-            RuntimePlatform.Android => "ANDROID",
-            RuntimePlatform.IPhonePlayer => "IOS",
-            RuntimePlatform.WindowsPlayer or RuntimePlatform.WindowsEditor => "WINDOWS",
-            RuntimePlatform.OSXPlayer or RuntimePlatform.OSXEditor => "OSX",
-            RuntimePlatform.WebGLPlayer => "WEB",
+            RuntimePlatform.Android => "Android",
+            RuntimePlatform.IPhonePlayer => "Ios",
+            RuntimePlatform.WindowsPlayer or RuntimePlatform.WindowsEditor => "Windows",
+            RuntimePlatform.OSXPlayer or RuntimePlatform.OSXEditor => "Osx",
+            RuntimePlatform.WebGLPlayer => "Web",
             _ => Application.platform.ToString()
         };
     }
