@@ -271,7 +271,10 @@ public class ResourceManager : MonoBehaviour
                             continue;
                         }
 
-                        localMeta.Clear();
+                        if (localMeta != null)
+                        {
+                            localMeta.Clear();
+                        }
                         LoadContentMeta(out localMeta, catalogEntry.id, catalogEntry.schema);
 
                         ContentVerifyContext ctx = new ContentVerifyContext();
@@ -734,6 +737,7 @@ public class ResourceManager : MonoBehaviour
             {
                 ctx.result = VerifyResult.Failed;
                 ctx.failReason = VerifyFailReason.InvalidResponse;
+                Debug.LogError($"{entry} : UpdateFailed\n reason : {ctx.failReason}");
 
                 try
                 {

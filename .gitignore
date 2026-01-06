@@ -106,9 +106,9 @@ InitTestScene*.unity*
 /Client/Assets/RemoteDatas/
 /Client/Assets/RemoteDatas.meta
 
-# DatabaseServer 무시
-/DatabaseServer/[Bb]in/
-/DatabaseServer/[Oo]bj/
+# ApiServer 무시
+/ApiServer/[Bb]in/
+/ApiServer/[Oo]bj/
 
 # GameServer 무시
 /GameServer/[Bb]in/
