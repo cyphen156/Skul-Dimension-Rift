@@ -697,8 +697,21 @@ public class ResourceManager : MonoBehaviour
 
             if (req.result != UnityWebRequest.Result.Success)
             {
+
                 ctx.result = VerifyResult.Failed;
                 ctx.failReason = VerifyFailReason.NetworkError;
+#if UNITY_EDITOR
+                long code = req.responseCode;
+                Debug.LogWarning(
+                    $"[ContentBundle] Download failed\n" +
+                    $"Catalog : {ctx.targetId}\n" +
+                    $"Bundle  : {entry.id}\n" +
+                    $"Uri     : {entry.dataUri}\n" +
+                    $"Result  : {req.result}\n" +
+                    $"Code    : {code}\n" +
+                    $"Error   : {req.error}"
+                );
+#endif
                 yield break;
             }
 
@@ -719,6 +732,15 @@ public class ResourceManager : MonoBehaviour
                     long len = new FileInfo(tempPath).Length;
                     if (len != entry.sizeBytes)
                     {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                        Debug.LogWarning(
+                            $"[ContentBundle] Size mismatch\n" +
+                            $"Catalog : {ctx.targetId}\n" +
+                            $"Bundle  : {entry.id}\n" +
+                            $"Expect  : {entry.sizeBytes}\n" +
+                            $"Actual  : {len}"
+                        );
+#endif
                         File.Delete(tempPath);
                         ctx.result = VerifyResult.Failed;
                         ctx.failReason = VerifyFailReason.InvalidResponse;
@@ -737,8 +759,14 @@ public class ResourceManager : MonoBehaviour
             {
                 ctx.result = VerifyResult.Failed;
                 ctx.failReason = VerifyFailReason.InvalidResponse;
-                Debug.LogError($"{entry} : UpdateFailed\n reason : {ctx.failReason}");
-
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                Debug.LogError(
+                    $"[ContentBundle] File operation failed\n" +
+                    $"Catalog : {ctx.targetId}\n" +
+                    $"Bundle  : {entry.id}\n" +
+                    $"Path    : {finalPath}"
+                );
+#endif
                 try
                 {
                     if (File.Exists(tempPath))
