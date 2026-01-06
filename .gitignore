@@ -96,6 +96,8 @@ InitTestScene*.unity*
 **/[Dd]ownload[Aa]ssets/
 
 # Client 무시
+Client/Assembly-CSharp*.csproj
+Client/*.sln
 /Client/[Ll]ibrary/
 /Client/[Tt]emp/
 /Client/[Oo]bj/
