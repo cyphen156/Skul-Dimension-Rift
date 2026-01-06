@@ -1,5 +1,5 @@
 {
   "version": 2,
-  "sha256": "",
-  "dataUri": "http://localhost/CDN/Common/catalog.json"
+  "sha256": "8a1db5b3dfe255ca1d0f78f82bc8c001996ae2eb0edab3ff91845c8a2a3066bc",
+  "dataUri": "http://localhost/CDN/Data/ContentCatalog/Common.json"
 }
