@@ -11,6 +11,14 @@ namespace Assets.Scripts.Content
         public bool requiredOnBoot;
     }
 
+    [Serializable] 
+    public sealed class SceneEntry
+    {
+        public string sceneName;
+        public string staticKey;
+        public string ownerCatalogId;
+    }
+
     [Serializable]
     public sealed class ContentManifest
     {
@@ -23,5 +31,6 @@ namespace Assets.Scripts.Content
         public string schema;
 
         public List<ContentCatalogEntry> contentCatalogs = new List<ContentCatalogEntry>();
+        public List<SceneEntry> scenes = new List<SceneEntry>();
     }
 }

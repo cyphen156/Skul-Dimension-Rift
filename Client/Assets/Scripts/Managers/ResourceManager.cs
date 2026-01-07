@@ -781,6 +781,16 @@ public class ResourceManager : MonoBehaviour
     #endregion
 
     #region Resource Accessors
+    public IReadOnlyList<SceneEntry> GetSceneEntries()
+    {
+        if (contentManifest == null)
+        {
+            return null;
+        }
+
+        return contentManifest.scenes;
+    }
+
     public StageData GetStageData(uint stageDataKey)
     {
         StageData data = null;

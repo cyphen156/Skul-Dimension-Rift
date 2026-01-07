@@ -2,18 +2,30 @@
   "version": 1,
   "verifyRoot": "http://127.0.0.1:5001",
   "metaApi": "api/meta?id={Id}&schema={Schema}&platform={Platform}",
-  "id" : "ContentManifest",
+  "id": "ContentManifest",
   "schema": "Manifest",
-  "catalogs": [
+  "contentCatalogs": [
     {
       "id": "Common",
-      "schema": "Catalog",
+      "schema": "ContentCatalog",
       "requiredOnBoot": true
     },
     {
       "id": "Stage0",
-      "schema": "Catalog",
+      "schema": "ContentCatalog",
       "requiredOnBoot": false
+    }
+  ],
+  "scenes": [
+    {
+      "sceneName": "TitleScene",
+      "staticKey": "0x70100000",
+      "ownerCatalogId": "Common"
+    },
+    {
+      "sceneName": "Stage0Scene",
+      "staticKey": "0x71100000",
+      "ownerCatalogId": "Stage0"
     }
   ]
 }

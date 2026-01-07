@@ -1,5 +1,5 @@
 {
-  "version": 2,
-  "sha256": "0b8be734feda2f52a47548df6b25999e29308e656b729fe06cd1010e0a51fbb0",
-  "dataUri": "http://localhost/CDN/Data/Windows/Manifest/ContentManifest.json"
+  "version": 1,
+  "sha256": "b3450c5cb6c0963dfbf58abf8fcb3a307848c440a55d008249ee62fdbdb5daed",
+  "dataUri": "http://127.0.0.1/CDN/Content/Data/Windows/Manifest/ContentManifest.json"
 }

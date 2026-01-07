@@ -1,6 +1,6 @@
+using Assets.Scripts.Content;
 using Assets.Scripts.Data;
 using Assets.Scripts.Interface;
-using Assets.Scripts.Utility;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -13,9 +13,7 @@ public class SceneLoadManager : MonoBehaviour
 {
     public static SceneLoadManager instance;
 
-#if UNITY_EDITOR
     private Dictionary<string, uint> sceneMap = new Dictionary<string, uint>();
-#endif
 
     private void Awake()
     {
@@ -43,40 +41,25 @@ public class SceneLoadManager : MonoBehaviour
     {
         sceneMap.Clear();
 
-#if UNITY_EDITOR
-        // 기본 씬 매핑
-        // 추후 RM에서 씬 정보를 불러와서 매핑하도록 변경 필요.
-        // domain, ContentGroup(DlcIndex), role(stageRole), class(StageIndex{Main/Sub}), instance
-        // TitleScene  : 0.0
-        // Stage0Scene : 1.0
-        // Stage1Scene : 1.1
-        sceneMap["TitleScene"] = DomainKey.GetStaticId(
-            DomainKey.Make(Domain.Scene, 0, (byte)SceneRole.UnityScene, ClassCodec.Pack(0, 0), 0)
-        );
+        IReadOnlyList<SceneEntry> scenes = ResourceManager.instance.GetSceneEntries();
 
-        sceneMap["Stage0Scene"] = DomainKey.GetStaticId(
-            DomainKey.Make(Domain.Scene, 0, (byte)SceneRole.UnityScene, ClassCodec.Pack(0, 0), 0)
-        );
-
-        sceneMap["Stage1Scene"] = DomainKey.GetStaticId(
-            DomainKey.Make(Domain.Scene, 0, (byte)SceneRole.UnityScene, ClassCodec.Pack(1, 0), 0)
-        );
-#endif
+        foreach (SceneEntry scene in scenes)
+        {
+            RegisterScene(scene);
+        }
     }
 
-    public void RegisterScene(string sceneName, uint sceneStaticId)
+    public void RegisterScene(SceneEntry scene)
     {
-        if (string.IsNullOrEmpty(sceneName) == true)
+        if (scene.sceneName == string.Empty || scene.staticKey == string.Empty)
         {
             return;
         }
 
-        if (sceneMap.ContainsKey(sceneName) == true)
+        if (DomainKeyParser.TryParseStaticKey(scene.staticKey, out uint staticKey))
         {
-            return;
+            sceneMap.Add(scene.sceneName, staticKey);
         }
-
-        sceneMap[sceneName] = sceneStaticId;
     }
 
     /// <summary>

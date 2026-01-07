@@ -1,5 +1,5 @@
 {
   "version": 1,
-  "sha256": "ec0f1148b2655a313be73037e7fab59860e34ceb41ea918e80f990498a07e769",
-  "dataUri": "http://localhost/CDN/Data/Windows/ContentCatalog/Stage0.json"
+  "sha256": "1c89f80a3db0fb2e3fffcf04c079fd7086026fa2aa3f1b5489d2b82cd90dfc6f",
+  "dataUri": "http://127.0.0.1/CDN/Content/Data/Windows/ContentCatalog/Stage0.json"
 }
