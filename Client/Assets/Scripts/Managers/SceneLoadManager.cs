@@ -1,8 +1,5 @@
-using Assets.Scripts.Content;
-using Assets.Scripts.Data;
 using Assets.Scripts.Interface;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -13,7 +10,7 @@ public class SceneLoadManager : MonoBehaviour
 {
     public static SceneLoadManager instance;
 
-    private Dictionary<string, uint> sceneMap = new Dictionary<string, uint>();
+    public uint currentSceneStaticKey = 0u;
 
     private void Awake()
     {
@@ -28,7 +25,6 @@ public class SceneLoadManager : MonoBehaviour
             return;
         }
 
-        Initialize();
         SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
@@ -36,32 +32,19 @@ public class SceneLoadManager : MonoBehaviour
     {
         SceneManager.sceneLoaded -= OnSceneLoaded;
     }
-
-    private void Initialize()
+    public static void LoadScene(uint sceneStaticKey)
     {
-        sceneMap.Clear();
-
-        IReadOnlyList<SceneEntry> scenes = ResourceManager.instance.GetSceneEntries();
-
-        foreach (SceneEntry scene in scenes)
+        if (instance == null)
         {
-            RegisterScene(scene);
-        }
-    }
-
-    public void RegisterScene(SceneEntry scene)
-    {
-        if (scene.sceneName == string.Empty || scene.staticKey == string.Empty)
-        {
+            Debug.LogWarning("[SceneLoadManager] instance is null.");
             return;
         }
 
-        if (DomainKeyParser.TryParseStaticKey(scene.staticKey, out uint staticKey))
+        if (ResourceManager.instance.HasScene(sceneStaticKey, out string sceneName))
         {
-            sceneMap.Add(scene.sceneName, staticKey);
+            instance.StartCoroutine(instance.C_LoadScene(sceneName));
         }
     }
-
     /// <summary>
     /// 외부에서 호출하는 진입점.
     /// 실제 코루틴 실행은 내부 인스턴스가 담당.
@@ -74,22 +57,17 @@ public class SceneLoadManager : MonoBehaviour
             return;
         }
 
-        instance.StartCoroutine(instance.C_LoadScene(sceneName));
+        if (ResourceManager.instance.HasScene(sceneName))
+        {
+            instance.StartCoroutine(instance.C_LoadScene(sceneName));
+        }
     }
 
     private IEnumerator C_LoadScene(string sceneName)
     {
-        uint sceneStaticId;
-
-        if (sceneMap.TryGetValue(sceneName, out sceneStaticId) == false)
-        {
-            Debug.LogWarning("[SceneLoadManager] SceneId not found : " + sceneName);
-            yield break;
-        }
-
         if (ResourceManager.instance != null)
         {
-            yield return StartCoroutine(ResourceManager.instance.C_LoadSceneData(sceneStaticId));
+            yield return StartCoroutine(ResourceManager.instance.C_LoadSceneData(currentSceneStaticKey));
         }
 
         AsyncOperation op = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Single);
@@ -102,20 +80,15 @@ public class SceneLoadManager : MonoBehaviour
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        uint sceneStaticId;
-
-        if (sceneMap.TryGetValue(scene.name, out sceneStaticId) == false)
-        {
-            sceneStaticId = 0u;
-        }
-
         if (StageManager.instance == null)
         {
             Debug.LogError("[CriticalError] StageManager is null.");
             return;
         }
 
-        StageManager.instance.OnSceneLoaded(scene.name, sceneStaticId);
+        uint sceneStaticKey = 0u;
+
+        StageManager.instance.OnSceneLoaded(scene.name, sceneStaticKey);
 
         GameManager.instance.ChangeGameState(Types.GameState.Ready);
         if (scene.name == "TitleScene")

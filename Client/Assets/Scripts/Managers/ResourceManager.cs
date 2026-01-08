@@ -41,7 +41,7 @@ public class ResourceManager : MonoBehaviour
     };
 
     [Header("ContentPacks")]
-    private Dictionary<string, string> catalogPaths;
+    private Dictionary<uint, string> scenes = new Dictionary<uint, string>();
     
     [Header("DomainProvider")]
     [SerializeField] private DomainAddressResolver domainAddressResolver;
@@ -237,15 +237,15 @@ public class ResourceManager : MonoBehaviour
         {
             case VerifyResult.None:
                 Debug.LogWarning("[ResourceManager] Content verify result is None");
-                yield break;
+                break;
             case VerifyResult.Failed:
                 // 검증 실패
                 // 로컬 데이터 사용
                 Debug.LogWarning($"[ResourceManager] Content verify failed: {manifestVerifyContext.failReason}");
-                yield break;
+                break;
             case VerifyResult.UpToDate:
                 // 최신 상태
-                yield break;
+                break;
             case VerifyResult.Outdated:
                 {
                     Debug.Log("[ResourceManager] Content is outdated, updating...");
@@ -256,7 +256,7 @@ public class ResourceManager : MonoBehaviour
                     {
                         // 매니페스트 업데이트 실패시 중단
                         // -> 로컬 폴백
-                        yield break;
+                        break;
                     }
 
                     bool isContentConsistent = true;
@@ -334,17 +334,32 @@ public class ResourceManager : MonoBehaviour
                     // 업데이트 도중에 문제가 발생했다면 중단
                     if (isContentConsistent == false)
                     {
-                        yield break;
+                        break;
                     }
 
                     SaveContentManifest(contentManifest);
                     SaveContentMeta(manifestVerifyContext);
 
-                    yield break;
+                    break;
                 }
             default:
                 Debug.LogWarning("[ResourceManager] Unknown content verify result");
-                yield break;
+                break;
+        }
+
+        // 게임 내에서 사용할 수 있는 씬 도메인 엔트리 등록
+        for (int i = 0; i < contentManifest.scenes.Count; i++)
+        {
+            SceneEntry scene = contentManifest.scenes[i];
+            if (scene == null)
+            {
+                continue;
+            }
+
+            if (DomainKeyParser.TryParseStaticKey(scene.staticKey, out uint staticKey))
+            {
+                scenes[staticKey] = scene.sceneName;
+            }
         }
     }
 
@@ -781,14 +796,14 @@ public class ResourceManager : MonoBehaviour
     #endregion
 
     #region Resource Accessors
-    public IReadOnlyList<SceneEntry> GetSceneEntries()
+    public bool HasScene(uint staticKey, out string sceneName)
     {
-        if (contentManifest == null)
-        {
-            return null;
-        }
+        return scenes.TryGetValue(staticKey, out sceneName);
+    }
 
-        return contentManifest.scenes;
+    public bool HasScene(string name)
+    {
+        return scenes.ContainsValue(name);
     }
 
     public StageData GetStageData(uint stageDataKey)
