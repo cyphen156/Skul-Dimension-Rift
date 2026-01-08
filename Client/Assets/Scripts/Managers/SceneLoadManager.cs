@@ -10,7 +10,7 @@ public class SceneLoadManager : MonoBehaviour
 {
     public static SceneLoadManager instance;
 
-    public uint currentSceneStaticKey = 0u;
+    private uint currentSceneKey;
 
     private void Awake()
     {
@@ -32,6 +32,11 @@ public class SceneLoadManager : MonoBehaviour
     {
         SceneManager.sceneLoaded -= OnSceneLoaded;
     }
+
+    /// <summary>
+    /// 외부에서 호출하는 진입점.
+    /// 실제 코루틴 실행은 내부 인스턴스가 담당.
+    /// </summary>
     public static void LoadScene(uint sceneStaticKey)
     {
         if (instance == null)
@@ -40,42 +45,17 @@ public class SceneLoadManager : MonoBehaviour
             return;
         }
 
-        if (ResourceManager.instance.HasScene(sceneStaticKey, out string sceneName))
-        {
-            instance.StartCoroutine(instance.C_LoadScene(sceneName));
-        }
+        instance.StartCoroutine(instance.C_LoadScene(sceneStaticKey));
     }
-    /// <summary>
-    /// 외부에서 호출하는 진입점.
-    /// 실제 코루틴 실행은 내부 인스턴스가 담당.
-    /// </summary>
-    public static void LoadScene(string sceneName)
-    {
-        if (instance == null)
-        {
-            Debug.LogWarning("[SceneLoadManager] instance is null.");
-            return;
-        }
-
-        if (ResourceManager.instance.HasScene(sceneName))
-        {
-            instance.StartCoroutine(instance.C_LoadScene(sceneName));
-        }
-    }
-
-    private IEnumerator C_LoadScene(string sceneName)
+ 
+    private IEnumerator C_LoadScene(uint sceneStaticKey)
     {
         if (ResourceManager.instance != null)
         {
-            yield return StartCoroutine(ResourceManager.instance.C_LoadSceneData(currentSceneStaticKey));
+            yield return StartCoroutine(ResourceManager.instance.C_PrepareScene(sceneStaticKey));
         }
 
-        AsyncOperation op = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Single);
-
-        while (op.isDone == false)
-        {
-            yield return null;
-        }
+        currentSceneKey = sceneStaticKey;
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -86,9 +66,7 @@ public class SceneLoadManager : MonoBehaviour
             return;
         }
 
-        uint sceneStaticKey = 0u;
-
-        StageManager.instance.OnSceneLoaded(scene.name, sceneStaticKey);
+        StageManager.instance.OnSceneLoaded(scene.name, currentSceneKey);
 
         GameManager.instance.ChangeGameState(Types.GameState.Ready);
         if (scene.name == "TitleScene")

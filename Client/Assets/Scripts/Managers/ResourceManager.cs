@@ -41,8 +41,9 @@ public class ResourceManager : MonoBehaviour
     };
 
     [Header("ContentPacks")]
-    private Dictionary<uint, string> scenes = new Dictionary<uint, string>();
-    
+    private readonly Dictionary<uint, SceneEntry> sceneEntries = new Dictionary<uint, SceneEntry>();
+    private readonly Dictionary<string, CatalogState> catalogStates = new Dictionary<string, CatalogState>();
+
     [Header("DomainProvider")]
     [SerializeField] private DomainAddressResolver domainAddressResolver;
 #if UNITY_EDITOR
@@ -215,7 +216,7 @@ public class ResourceManager : MonoBehaviour
         }
     }
 
-    public IEnumerator C_SyncContentManifest()
+    public IEnumerator C_SyncContentManifest(bool isForceUpdate = false)
     {
         // 1. 로컬 데이터 세팅
         LoadContentMeta(out localMeta, contentManifest.id, contentManifest.schema);
@@ -241,7 +242,9 @@ public class ResourceManager : MonoBehaviour
             case VerifyResult.Failed:
                 // 검증 실패
                 // 로컬 데이터 사용
+                // 멀티플레이 모드 금지 ==> 재검증 요구
                 Debug.LogWarning($"[ResourceManager] Content verify failed: {manifestVerifyContext.failReason}");
+                //GameManager.instance.ChangeGameMode(Types.GameMode.Single);
                 break;
             case VerifyResult.UpToDate:
                 // 최신 상태
@@ -266,7 +269,7 @@ public class ResourceManager : MonoBehaviour
                     {
                         // 필수 항목이 아닌 경우 스킵 
                         // -> 런타임 시점에 필요시점에 검증 처리(SceenLoad 시점)
-                        if (catalogEntry.requiredOnBoot == false)
+                        if (catalogEntry.requiredOnBoot == false && !isForceUpdate)
                         {
                             continue;
                         }
@@ -347,6 +350,8 @@ public class ResourceManager : MonoBehaviour
                 break;
         }
 
+        sceneEntries.Clear();
+
         // 게임 내에서 사용할 수 있는 씬 도메인 엔트리 등록
         for (int i = 0; i < contentManifest.scenes.Count; i++)
         {
@@ -356,10 +361,13 @@ public class ResourceManager : MonoBehaviour
                 continue;
             }
 
-            if (DomainKeyParser.TryParseStaticKey(scene.staticKey, out uint staticKey))
+            uint staticKey;
+            if (DomainKeyParser.TryParseStaticKey(scene.staticKey, out staticKey) == false)
             {
-                scenes[staticKey] = scene.sceneName;
+                continue;
             }
+
+            sceneEntries[staticKey] = scene;
         }
     }
 
@@ -622,7 +630,6 @@ public class ResourceManager : MonoBehaviour
             yield break;
         }
 
-        // 번들 저장 루트
         string bundleRoot = Path.Combine(
             Application.persistentDataPath,
             "Bundles",
@@ -649,7 +656,6 @@ public class ResourceManager : MonoBehaviour
                 yield break;
             }
 
-            // {persistent}/Bundles/{schema}/{bundleId}/{sha256}.bundle
             string bundleDir = Path.Combine(bundleRoot, entry.id);
             if (Directory.Exists(bundleDir) == false)
             {
@@ -659,7 +665,6 @@ public class ResourceManager : MonoBehaviour
             string finalPath = Path.Combine(bundleDir, entry.sha256 + ".bundle");
             string tempPath = finalPath + ".tmp";
 
-            // 이미 있으면 스킵(사이즈 검증은 sizeBytes가 유효할 때만)
             if (File.Exists(finalPath))
             {
                 if (entry.sizeBytes > 0)
@@ -793,19 +798,118 @@ public class ResourceManager : MonoBehaviour
 
         ctx.dataUpdateSucceeded = true;
     }
+
+    public IEnumerator C_PrepareScene(uint sceneKey)
+    {
+        SceneEntry sceneEntry;
+        if (sceneEntries.TryGetValue(sceneKey, out sceneEntry) == false)
+        {
+            Debug.LogError($"[ResourceManager] SceneKey not found: {sceneKey}");
+            yield break;
+        }
+
+        if (sceneEntry == null)
+        {
+            Debug.LogError($"[ResourceManager] SceneEntry is null: {sceneKey}");
+            yield break;
+        }
+
+        if (string.IsNullOrEmpty(sceneEntry.ownerCatalogId))
+        {
+            Debug.LogError($"[ResourceManager] ownerCatalogId is empty: {sceneEntry.sceneName}");
+            yield break;
+        }
+
+        // 1) 이 씬이 속한 카탈로그 준비
+        ContentCatalogEntry ownerEntry = null;
+
+        // 2) 여기서부터는 "DataSet(Req목록)" + "ResolveMap"을 준비하는 단계가 들어갑니다.
+        // 지금은 구조만 잡는 단계라면, 아래는 빈 구현으로 두어도 됩니다.
+        yield return null;
+    }
+
+    private IEnumerator C_EnsureCatalogReady(ContentCatalogEntry entry)
+    {
+        if (entry == null)
+        {
+            yield break;
+        }
+
+        if (string.IsNullOrEmpty(entry.id))
+        {
+            yield break;
+        }
+
+        if (string.IsNullOrEmpty(entry.schema))
+        {
+            yield break;
+        }
+
+        ContentMeta catalogLocalMeta;
+        LoadContentMeta(out catalogLocalMeta, entry.id, entry.schema);
+
+        ContentVerifyContext ctx = new ContentVerifyContext();
+        yield return StartCoroutine(C_VerifyContentMeta(catalogLocalMeta, entry.id, entry.schema, ctx));
+
+        if (ctx.result == VerifyResult.Failed)
+        {
+            Debug.LogWarning($"[ResourceManager] Catalog meta verify failed: {entry.id} / {ctx.failReason}");
+            yield break;
+        }
+
+        if (ctx.result == VerifyResult.UpToDate)
+        {
+            ContentCatalog localCatalog = LoadContentPayload<ContentCatalog>(entry.id, entry.schema);
+            if (localCatalog == null)
+            {
+                Debug.LogWarning($"[ResourceManager] Catalog payload missing though meta is UpToDate: {entry.id}");
+                if (forceUpdate == false)
+                {
+                    yield break;
+                }
+
+                ctx.result = VerifyResult.Outdated;
+            }
+            else
+            {
+                if (forceUpdate == false)
+                {
+                    yield break;
+                }
+
+                yield break;
+            }
+        }
+
+        if (ctx.result != VerifyResult.Outdated)
+        {
+            yield break;
+        }
+
+        yield return StartCoroutine(C_UpdateContentCatalog(ctx));
+        if (ctx.dataUpdateSucceeded == false)
+        {
+            yield break;
+        }
+
+        ContentCatalog catalog = LoadContentPayload<ContentCatalog>(entry.id, entry.schema);
+        if (catalog == null)
+        {
+            yield break;
+        }
+
+        yield return StartCoroutine(C_UpdateContentBundle(ctx, catalog));
+        if (ctx.dataUpdateSucceeded == false)
+        {
+            yield break;
+        }
+
+        SaveContentMeta(ctx);
+    }
+
     #endregion
 
     #region Resource Accessors
-    public bool HasScene(uint staticKey, out string sceneName)
-    {
-        return scenes.TryGetValue(staticKey, out sceneName);
-    }
-
-    public bool HasScene(string name)
-    {
-        return scenes.ContainsValue(name);
-    }
-
     public StageData GetStageData(uint stageDataKey)
     {
         StageData data = null;
@@ -1042,9 +1146,6 @@ public class ResourceManager : MonoBehaviour
             {
                 File.Move(temp, userDataPath);
             }
-#if UNITY_EDITOR
-            Debug.Log("UserData Save Success");
-#endif
             return true;
         }
         catch (Exception e)
@@ -1113,28 +1214,26 @@ public class ResourceManager : MonoBehaviour
 
     private T LoadContentPayload<T>(string id, string schema)
     {
-        T local = default;
+        string payloadPath = Path.Combine(
+            Application.persistentDataPath,
+            "Data",
+            schema,
+            id + ".json"
+        );
 
-        string metaPath = Path.Combine(
-                        Application.persistentDataPath,
-                        "Data",
-                        schema,
-                        id + ".json"
-                    );
-
-        if (!File.Exists(metaPath))
+        if (File.Exists(payloadPath) == false)
         {
-            return default;
+            return default(T);
         }
 
-        string json = File.ReadAllText(metaPath);
+        string json = File.ReadAllText(payloadPath);
 
         if (string.IsNullOrEmpty(json))
         {
-            return default;
+            return default(T);
         }
 
-        local = JsonUtility.FromJson<T>(json);
+        T local = JsonUtility.FromJson<T>(json);
         return local;
     }
 
@@ -1194,7 +1293,7 @@ public class ResourceManager : MonoBehaviour
     {
         try
         {
-            if (ctx.remoteMeta == null)
+            if (ctx == null || ctx.remoteMeta == null)
             {
                 return false;
             }
@@ -1330,16 +1429,39 @@ public class ResourceManager : MonoBehaviour
     /// <returns></returns>
     private static string GetPlatformFolder()
     {
-        return Application.platform switch
+        RuntimePlatform p = Application.platform;
+
+        switch (p)
         {
-            RuntimePlatform.Android => "Android",
-            RuntimePlatform.IPhonePlayer => "Ios",
-            RuntimePlatform.WindowsPlayer or RuntimePlatform.WindowsEditor => "Windows",
-            RuntimePlatform.OSXPlayer or RuntimePlatform.OSXEditor => "Osx",
-            RuntimePlatform.WebGLPlayer => "Web",
-            _ => Application.platform.ToString()
-        };
+            case RuntimePlatform.Android:
+                {
+                    return "Android";
+                }
+            case RuntimePlatform.IPhonePlayer:
+                {
+                    return "Ios";
+                }
+            case RuntimePlatform.WindowsPlayer:
+            case RuntimePlatform.WindowsEditor:
+                {
+                    return "Windows";
+                }
+            case RuntimePlatform.OSXPlayer:
+            case RuntimePlatform.OSXEditor:
+                {
+                    return "Osx";
+                }
+            case RuntimePlatform.WebGLPlayer:
+                {
+                    return "Web";
+                }
+            default:
+                {
+                    return p.ToString();
+                }
+        }
     }
+
 
     public void ApplyOption(UIWidgetContainer widget)
     {

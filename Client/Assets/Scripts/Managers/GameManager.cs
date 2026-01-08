@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using WebSocketSharp;
 using static Types;
 
 /// <summary>
@@ -49,11 +50,6 @@ public class GameManager : NetworkBehaviour
         playerPrefab = ResourceManager.instance.GetGameObject("Player");
 
         ResetGame();
-
-        if (StageManager.instance.GetCurrentSceneName() != "TitleScene")
-        {
-            RequestChangeScene("TitleScene");
-        }
     }
 
     public override void OnNetworkSpawn()
@@ -341,18 +337,13 @@ public class GameManager : NetworkBehaviour
     }
     #endregion
 
-    public void RequestChangeScene(string sceneName)
+    public void RequestChangeScene(uint sceneKey)
     {
-        if (string.IsNullOrEmpty(sceneName) == true)
-        {
-            return;
-        }
-
         // 싱글 플레이 모드
         if (gameMode == GameMode.Single)
         {
             ChangeGameState(GameState.Loading);
-            SceneLoadManager.LoadScene(sceneName);
+            SceneLoadManager.LoadScene(sceneKey);
             return;
         }
 
@@ -360,11 +351,11 @@ public class GameManager : NetworkBehaviour
         if (IsServer == true)
         {
             ChangeGameState(GameState.Loading);
-            SceneLoadManager.LoadScene(sceneName);
+            SceneLoadManager.LoadScene(sceneKey);
         }
         else
         {
-            RequestChangeSceneServerRpc(sceneName);
+            RequestChangeSceneServerRpc(sceneKey);
         }
     }
 
@@ -435,15 +426,10 @@ public class GameManager : NetworkBehaviour
     }
 
     [Rpc(SendTo.Server)]
-    private void RequestChangeSceneServerRpc(string sceneName)
+    private void RequestChangeSceneServerRpc(uint sceneKey)
     {
-        if (string.IsNullOrEmpty(sceneName) == true)
-        {
-            return;
-        }
-
         ChangeGameState(GameState.Loading);
-        SceneLoadManager.LoadScene(sceneName);
+        SceneLoadManager.LoadScene(sceneKey);
     }
 #endregion
 }
