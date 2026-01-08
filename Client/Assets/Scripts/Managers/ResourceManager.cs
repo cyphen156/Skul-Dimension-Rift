@@ -295,11 +295,12 @@ public class ResourceManager : MonoBehaviour
                             ContentCatalog localCatalog = LoadContentPayload<ContentCatalog>(catalogEntry.id, catalogEntry.schema);
                             if (localCatalog == null)
                             {
-                                isContentConsistent = false;
-                                break;
+                                ctx.result = VerifyResult.Outdated;
                             }
-
-                            continue;
+                            else
+                            {
+                                continue;
+                            }
                         }
 
                         if (ctx.result != VerifyResult.Outdated)
@@ -797,114 +798,6 @@ public class ResourceManager : MonoBehaviour
         }
 
         ctx.dataUpdateSucceeded = true;
-    }
-
-    public IEnumerator C_PrepareScene(uint sceneKey)
-    {
-        SceneEntry sceneEntry;
-        if (sceneEntries.TryGetValue(sceneKey, out sceneEntry) == false)
-        {
-            Debug.LogError($"[ResourceManager] SceneKey not found: {sceneKey}");
-            yield break;
-        }
-
-        if (sceneEntry == null)
-        {
-            Debug.LogError($"[ResourceManager] SceneEntry is null: {sceneKey}");
-            yield break;
-        }
-
-        if (string.IsNullOrEmpty(sceneEntry.ownerCatalogId))
-        {
-            Debug.LogError($"[ResourceManager] ownerCatalogId is empty: {sceneEntry.sceneName}");
-            yield break;
-        }
-
-        // 1) 이 씬이 속한 카탈로그 준비
-        ContentCatalogEntry ownerEntry = null;
-
-        // 2) 여기서부터는 "DataSet(Req목록)" + "ResolveMap"을 준비하는 단계가 들어갑니다.
-        // 지금은 구조만 잡는 단계라면, 아래는 빈 구현으로 두어도 됩니다.
-        yield return null;
-    }
-
-    private IEnumerator C_EnsureCatalogReady(ContentCatalogEntry entry)
-    {
-        if (entry == null)
-        {
-            yield break;
-        }
-
-        if (string.IsNullOrEmpty(entry.id))
-        {
-            yield break;
-        }
-
-        if (string.IsNullOrEmpty(entry.schema))
-        {
-            yield break;
-        }
-
-        ContentMeta catalogLocalMeta;
-        LoadContentMeta(out catalogLocalMeta, entry.id, entry.schema);
-
-        ContentVerifyContext ctx = new ContentVerifyContext();
-        yield return StartCoroutine(C_VerifyContentMeta(catalogLocalMeta, entry.id, entry.schema, ctx));
-
-        if (ctx.result == VerifyResult.Failed)
-        {
-            Debug.LogWarning($"[ResourceManager] Catalog meta verify failed: {entry.id} / {ctx.failReason}");
-            yield break;
-        }
-
-        if (ctx.result == VerifyResult.UpToDate)
-        {
-            ContentCatalog localCatalog = LoadContentPayload<ContentCatalog>(entry.id, entry.schema);
-            if (localCatalog == null)
-            {
-                Debug.LogWarning($"[ResourceManager] Catalog payload missing though meta is UpToDate: {entry.id}");
-                if (forceUpdate == false)
-                {
-                    yield break;
-                }
-
-                ctx.result = VerifyResult.Outdated;
-            }
-            else
-            {
-                if (forceUpdate == false)
-                {
-                    yield break;
-                }
-
-                yield break;
-            }
-        }
-
-        if (ctx.result != VerifyResult.Outdated)
-        {
-            yield break;
-        }
-
-        yield return StartCoroutine(C_UpdateContentCatalog(ctx));
-        if (ctx.dataUpdateSucceeded == false)
-        {
-            yield break;
-        }
-
-        ContentCatalog catalog = LoadContentPayload<ContentCatalog>(entry.id, entry.schema);
-        if (catalog == null)
-        {
-            yield break;
-        }
-
-        yield return StartCoroutine(C_UpdateContentBundle(ctx, catalog));
-        if (ctx.dataUpdateSucceeded == false)
-        {
-            yield break;
-        }
-
-        SaveContentMeta(ctx);
     }
 
     #endregion
