@@ -1,4 +1,5 @@
-﻿using System;
+﻿using System.IO;
+using UnityEngine;
 
 namespace Assets.Scripts.Utility
 {
@@ -50,6 +51,51 @@ namespace Assets.Scripts.Utility
             return root + "/" + rel;
         }
 
+        public static string BuildLocalMetaPath(string schema, string id)
+        {
+            if (string.IsNullOrEmpty(schema) || string.IsNullOrEmpty(id))
+            {
+                return string.Empty;
+            }
+
+            return Path.Combine(
+                Application.persistentDataPath,
+                "Meta",
+                schema,
+                id + ".meta.json"
+            );
+        }
+
+        public static string BuildLocalPayloadPath(string schema, string id)
+        {
+            if (string.IsNullOrEmpty(schema) || string.IsNullOrEmpty(id))
+            {
+                return string.Empty;
+            }
+
+            return Path.Combine(
+                Application.persistentDataPath,
+                "Data",
+                schema,
+                id + ".json"
+            );
+        }
+
+        public static string BuildLocalBundlePath(string schema, string bundleId, string bundleSha256)
+        {
+            if (string.IsNullOrEmpty(schema) || string.IsNullOrEmpty(bundleId) || string.IsNullOrEmpty(bundleSha256))
+            {
+                return string.Empty;
+            }
+
+            return Path.Combine(
+                Application.persistentDataPath,
+                "Bundles",
+                schema,
+                bundleId,
+                bundleSha256 + ".bundle"
+            );
+        }
 
         public static string NormalizeServerRoot(string serverRoot)
         {
@@ -98,12 +144,12 @@ namespace Assets.Scripts.Utility
                 return false;
             }
 
-            if (uri.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+            if (uri.StartsWith("http://", System.StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }
 
-            if (uri.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            if (uri.StartsWith("https://", System.StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }

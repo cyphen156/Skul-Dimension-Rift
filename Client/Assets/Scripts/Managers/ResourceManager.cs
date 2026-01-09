@@ -5,6 +5,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Networking;
@@ -43,6 +45,8 @@ public class ResourceManager : MonoBehaviour
     [Header("ContentPacks")]
     private readonly Dictionary<uint, SceneEntry> sceneEntries = new Dictionary<uint, SceneEntry>();
     private readonly Dictionary<string, CatalogState> catalogStates = new Dictionary<string, CatalogState>();
+
+    private CancellationTokenSource hashCts;
 
     [Header("DomainProvider")]
     [SerializeField] private DomainAddressResolver domainAddressResolver;
@@ -216,7 +220,211 @@ public class ResourceManager : MonoBehaviour
         }
     }
 
-    public IEnumerator C_SyncContentManifest(bool isForceUpdate = false)
+    public IEnumerator C_CheckContentConsistency(ContentVerifyContext result)
+    {
+        if (result == null)
+        {
+            yield break;
+        }
+
+        result.Clear();
+
+        // 1) Manifest meta 인증
+        ContentMeta manifestMeta;
+        LoadContentMeta(out manifestMeta, contentManifest.id, contentManifest.schema);
+
+        yield return C_VerifyContentMeta(
+            manifestMeta,
+            contentManifest.id,
+            contentManifest.schema,
+            result
+        );
+
+        if (result.result != VerifyResult.UpToDate)
+        {
+            yield break;
+        }
+
+        // 2) Manifest payload hash -> meta 검증
+        {
+            string manifestPayloadPath = Path.Combine(
+                Application.persistentDataPath,
+                "Data",
+                contentManifest.schema,
+                contentManifest.id + ".json"
+            );
+
+            if (hashCts != null)
+            {
+                hashCts.Cancel();
+                hashCts.Dispose();
+                hashCts = null;
+            }
+
+            hashCts = new CancellationTokenSource();
+
+            Task<string> t = Sha256FileTask.ComputeFileHexAsync(
+                manifestPayloadPath,
+                256 * 1024,
+                hashCts.Token
+            );
+
+            while (t.IsCompleted == false)
+            {
+                yield return null;
+            }
+
+            string payloadHex = t.Result;
+
+            if (string.Equals(payloadHex, result.remoteMeta.sha256, StringComparison.OrdinalIgnoreCase) == false)
+            {
+                result.result = VerifyResult.Failed;
+                result.failReason = VerifyFailReason.InvalidResponse;
+                yield break;
+            }
+        }
+
+        // 3) Catalog 반복
+        for (int i = 0; i < contentManifest.contentCatalogs.Count; i++)
+        {
+            ContentCatalogEntry entry = contentManifest.contentCatalogs[i];
+            if (entry == null)
+            {
+                continue;
+            }
+
+            ContentVerifyContext ctx = new ContentVerifyContext();
+
+            // 3-1) Catalog meta 인증
+            ContentMeta catalogMeta;
+            LoadContentMeta(out catalogMeta, entry.id, entry.schema);
+
+            yield return C_VerifyContentMeta(
+                catalogMeta,
+                entry.id,
+                entry.schema,
+                ctx
+            );
+
+            if (ctx.result != VerifyResult.UpToDate)
+            {
+                result.result = ctx.result;
+                result.failReason = ctx.failReason;
+                yield break;
+            }
+
+            // 3-2) Catalog payload hash -> meta 검증
+            {
+                string catalogPayloadPath = Path.Combine(
+                    Application.persistentDataPath,
+                    "Data",
+                    entry.schema,
+                    entry.id + ".json"
+                );
+
+                if (hashCts != null)
+                {
+                    hashCts.Cancel();
+                    hashCts.Dispose();
+                    hashCts = null;
+                }
+
+                hashCts = new CancellationTokenSource();
+
+                Task<string> t = Sha256FileTask.ComputeFileHexAsync(
+                    catalogPayloadPath,
+                    256 * 1024,
+                    hashCts.Token
+                );
+
+                while (t.IsCompleted == false)
+                {
+                    yield return null;
+                }
+
+                string payloadHex = t.Result;
+
+                if (string.Equals(payloadHex, ctx.remoteMeta.sha256, StringComparison.OrdinalIgnoreCase) == false)
+                {
+                    result.result = VerifyResult.Failed;
+                    result.failReason = VerifyFailReason.InvalidResponse;
+                    yield break;
+                }
+            }
+
+            // 3-3) Catalog 본문 로드 (이 시점에 null이면 바로 실패)
+            ContentCatalog catalog = LoadContentPayload<ContentCatalog>(entry.id, entry.schema);
+            if (catalog == null)
+            {
+                result.result = VerifyResult.Failed;
+                result.failReason = VerifyFailReason.InvalidResponse;
+                yield break;
+            }
+
+            // 4) Bundle 반복: "파일 hash -> entry.sha256 검증"
+            if (catalog.bundles == null)
+            {
+                continue;
+            }
+
+            for (int b = 0; b < catalog.bundles.Count; b++)
+            {
+                ContentBundleEntry bundle = catalog.bundles[b];
+                if (bundle == null)
+                {
+                    continue;
+                }
+
+                if (string.IsNullOrEmpty(bundle.id) || string.IsNullOrEmpty(bundle.sha256))
+                {
+                    result.result = VerifyResult.Failed;
+                    result.failReason = VerifyFailReason.InvalidResponse;
+                    yield break;
+                }
+
+                string bundlePath = Path.Combine(
+                    Application.persistentDataPath,
+                    "Bundles",
+                    entry.schema,
+                    bundle.id,
+                    bundle.sha256 + ".bundle"
+                );
+
+                if (hashCts != null)
+                {
+                    hashCts.Cancel();
+                    hashCts.Dispose();
+                    hashCts = null;
+                }
+
+                hashCts = new CancellationTokenSource();
+
+                Task<string> t = Sha256FileTask.ComputeFileHexAsync(
+                    bundlePath,
+                    256 * 1024,
+                    hashCts.Token
+                );
+
+                while (t.IsCompleted == false)
+                {
+                    yield return null;
+                }
+
+                string actualHex = t.Result;
+
+                if (string.Equals(actualHex, bundle.sha256, StringComparison.OrdinalIgnoreCase) == false)
+                {
+                    result.result = VerifyResult.Failed;
+                    result.failReason = VerifyFailReason.InvalidResponse;
+                    yield break;
+                }
+            }
+        }
+
+        result.result = VerifyResult.UpToDate;
+    }
+
+    public IEnumerator C_SyncContentManifest()
     {
         // 1. 로컬 데이터 세팅
         LoadContentMeta(out localMeta, contentManifest.id, contentManifest.schema);
@@ -269,7 +477,7 @@ public class ResourceManager : MonoBehaviour
                     {
                         // 필수 항목이 아닌 경우 스킵 
                         // -> 런타임 시점에 필요시점에 검증 처리(SceenLoad 시점)
-                        if (catalogEntry.requiredOnBoot == false && !isForceUpdate)
+                        if (catalogEntry.requiredOnBoot == false)
                         {
                             continue;
                         }

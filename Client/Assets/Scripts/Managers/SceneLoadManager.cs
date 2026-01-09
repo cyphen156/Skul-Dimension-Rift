@@ -52,7 +52,8 @@ public class SceneLoadManager : MonoBehaviour
     {
         if (ResourceManager.instance != null)
         {
-            yield return StartCoroutine(ResourceManager.instance.C_PrepareScene(sceneStaticKey));
+            yield return null;
+            //yield return StartCoroutine(ResourceManager.instance.C_PrepareScene(sceneStaticKey));
         }
 
         currentSceneKey = sceneStaticKey;
