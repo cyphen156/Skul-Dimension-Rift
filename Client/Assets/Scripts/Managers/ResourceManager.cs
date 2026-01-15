@@ -1009,15 +1009,8 @@ public class ResourceManager : MonoBehaviour
     }
 
     #endregion
-    /// <summary>
-    /// 주의 : 파일 스트림 사용하는 작업입니다.
-    /// 사용후 반드시 CloseStream()을 호출하여 스트림을 닫아주세요.
-    /// </summary>
-    /// <param name="path"></param>
-    /// <param name="onDone"></param>
-    /// <returns></returns>
+
     #region Resource Accessors
-    public Task 
     public StageData GetStageData(uint stageDataKey)
     {
         StageData data = null;
