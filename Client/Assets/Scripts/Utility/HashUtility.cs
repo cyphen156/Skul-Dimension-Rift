@@ -7,36 +7,41 @@ using System.Threading.Tasks;
 
 namespace Assets.Scripts.Utility
 {
-    public static class Sha256FileTask
+    public static class Sha256StreamTask
     {
         private sealed class State
         {
-            public string FilePath;
+            public Stream Stream;
             public int ChunkBytes;
             public CancellationToken Ct;
             public IProgress<float> Progress;
         }
 
-        public static Task<string> ComputeFileHexAsync(
-            string filePath,
+        public static Task<string> ComputeHexAsync(
+            Stream stream,
             int chunkBytes,
             CancellationToken ct,
             IProgress<float> progress
         )
         {
+            if (stream == null)
+            {
+                return Task.FromResult(string.Empty);
+            }
+
             if (chunkBytes <= 0)
             {
                 chunkBytes = 256 * 1024;
             }
 
             State state = new State();
-            state.FilePath = filePath;
+            state.Stream = stream;
             state.ChunkBytes = chunkBytes;
             state.Ct = ct;
             state.Progress = progress;
 
             return Task.Factory.StartNew(
-                ComputeFileHexWorker,
+                ComputeWorker,
                 state,
                 ct,
                 TaskCreationOptions.DenyChildAttach,
@@ -44,16 +49,16 @@ namespace Assets.Scripts.Utility
             );
         }
 
-        public static Task<string> ComputeFileHexAsync(
-            string filePath,
+        public static Task<string> ComputeHexAsync(
+            Stream stream,
             int chunkBytes,
             CancellationToken ct
         )
         {
-            return ComputeFileHexAsync(filePath, chunkBytes, ct, null);
+            return ComputeHexAsync(stream, chunkBytes, ct, null);
         }
 
-        private static string ComputeFileHexWorker(object obj)
+        private static string ComputeWorker(object obj)
         {
             State s = obj as State;
             if (s == null)
@@ -61,27 +66,47 @@ namespace Assets.Scripts.Utility
                 return string.Empty;
             }
 
-            if (string.IsNullOrEmpty(s.FilePath))
+            Stream stream = s.Stream;
+            if (stream == null)
             {
                 return string.Empty;
             }
 
-            FileStream fs = null;
-            SHA256 sha = null;
+            if (s.Ct.IsCancellationRequested)
+            {
+                return string.Empty;
+            }
+
+            if (stream.CanSeek)
+            {
+                try
+                {
+                    stream.Position = 0;
+                }
+                catch
+                {
+                }
+            }
 
             long totalBytes = 0;
             long processedBytes = 0;
 
-            bool reachedEof = false;
+            try
+            {
+                if (stream.CanSeek)
+                {
+                    totalBytes = stream.Length;
+                }
+            }
+            catch
+            {
+                totalBytes = 0;
+            }
 
-            byte[] finalHash = null;
+            SHA256 sha = null;
 
             try
             {
-                FileInfo fi = new FileInfo(s.FilePath);
-                totalBytes = fi.Length;
-
-                fs = new FileStream(s.FilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
                 sha = SHA256.Create();
 
                 byte[] buffer = new byte[s.ChunkBytes];
@@ -95,13 +120,12 @@ namespace Assets.Scripts.Utility
                 {
                     if (s.Ct.IsCancellationRequested)
                     {
-                        break;
+                        return string.Empty;
                     }
 
-                    int readBytes = fs.Read(buffer, 0, buffer.Length);
+                    int readBytes = stream.Read(buffer, 0, buffer.Length);
                     if (readBytes <= 0)
                     {
-                        reachedEof = true;
                         break;
                     }
 
@@ -127,36 +151,16 @@ namespace Assets.Scripts.Utility
                     return string.Empty;
                 }
 
-                finalHash = new byte[hash.Length];
-                Buffer.BlockCopy(hash, 0, finalHash, 0, hash.Length);
-
-                if (reachedEof)
+                if (s.Progress != null)
                 {
-                    if (s.Progress != null)
-                    {
-                        s.Progress.Report(1.0f);
-                    }
+                    s.Progress.Report(1.0f);
                 }
+
+                return ToLowerHex(hash);
             }
             catch
             {
-                if (sha != null)
-                {
-                    try
-                    {
-                        sha.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
-
-                        byte[] hash = sha.Hash;
-                        if (hash != null && hash.Length == 32)
-                        {
-                            finalHash = new byte[hash.Length];
-                            Buffer.BlockCopy(hash, 0, finalHash, 0, hash.Length);
-                        }
-                    }
-                    catch
-                    {
-                    }
-                }
+                return string.Empty;
             }
             finally
             {
@@ -164,14 +168,7 @@ namespace Assets.Scripts.Utility
                 {
                     sha.Dispose();
                 }
-
-                if (fs != null)
-                {
-                    fs.Dispose();
-                }
             }
-
-            return ToLowerHex(finalHash);
         }
 
         private static string ToLowerHex(byte[] bytes)

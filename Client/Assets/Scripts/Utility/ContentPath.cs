@@ -156,5 +156,45 @@ namespace Assets.Scripts.Utility
 
             return false;
         }
+
+        /// <summary>
+        /// 플랫폼 정보를 정규화하여 리턴합니다.
+        /// 어드레서블 데이터를 다운로드 할때 사용할 예정입니다.
+        /// </summary>
+        /// <returns></returns>
+        public static string GetPlatformFolder()
+        {
+            RuntimePlatform p = Application.platform;
+
+            switch (p)
+            {
+                case RuntimePlatform.Android:
+                    {
+                        return "Android";
+                    }
+                case RuntimePlatform.IPhonePlayer:
+                    {
+                        return "Ios";
+                    }
+                case RuntimePlatform.WindowsPlayer:
+                case RuntimePlatform.WindowsEditor:
+                    {
+                        return "Windows";
+                    }
+                case RuntimePlatform.OSXPlayer:
+                case RuntimePlatform.OSXEditor:
+                    {
+                        return "Osx";
+                    }
+                case RuntimePlatform.WebGLPlayer:
+                    {
+                        return "Web";
+                    }
+                default:
+                    {
+                        return p.ToString();
+                    }
+            }
+        }
     }
 }
