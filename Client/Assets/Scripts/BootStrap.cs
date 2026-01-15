@@ -76,8 +76,6 @@ public class BootStrap : MonoBehaviour
         // 2. ResourceManager 초기화
         ResourceManager rm = PromoteOrCreate<ResourceManager>("ResourceManager");
         yield return null; // 한 프레임 대기
-
-        yield return rm.C_SyncContentManifest();
         // 3. PoolManager 초기화
         PromoteOrCreate<PoolManager>("PoolManager");
         // 4. GraphicManager 초기화
