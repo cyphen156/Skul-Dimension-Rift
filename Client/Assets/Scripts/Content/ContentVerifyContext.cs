@@ -12,15 +12,16 @@
     {
         None,
 
-        // 네트워크 계층
+        // 네트워크 계층 에러
+        InvalidUri,
         NetworkError,
-        Http4xx,
-        Http5xx,
         Timeout,
 
         // 내부/규약
         InvalidPath,
         InvalidResponse,
+        AccessDenied,
+        SaveFailed,
         ParseError
     }
 
@@ -33,6 +34,7 @@
 
         public VerifyResult result = VerifyResult.None;
         public VerifyFailReason failReason = VerifyFailReason.None;
+        public long httpResponseCode = 0;
 
         public ContentMeta remoteMeta;
 
@@ -52,6 +54,7 @@
 
             result = VerifyResult.None;
             failReason = VerifyFailReason.None;
+            httpResponseCode = 0;
 
             remoteMeta = null;
         }
