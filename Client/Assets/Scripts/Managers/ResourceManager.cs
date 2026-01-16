@@ -803,8 +803,6 @@ public class ResourceManager : MonoBehaviour
             yield break;
         }
 
-        result.Clear();
-
         // 1) Manifest meta 인증
         ContentMeta manifestMeta;
         LoadContentMeta(out manifestMeta, contentManifest.id, contentManifest.schema);
@@ -1010,10 +1008,6 @@ public class ResourceManager : MonoBehaviour
         {
             manifestVerifyContext = new ContentVerifyContext();
         }
-        else
-        {
-            manifestVerifyContext.Clear();
-        }
 
         // 2. 서버와 비교 검증
         yield return C_VerifyContentMeta(localMeta, contentManifest.id, contentManifest.schema, manifestVerifyContext);
@@ -1164,10 +1158,7 @@ public class ResourceManager : MonoBehaviour
             yield break;
         }
 
-        ctx.Clear();
-
-        ctx.targetId = id;
-        ctx.targetSchema = schema;
+        ctx.Bind(id, schema);
 
         string platform = ContentPath.GetPlatformFolder();
 
@@ -1584,5 +1575,27 @@ public class ResourceManager : MonoBehaviour
 
         ctx.dataUpdateSucceeded = true;
     }
-#endregion
+    #endregion
+
+    #region Network Methods
+    /// <summary>
+    /// 텍스트 유형 다운로드
+    /// </summary>
+    /// <returns></returns>
+    public IEnumerator C_DownLoadText(string uri, )
+    {
+        UnityWebRequest req = UnityWebRequest.Get(uri);
+        yield return req.SendWebRequest();
+    }
+
+    /// <summary>
+    /// 바이너리 유형의 컨텐츠를 다운로드
+    /// </summary>
+    /// <returns></returns>
+    public IEnumerator C_DownloadBinary(string uri, )
+    {
+        UnityWebRequest req = UnityWebRequest.Get(uri);
+        yield return req.SendWebRequest();
+    }
+    #endregion
 }

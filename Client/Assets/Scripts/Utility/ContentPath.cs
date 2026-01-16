@@ -51,52 +51,6 @@ namespace Assets.Scripts.Utility
             return root + "/" + rel;
         }
 
-        public static string BuildLocalMetaPath(string schema, string id)
-        {
-            if (string.IsNullOrEmpty(schema) || string.IsNullOrEmpty(id))
-            {
-                return string.Empty;
-            }
-
-            return Path.Combine(
-                Application.persistentDataPath,
-                "Meta",
-                schema,
-                id + ".meta.json"
-            );
-        }
-
-        public static string BuildLocalPayloadPath(string schema, string id)
-        {
-            if (string.IsNullOrEmpty(schema) || string.IsNullOrEmpty(id))
-            {
-                return string.Empty;
-            }
-
-            return Path.Combine(
-                Application.persistentDataPath,
-                "Data",
-                schema,
-                id + ".json"
-            );
-        }
-
-        public static string BuildLocalBundlePath(string schema, string bundleId, string bundleSha256)
-        {
-            if (string.IsNullOrEmpty(schema) || string.IsNullOrEmpty(bundleId) || string.IsNullOrEmpty(bundleSha256))
-            {
-                return string.Empty;
-            }
-
-            return Path.Combine(
-                Application.persistentDataPath,
-                "Bundles",
-                schema,
-                bundleId,
-                bundleSha256 + ".bundle"
-            );
-        }
-
         public static string NormalizeServerRoot(string serverRoot)
         {
             if (string.IsNullOrEmpty(serverRoot))

@@ -36,7 +36,14 @@
 
         public ContentMeta remoteMeta;
 
-        public void Clear()
+        public void Bind(string targetId, string targetSchema)
+        {
+            Clear();
+            this.targetId = targetId;
+            this.targetSchema = targetSchema;
+        }
+
+        private void Clear()
         {
             dataUpdateSucceeded = false;
 
