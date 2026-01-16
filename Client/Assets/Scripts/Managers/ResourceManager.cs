@@ -376,144 +376,6 @@ public class ResourceManager : MonoBehaviour
         }
     }
 
-    public bool LoadContentManifest(out ContentManifest manifest)
-    {
-        manifest = LoadContentPayload<ContentManifest>("ContentManifest", "Manifest");
-
-        if (manifest == null)
-        {
-            TextAsset defaultAsset = Resources.Load<TextAsset>(defaultContentManifestPath);
-
-            if (defaultAsset == null)
-            {
-                return false;
-            }
-
-            manifest = JsonUtility.FromJson<ContentManifest>(defaultAsset.text);
-        }
-
-        return manifest != null;
-    }
-
-    public T LoadContentPayload<T>(string id, string schema) where T : class
-    {
-        string payloadPath = Path.Combine(
-            Application.persistentDataPath,
-            "Data",
-            schema,
-            id + ".json"
-        );
-
-        if (File.Exists(payloadPath) == false)
-        {
-            return default(T);
-        }
-
-        string json = File.ReadAllText(payloadPath);
-
-        if (string.IsNullOrEmpty(json))
-        {
-            return default(T);
-        }
-
-        T local = JsonUtility.FromJson<T>(json);
-        return local;
-    }
-
-    //public bool SaveContentManifest(ContentManifest manifest)
-    //{
-    //    try
-    //    {
-    //        if (manifest == null)
-    //        {
-    //            return false;
-    //        }
-    //        string json = JsonUtility.ToJson(manifest, true);
-    //        string directory = Path.GetDirectoryName(contentManifestPersistentPath);
-    //        if (string.IsNullOrEmpty(directory) == false &&
-    //            Directory.Exists(directory) == false)
-    //        {
-    //            Directory.CreateDirectory(directory);
-    //        }
-    //        File.WriteAllText(contentManifestPersistentPath, json);
-    //        return true;
-    //    }
-    //    catch (Exception e)
-    //    {
-    //        Debug.LogWarning($"[ResourceManager] SaveContentManifest failed: {e.Message}");
-    //        return false;
-    //    }
-    //}
-
-    public bool LoadContentMeta(out ContentMeta meta, string id, string schema)
-    {
-        meta = null;
-
-        string metaPath = Path.Combine(
-                        Application.persistentDataPath,
-                        "Meta",
-                        schema,
-                        id + ".meta.json"
-                    );
-
-        if (!File.Exists(metaPath))
-        {
-            return false;
-        }
-
-        string json = File.ReadAllText(metaPath);
-
-        if (string.IsNullOrEmpty(json))
-        {
-            return false;
-        }
-
-        meta = JsonUtility.FromJson<ContentMeta>(json);
-        return meta != null;
-    }
-
-    public bool SaveContentMeta(ContentVerifyContext ctx)
-    {
-        try
-        {
-            if (ctx == null || ctx.remoteMeta == null)
-            {
-                return false;
-            }
-
-            string json = JsonUtility.ToJson(ctx.remoteMeta, true);
-            string metaPath = Path.Combine(
-                Application.persistentDataPath,
-                "Meta",
-                ctx.targetSchema,
-                ctx.targetId + ".meta.json"
-            );
-            string directory = Path.GetDirectoryName(metaPath);
-
-            if (string.IsNullOrEmpty(directory) == false && Directory.Exists(directory) == false)
-            {
-                Directory.CreateDirectory(directory);
-            }
-
-            File.WriteAllText(metaPath, json);
-            return true;
-        }
-        catch (Exception e)
-        {
-            Debug.LogWarning($"[ResourceManager] SaveContentMeta failed: {e.Message}");
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// Addressable 애셋 로드
-    /// </summary>
-    /// <param name="id"></param>
-    public IEnumerator C_LoadSceneData(uint sceneId)
-    {
-        yield return null;
-    }
-
     public void ChangeResource(string dictionaryName, string ResourceTarget)
     {
         if (string.IsNullOrEmpty(dictionaryName) || string.IsNullOrEmpty(ResourceTarget))
@@ -601,6 +463,159 @@ public class ResourceManager : MonoBehaviour
             spriteKeys.Add(bindingKey);
         }
 #endif
+    }
+    #endregion
+
+    #region Content Methods
+    public bool LoadContentManifest(out ContentManifest manifest)
+    {
+        manifest = LoadContentPayload<ContentManifest>("ContentManifest", "Manifest");
+
+        if (manifest == null)
+        {
+            TextAsset defaultAsset = Resources.Load<TextAsset>(defaultContentManifestPath);
+
+            if (defaultAsset == null)
+            {
+                return false;
+            }
+
+            manifest = JsonUtility.FromJson<ContentManifest>(defaultAsset.text);
+        }
+
+        return manifest != null;
+    }
+
+    public T LoadContentPayload<T>(string id, string schema) where T : class
+    {
+        string payloadPath = Path.Combine(
+            Application.persistentDataPath,
+            "Data",
+            schema,
+            id + ".json"
+        );
+
+        if (File.Exists(payloadPath) == false)
+        {
+            return default(T);
+        }
+
+        string json = File.ReadAllText(payloadPath);
+
+        if (string.IsNullOrEmpty(json))
+        {
+            return default(T);
+        }
+
+        T local = JsonUtility.FromJson<T>(json);
+        return local;
+    }
+
+    public bool LoadContentMeta(out ContentMeta meta, string id, string schema)
+    {
+        meta = null;
+
+        string metaPath = Path.Combine(
+                        Application.persistentDataPath,
+                        "Meta",
+                        schema,
+                        id + ".meta.json"
+                    );
+
+        if (!File.Exists(metaPath))
+        {
+            return false;
+        }
+
+        string json = File.ReadAllText(metaPath);
+
+        if (string.IsNullOrEmpty(json))
+        {
+            return false;
+        }
+
+        meta = JsonUtility.FromJson<ContentMeta>(json);
+        return meta != null;
+    }
+
+    /// <summary>
+    /// 컨텐츠 본문 저장
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="id"></param>
+    /// <param name="schema"></param>
+    /// <returns></returns>
+    public bool SaveContentPayLoad<T>(T payLoad, string path)
+    {
+        try
+        {
+            if (payLoad == null)
+            {
+                return false;
+            }
+            string json = JsonUtility.ToJson(payLoad, true);
+            string directory = Path.GetDirectoryName(path);
+
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+            File.WriteAllText(path, json);
+            return true;
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[ResourceManager] SaveContentManifest failed: {e.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 메타 파일 저장
+    /// </summary>
+    /// <param name="ctx"></param>
+    /// <returns></returns>
+    public bool SaveContentMeta(ContentVerifyContext ctx)
+    {
+        try
+        {
+            if (ctx == null || ctx.remoteMeta == null)
+            {
+                return false;
+            }
+
+            string json = JsonUtility.ToJson(ctx.remoteMeta, true);
+            string metaPath = Path.Combine(
+                Application.persistentDataPath,
+                "Meta",
+                ctx.targetSchema,
+                ctx.targetId + ".meta.json"
+            );
+            
+            string directory = Path.GetDirectoryName(metaPath);
+
+            if (string.IsNullOrEmpty(directory) == false && Directory.Exists(directory) == false)
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            File.WriteAllText(metaPath, json);
+            return true;
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[ResourceManager] SaveContentMeta failed: {e.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Addressable 애셋 로드
+    /// </summary>
+    /// <param name="id"></param>
+    public IEnumerator C_LoadSceneData(uint sceneId)
+    {
+        yield return null;
     }
     #endregion
 

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Assets.Scripts.Utility
 {
-    public static class Sha256StreamTask
+    public static class HashUtility
     {
         private sealed class State
         {
