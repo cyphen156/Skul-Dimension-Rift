@@ -13,8 +13,9 @@ using UnityEngine.InputSystem;
 using UnityEngine.Networking;
 
 /// <summary>
-/// 어드레서블 리소스 관리를 위한 매니저 클래스
-/// 씬 단위로 로드되는 리소스들을 관리
+/// 리소스 관리를 위한 매니저 클래스
+///  - Get을 통해 적재된 리소스 반환
+///  - Load / Unload는 CMS가 호출하고 RM이 수행
 /// </summary>
 public class ResourceManager : MonoBehaviour
 {
@@ -114,7 +115,6 @@ public class ResourceManager : MonoBehaviour
         domainResolverDebugList = Serializer.ToDebugList<uint, string>(domainAddressResolver.Map);
 #endif
     }
-
     #endregion Unity Methods
 
     #region Initialization
@@ -224,15 +224,6 @@ public class ResourceManager : MonoBehaviour
         StageData data = null;
         stageDatas.TryGetValue(stageDataKey, out data);
         return data;
-    }
-
-    public GameObject GetDomainObject(uint staticKey)
-    {
-        if (staticKey == default)
-        {
-            return null;
-        }
-        return null;
     }
 
     public InputActionAsset GetUserInputActions()
@@ -699,16 +690,16 @@ public class ResourceManager : MonoBehaviour
 
     public StreamContainer GetReadOnlyStreamContainer(string path)
     {
-        StreamContainer c = StreamContainer.Create();
+        StreamContainer container = StreamContainer.Create();
 
         if (string.IsNullOrEmpty(path))
         {
-            return c;
+            return container;
         }
 
         if (File.Exists(path) == false)
         {
-            return c;
+            return container;
         }
 
         try
@@ -722,41 +713,41 @@ public class ResourceManager : MonoBehaviour
                 true
             );
 
-            c.Bind(fs);
+            container.Bind(fs);
 
             lock (streamWorkLock)
             {
-                streamContainers.Add(c);
+                streamContainers.Add(container);
             }
 
-            return c;
+            return container;
         }
         catch
         {
-            c.Clear();
-            return c;
+            container.Clear();
+            return container;
         }
     }
 
-    public void Bind(StreamContainer c, Task work)
+    public void Bind(StreamContainer container, Task work)
     {
-        if (c == null)
+        if (container == null)
         {
             return;
         }
 
         if (work == null)
         {
-            ForceDispose(c);
+            ForceDispose(container);
             return;
         }
 
-        StreamWorkState s = new StreamWorkState();
-        s.Container = c;
+        StreamWorkState state = new StreamWorkState();
+        state.Container = container;
 
         work.ContinueWith(
             OnWorkCompleted,
-            s,
+            state,
             CancellationToken.None,
             TaskContinuationOptions.None,
             TaskScheduler.Default
@@ -780,19 +771,19 @@ public class ResourceManager : MonoBehaviour
         ResourceManager.instance.ForceDispose(c);
     }
 
-    public void ForceDispose(StreamContainer c)
+    public void ForceDispose(StreamContainer container)
     {
-        if (c == null)
+        if (container == null)
         {
             return;
         }
 
         lock (streamWorkLock)
         {
-            streamContainers.Remove(c);
+            streamContainers.Remove(container);
         }
 
-        Stream stream = c.Stream;
+        Stream stream = container.Stream;
 
         if (stream != null)
         {
@@ -805,7 +796,7 @@ public class ResourceManager : MonoBehaviour
             }
         }
 
-        c.Clear();
+        container.Clear();
     }
     #endregion
 
