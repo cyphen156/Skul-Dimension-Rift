@@ -213,7 +213,7 @@ public class ResourceManager : MonoBehaviour
     }
     #endregion
 
-    #region Resource Accessors
+    #region Regacy Resource Accessors 
     public StreamContainer GetStreamContainer(string path)
     {
         return GetReadOnlyStreamContainer(path);
@@ -302,7 +302,7 @@ public class ResourceManager : MonoBehaviour
     }
     #endregion
 
-    #region Resource Management
+    #region Regacy Resource Management 
     public bool SaveUserData()
     {
         try
@@ -455,6 +455,734 @@ public class ResourceManager : MonoBehaviour
         }
 #endif
     }
+
+    public void ApplyOption(UIWidgetContainer widget)
+    {
+        if (widget == null)
+        {
+            return;
+        }
+
+        switch (widget.parentName)
+        {
+            case "DataReset":
+                // 기존 데이터는 버리고 새 데이터 주입
+                userData.options.data = new Data();
+                break;
+            case "CutScene":
+                // 현재 동작하지 않을 버튼
+                break;
+            default:
+                break;
+        }
+    }
+    #endregion
+
+    #region StreamContainer 
+    /// <summary>
+    /// 외부로 스트림을 노출시킬 스트림 컨테이너
+    /// - 생성/바인딩/정리는 RM만 가능
+    /// - 외부는 Stream 사용
+    /// - Dispose는 RM이 Task 완료 시점에 강제
+    /// </summary>
+    public sealed class StreamContainer : IContainer, IDisposable
+    {
+        public bool Succeeded
+        {
+            get;
+            private set;
+        }
+
+        public Stream Stream
+        {
+            get;
+            private set;
+        }
+
+        private int disposed;
+
+        private StreamContainer()
+        {
+            Succeeded = false;
+            Stream = null;
+            disposed = 0;
+        }
+
+        internal static StreamContainer Create()
+        {
+            return new StreamContainer();
+        }
+
+        internal void Bind(Stream stream)
+        {
+            Stream = stream;
+            Succeeded = (stream != null);
+        }
+
+        internal void Clear()
+        {
+            Succeeded = false;
+            Stream = null;
+        }
+
+        internal bool TryDispose()
+        {
+            return Interlocked.Exchange(ref disposed, 1) == 0;
+        }
+
+        public void Dispose()
+        {
+            ResourceManager.instance.ForceDispose(this);
+        }
+    }
+
+    private sealed class StreamWorkState
+    {
+        public StreamContainer Container;
+    }
+
+    private readonly object streamWorkLock = new object();
+    private readonly HashSet<StreamContainer> streamContainers = new HashSet<StreamContainer>();
+
+    public StreamContainer GetReadOnlyStreamContainer(string path)
+    {
+        StreamContainer container = StreamContainer.Create();
+
+        if (string.IsNullOrEmpty(path))
+        {
+            return container;
+        }
+
+        if (File.Exists(path) == false)
+        {
+            return container;
+        }
+
+        try
+        {
+            FileStream fs = new FileStream(
+                path,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                256 * 1024,
+                true
+            );
+
+            container.Bind(fs);
+
+            lock (streamWorkLock)
+            {
+                streamContainers.Add(container);
+            }
+
+            return container;
+        }
+        catch
+        {
+            container.Clear();
+            return container;
+        }
+    }
+
+    public void Bind(StreamContainer container, Task work)
+    {
+        if (container == null)
+        {
+            return;
+        }
+
+        if (work == null)
+        {
+            ForceDispose(container);
+            return;
+        }
+
+        StreamWorkState state = new StreamWorkState();
+        state.Container = container;
+
+        work.ContinueWith(
+            OnWorkCompleted,
+            state,
+            CancellationToken.None,
+            TaskContinuationOptions.None,
+            TaskScheduler.Default
+        );
+    }
+
+    private static void OnWorkCompleted(Task t, object state)
+    {
+        StreamWorkState s = state as StreamWorkState;
+        if (s == null)
+        {
+            return;
+        }
+
+        StreamContainer c = s.Container;
+        if (c == null)
+        {
+            return;
+        }
+
+        ResourceManager.instance.ForceDispose(c);
+    }
+
+    public void ForceDispose(StreamContainer container)
+    {
+        if (container == null)
+        {
+            return;
+        }
+
+        if (!container.TryDispose())
+        {
+            return;
+        }
+
+        lock (streamWorkLock)
+        {
+            streamContainers.Remove(container);
+        }
+
+        Stream stream = container.Stream;
+
+        if (stream != null)
+        {
+            try
+            {
+                stream.Dispose();
+            }
+            catch
+            {
+            }
+        }
+
+        container.Clear();
+    }
+    #endregion
+
+    /// <summary>
+    /// Load / Save / Delete 비동기 처리
+    /// </summary>
+    /// <param name="path"></param>
+    /// <param name="ct"></param>
+    /// <returns></returns>
+    #region Resource Management IO 
+    public async Task<IOResult> LoadBytesAsync(string path, CancellationToken ct = default)
+    {
+        IOResult result = new IOResult();
+        result.Clear();
+
+        if (string.IsNullOrEmpty(path))
+        {
+            result.failReason = IOFailReason.InvalidPath;
+            return result;
+        }
+
+        if (File.Exists(path) == false)
+        {
+            result.failReason = IOFailReason.NotFound;
+            return result;
+        }
+
+        try
+        {
+            ct.ThrowIfCancellationRequested();
+
+            using (FileStream fs = new FileStream(
+                path,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                256 * 1024,
+                FileOptions.Asynchronous | FileOptions.SequentialScan
+            ))
+            {
+                long len = fs.Length;
+                if (len < 0 || len > int.MaxValue)
+                {
+                    result.failReason = IOFailReason.Unknown;
+                    result.exception = new IOException("File too large or invalid length.");
+                    return result;
+                }
+
+                byte[] buffer = new byte[(int)len];
+                int offset = 0;
+
+                while (offset < buffer.Length)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    int read = await fs.ReadAsync(buffer, offset, buffer.Length - offset, ct);
+                    if (read <= 0)
+                    {
+                        break;
+                    }
+                    offset += read;
+                }
+
+                if (offset != buffer.Length)
+                {
+                    // 부분 읽힘
+                    byte[] trimmed = new byte[offset];
+                    Buffer.BlockCopy(buffer, 0, trimmed, 0, offset);
+                    buffer = trimmed;
+                }
+
+                result.succeed = true;
+                result.failReason = IOFailReason.None;
+                return result;
+            }
+        }
+        catch (OperationCanceledException oce)
+        {
+            result.failReason = IOFailReason.Canceled;
+            result.exception = oce;
+            return result;
+        }
+        catch (UnauthorizedAccessException uae)
+        {
+            result.failReason = IOFailReason.AccessDenied;
+            result.exception = uae;
+            return result;
+        }
+        catch (Exception e)
+        {
+            result.failReason = IOFailReason.Unknown;
+            result.exception = e;
+            return result;
+        }
+    }
+
+    public async Task<IOResult> LoadTextAsync(string path, CancellationToken ct = default)
+    {
+        IOResult result = new IOResult();
+        result.Clear();
+
+        IOResult br = await LoadBytesAsync(path, ct);
+        if (!br.succeed)
+        {
+            return br;
+        }
+
+        try
+        {
+            result.succeed = true;
+            result.failReason = IOFailReason.None;
+            return result;
+        }
+        catch (Exception e)
+        {
+            result.failReason = IOFailReason.Unknown;
+            result.exception = e;
+            return result;
+        }
+    }
+
+    public async Task<IOResult> SaveBytesAsync(string path, byte[] bytes, CancellationToken ct = default)
+    {
+        IOResult result = new IOResult();
+        result.Clear();
+
+        if (string.IsNullOrEmpty(path))
+        {
+            result.failReason = IOFailReason.InvalidPath;
+            return result;
+        }
+
+        if (bytes == null)
+        {
+            result.failReason = IOFailReason.SaveFailed;
+            result.exception = new ArgumentNullException(nameof(bytes));
+            return result;
+        }
+
+        string tempPath = path + ".tmp";
+
+        try
+        {
+            ct.ThrowIfCancellationRequested();
+
+            string dir = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+        }
+        catch (Exception e)
+        {
+            result.failReason = IOFailReason.InvalidPath;
+            result.exception = e;
+            return result;
+        }
+
+        try
+        {
+            ct.ThrowIfCancellationRequested();
+
+            // temp 정리
+            if (File.Exists(tempPath))
+            {
+                File.Delete(tempPath);
+            }
+
+            // temp write
+            using (FileStream fs = new FileStream(
+                tempPath,
+                FileMode.CreateNew,
+                FileAccess.Write,
+                FileShare.None,
+                256 * 1024,
+                FileOptions.Asynchronous | FileOptions.SequentialScan
+            ))
+            {
+                await fs.WriteAsync(bytes, 0, bytes.Length, ct);
+                await fs.FlushAsync(ct);
+            }
+
+            // commit
+            await Task.Run(() =>
+            {
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+
+                File.Move(tempPath, path);
+            }, ct);
+
+            result.succeed = true;
+            result.failReason = IOFailReason.None;
+            return result;
+        }
+        catch (OperationCanceledException oce)
+        {
+            result.failReason = IOFailReason.Canceled;
+            result.exception = oce;
+
+            try
+            {
+                if (File.Exists(tempPath))
+                {
+                    File.Delete(tempPath);
+                }
+            }
+            catch
+            {
+            }
+
+            return result;
+        }
+        catch (UnauthorizedAccessException uae)
+        {
+            result.failReason = IOFailReason.AccessDenied;
+            result.exception = uae;
+
+            try
+            {
+                if (File.Exists(tempPath))
+                {
+                    File.Delete(tempPath);
+                }
+            }
+            catch
+            {
+            }
+
+            return result;
+        }
+        catch (Exception e)
+        {
+            result.failReason = IOFailReason.SaveFailed;
+            result.exception = e;
+
+            try
+            {
+                if (File.Exists(tempPath))
+                {
+                    File.Delete(tempPath);
+                }
+            }
+            catch
+            {
+            }
+
+            return result;
+        }
+    }
+
+    public Task<IOResult> SaveTextAsync(string path, string text, CancellationToken ct = default)
+    {
+        if (text == null)
+        {
+            IOResult result = new IOResult();
+            result.Clear();
+            result.failReason = IOFailReason.SaveFailed;
+            result.exception = new ArgumentNullException(nameof(text));
+            return Task.FromResult(result);
+        }
+
+        byte[] bytes = System.Text.Encoding.UTF8.GetBytes(text);
+        return SaveBytesAsync(path, bytes, ct);
+    }
+
+    public async Task<IOResult> DeleteAsync(string path, CancellationToken ct = default)
+    {
+        IOResult result = new IOResult();
+        result.Clear();
+
+        if (string.IsNullOrEmpty(path))
+        {
+            result.failReason = IOFailReason.InvalidPath;
+            return result;
+        }
+
+        try
+        {
+            ct.ThrowIfCancellationRequested();
+
+            await Task.Run(() =>
+            {
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+            }, ct);
+
+            result.succeed = true;
+            result.failReason = IOFailReason.None;
+            return result;
+        }
+        catch (OperationCanceledException oce)
+        {
+            result.failReason = IOFailReason.Canceled;
+            result.exception = oce;
+            return result;
+        }
+        catch (UnauthorizedAccessException uae)
+        {
+            result.failReason = IOFailReason.AccessDenied;
+            result.exception = uae;
+            return result;
+        }
+        catch (Exception e)
+        {
+            result.failReason = IOFailReason.Unknown;
+            result.exception = e;
+            return result;
+        }
+    }
+
+    /// <summary>
+    /// 다운로드: 메모리에 캐시하지 않고 tempPath로 받고 commit으로 교체
+    /// </summary>
+    public async Task<IOResult> DownloadAsync(string uri, string path, CancellationToken ct = default)
+    {
+        IOResult result = new IOResult();
+        result.Clear();
+
+        if (string.IsNullOrEmpty(uri))
+        {
+            result.failReason = IOFailReason.InvalidUri;
+            return result;
+        }
+
+        if (string.IsNullOrEmpty(path))
+        {
+            result.failReason = IOFailReason.InvalidPath;
+            return result;
+        }
+
+        string tempPath = path + ".tmp";
+
+        // ensure dir
+        try
+        {
+            ct.ThrowIfCancellationRequested();
+
+            string dir = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+        }
+        catch (Exception e)
+        {
+            result.failReason = IOFailReason.InvalidPath;
+            result.exception = e;
+            return result;
+        }
+
+        // temp cleanup
+        try
+        {
+            if (File.Exists(tempPath))
+            {
+                File.Delete(tempPath);
+            }
+        }
+        catch (Exception e)
+        {
+            result.failReason = IOFailReason.AccessDenied;
+            result.exception = e;
+            return result;
+        }
+
+        bool downloaded = false;
+
+        // download
+        try
+        {
+            using (UnityWebRequest req = UnityWebRequest.Get(uri))
+            {
+                req.downloadHandler = new DownloadHandlerFile(tempPath);
+
+                UnityWebRequestAsyncOperation op = req.SendWebRequest();
+
+                while (!op.isDone)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    await Task.Yield();
+                }
+
+                result.httpResponseCode = req.responseCode;
+
+                bool httpOk = (req.responseCode >= 200) && (req.responseCode < 300);
+                if (req.result != UnityWebRequest.Result.Success || !httpOk)
+                {
+                    result.failReason = IOFailReason.NetworkError;
+                    downloaded = false;
+                }
+                else
+                {
+                    downloaded = true;
+                }
+            }
+        }
+        catch (OperationCanceledException oce)
+        {
+            result.failReason = IOFailReason.Canceled;
+            result.exception = oce;
+
+            try
+            {
+                if (File.Exists(tempPath))
+                {
+                    File.Delete(tempPath);
+                }
+            }
+            catch
+            {
+            }
+
+            return result;
+        }
+        catch (Exception e)
+        {
+            result.failReason = IOFailReason.NetworkError;
+            result.exception = e;
+
+            try
+            {
+                if (File.Exists(tempPath))
+                {
+                    File.Delete(tempPath);
+                }
+            }
+            catch
+            {
+            }
+
+            return result;
+        }
+
+        if (!downloaded)
+        {
+            try
+            {
+                if (File.Exists(tempPath))
+                {
+                    File.Delete(tempPath);
+                }
+            }
+            catch
+            {
+            }
+
+            return result;
+        }
+
+        // commit 
+        try
+        {
+            await Task.Run(() =>
+            {
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+
+                File.Move(tempPath, path);
+            }, ct);
+
+            result.succeed = true;
+            result.failReason = IOFailReason.None;
+            return result;
+        }
+        catch (OperationCanceledException oce)
+        {
+            result.failReason = IOFailReason.Canceled;
+            result.exception = oce;
+
+            try
+            {
+                if (File.Exists(tempPath))
+                {
+                    File.Delete(tempPath);
+                }
+            }
+            catch
+            {
+            }
+
+            return result;
+        }
+        catch (UnauthorizedAccessException uae)
+        {
+            result.failReason = IOFailReason.AccessDenied;
+            result.exception = uae;
+
+            try
+            {
+                if (File.Exists(tempPath))
+                {
+                    File.Delete(tempPath);
+                }
+            }
+            catch
+            {
+            }
+
+            return result;
+        }
+        catch (Exception e)
+        {
+            result.failReason = IOFailReason.SaveFailed;
+            result.exception = e;
+
+            try
+            {
+                if (File.Exists(tempPath))
+                {
+                    File.Delete(tempPath);
+                }
+            }
+            catch
+            {
+            }
+
+            return result;
+        }
+    }
     #endregion
 
     #region Content Methods
@@ -582,7 +1310,7 @@ public class ResourceManager : MonoBehaviour
                 ctx.targetSchema,
                 ctx.targetId + ".meta.json"
             );
-            
+
             string directory = Path.GetDirectoryName(metaPath);
 
             if (string.IsNullOrEmpty(directory) == false && Directory.Exists(directory) == false)
@@ -607,347 +1335,6 @@ public class ResourceManager : MonoBehaviour
     public IEnumerator C_LoadSceneData(uint sceneId)
     {
         yield return null;
-    }
-    #endregion
-
-    #region Utility Methods
-    public void ApplyOption(UIWidgetContainer widget)
-    {
-        if (widget == null)
-        {
-            return;
-        }
-
-        switch (widget.parentName)
-        {
-            case "DataReset":
-                // 기존 데이터는 버리고 새 데이터 주입
-                userData.options.data = new Data();
-                break;
-            case "CutScene":
-                // 현재 동작하지 않을 버튼
-                break;
-            default:
-                break;
-        }
-    }
-    #endregion
-
-    #region StreamContainer 
-    /// <summary>
-    /// 외부로 스트림을 노출시킬 스트림 컨테이너
-    /// - 생성/바인딩/정리는 RM만 가능
-    /// - 외부는 Stream 사용
-    /// - Dispose는 RM이 Task 완료 시점에 강제
-    /// </summary>
-    public sealed class StreamContainer : IContainer
-    {
-        public bool Succeeded
-        {
-            get;
-            private set;
-        }
-
-        public Stream Stream
-        {
-            get;
-            private set;
-        }
-
-        private StreamContainer()
-        {
-            Succeeded = false;
-            Stream = null;
-        }
-
-        internal static StreamContainer Create()
-        {
-            return new StreamContainer();
-        }
-
-        internal void Bind(Stream stream)
-        {
-            Stream = stream;
-            Succeeded = (stream != null);
-        }
-
-        internal void Clear()
-        {
-            Succeeded = false;
-            Stream = null;
-        }
-    }
-    #endregion
-
-    #region StreamContainer Lease API
-    private sealed class StreamWorkState
-    {
-        public StreamContainer Container;
-    }
-
-    private readonly object streamWorkLock = new object();
-    private readonly HashSet<StreamContainer> streamContainers = new HashSet<StreamContainer>();
-
-    public StreamContainer GetReadOnlyStreamContainer(string path)
-    {
-        StreamContainer container = StreamContainer.Create();
-
-        if (string.IsNullOrEmpty(path))
-        {
-            return container;
-        }
-
-        if (File.Exists(path) == false)
-        {
-            return container;
-        }
-
-        try
-        {
-            FileStream fs = new FileStream(
-                path,
-                FileMode.Open,
-                FileAccess.Read,
-                FileShare.Read,
-                256 * 1024,
-                true
-            );
-
-            container.Bind(fs);
-
-            lock (streamWorkLock)
-            {
-                streamContainers.Add(container);
-            }
-
-            return container;
-        }
-        catch
-        {
-            container.Clear();
-            return container;
-        }
-    }
-
-    public void Bind(StreamContainer container, Task work)
-    {
-        if (container == null)
-        {
-            return;
-        }
-
-        if (work == null)
-        {
-            ForceDispose(container);
-            return;
-        }
-
-        StreamWorkState state = new StreamWorkState();
-        state.Container = container;
-
-        work.ContinueWith(
-            OnWorkCompleted,
-            state,
-            CancellationToken.None,
-            TaskContinuationOptions.None,
-            TaskScheduler.Default
-        );
-    }
-
-    private static void OnWorkCompleted(Task t, object state)
-    {
-        StreamWorkState s = state as StreamWorkState;
-        if (s == null)
-        {
-            return;
-        }
-
-        StreamContainer c = s.Container;
-        if (c == null)
-        {
-            return;
-        }
-
-        ResourceManager.instance.ForceDispose(c);
-    }
-
-    public void ForceDispose(StreamContainer container)
-    {
-        if (container == null)
-        {
-            return;
-        }
-
-        lock (streamWorkLock)
-        {
-            streamContainers.Remove(container);
-        }
-
-        Stream stream = container.Stream;
-
-        if (stream != null)
-        {
-            try
-            {
-                stream.Dispose();
-            }
-            catch
-            {
-            }
-        }
-
-        container.Clear();
-    }
-    #endregion
-
-    #region Network Methods
-    /// <summary>
-    /// 컨텐츠를 다운로드
-    /// 메모리에 캐시하지 않고 파일로 바로 저장
-    /// 다운로드 결과는 ContentVerifyContext로 반환
-    /// </summary>
-    /// <returns></returns>
-    public IEnumerator C_DownloadContent(string uri, string path, ContentVerifyContext ctx)
-    {
-        if (ctx == null)
-        {
-            Debug.LogError("VerifyContext Error :  null Object ");
-            yield break;
-        }
-        if (string.IsNullOrEmpty(uri))
-        {
-            ctx.failReason = VerifyFailReason.InvalidUri;
-            yield break;
-        }
-
-        if (string.IsNullOrEmpty(path))
-        {
-            ctx.failReason = VerifyFailReason.InvalidPath;
-            yield break;
-        }
-
-        string tempPath = path + ".tmp";
-
-        // 만약 기존에 임시파일이 정리되지 않았다면 정리 시도
-        try
-        {
-            string dir = Path.GetDirectoryName(path);
-
-            if (!string.IsNullOrEmpty(dir))
-            {
-                Directory.CreateDirectory(dir);
-            }
-        }
-        catch
-        {
-            ctx.failReason = VerifyFailReason.InvalidPath;
-            yield break;
-        }
-
-        // 임시파일 정리
-        if (File.Exists(tempPath))
-        {
-            try
-            {
-                File.Delete(tempPath);
-            }
-            catch
-            {
-                ctx.failReason = VerifyFailReason.AccessDenied;
-                yield break;
-            }
-        }
-
-        bool isSuccessed = false;
-
-        using (UnityWebRequest req = UnityWebRequest.Get(uri))
-        {
-            req.downloadHandler = new DownloadHandlerFile(tempPath);
-            yield return req.SendWebRequest();
-
-            ctx.httpResponseCode = req.responseCode;
-
-            bool isHttpSuccess = (req.responseCode >= 200) && (req.responseCode < 300);
-
-            if (req.result != UnityWebRequest.Result.Success || isHttpSuccess == false)
-            {
-                ctx.failReason = VerifyFailReason.NetworkError;
-            }
-            else
-            {
-                isSuccessed = true;
-            }
-        }
-
-        if (!isSuccessed)
-        {
-            try
-            {
-                if (File.Exists(tempPath))
-                {
-                    File.Delete(tempPath);
-                }
-            }
-            catch
-            {
-            }
-
-            yield break;
-        }
-
-        try
-        {
-            if (File.Exists(path))
-            {
-                File.Delete(path);
-            }
-
-            File.Move(tempPath, path);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            ctx.failReason = VerifyFailReason.AccessDenied;
-
-            try
-            {
-                if (File.Exists(tempPath))
-                {
-                    File.Delete(tempPath);
-                }
-            }
-            catch
-            {
-            }
-        }
-        catch (IOException)
-        {
-            ctx.failReason = VerifyFailReason.AccessDenied;
-
-            try
-            {
-                if (File.Exists(tempPath))
-                {
-                    File.Delete(tempPath);
-                }
-            }
-            catch
-            {
-            }
-        }
-        catch
-        {
-            ctx.failReason = VerifyFailReason.SaveFailed;
-            try
-            {
-                if (File.Exists(tempPath))
-                {
-                    File.Delete(tempPath);
-                }
-            }
-            catch
-            {
-            }
-        }
     }
     #endregion
 }
