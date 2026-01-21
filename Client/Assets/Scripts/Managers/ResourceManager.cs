@@ -214,10 +214,6 @@ public class ResourceManager : MonoBehaviour
     #endregion
 
     #region Regacy Resource Accessors 
-    public StreamContainer GetStreamContainer(string path)
-    {
-        return GetReadOnlyStreamContainer(path);
-    }
 
     public StageData GetStageData(uint stageDataKey)
     {
@@ -544,7 +540,7 @@ public class ResourceManager : MonoBehaviour
     private readonly object streamWorkLock = new object();
     private readonly HashSet<StreamContainer> streamContainers = new HashSet<StreamContainer>();
 
-    public StreamContainer GetReadOnlyStreamContainer(string path)
+    private StreamContainer LeaseRead(string path)
     {
         StreamContainer container = StreamContainer.Create();
 
@@ -566,7 +562,7 @@ public class ResourceManager : MonoBehaviour
                 FileAccess.Read,
                 FileShare.Read,
                 256 * 1024,
-                true
+                FileOptions.Asynchronous | FileOptions.SequentialScan
             );
 
             container.Bind(fs);
@@ -585,6 +581,10 @@ public class ResourceManager : MonoBehaviour
         }
     }
 
+    public StreamContainer GetReadOnlyStreamContainer(string path)
+    {
+        return LeaseRead(path);
+    }
     public void Bind(StreamContainer container, Task work)
     {
         if (container == null)
@@ -660,140 +660,27 @@ public class ResourceManager : MonoBehaviour
         container.Clear();
     }
     #endregion
-
     /// <summary>
-    /// Load / Save / Delete 비동기 처리
+    /// 읽기 전용 스트림 컨테이너 획득
     /// </summary>
     /// <param name="path"></param>
-    /// <param name="ct"></param>
     /// <returns></returns>
-    #region Resource Management IO 
-    public async Task<IOResult> LoadBytesAsync(string path, CancellationToken ct = default)
+    public StreamContainer GetStreamContainer(string path)
     {
-        IOResult result = new IOResult();
-        result.Clear();
-
-        if (string.IsNullOrEmpty(path))
-        {
-            result.failReason = IOFailReason.InvalidPath;
-            return result;
-        }
-
-        if (File.Exists(path) == false)
-        {
-            result.failReason = IOFailReason.NotFound;
-            return result;
-        }
-
-        try
-        {
-            ct.ThrowIfCancellationRequested();
-
-            using (FileStream fs = new FileStream(
-                path,
-                FileMode.Open,
-                FileAccess.Read,
-                FileShare.Read,
-                256 * 1024,
-                FileOptions.Asynchronous | FileOptions.SequentialScan
-            ))
-            {
-                long len = fs.Length;
-                if (len < 0 || len > int.MaxValue)
-                {
-                    result.failReason = IOFailReason.Unknown;
-                    result.exception = new IOException("File too large or invalid length.");
-                    return result;
-                }
-
-                byte[] buffer = new byte[(int)len];
-                int offset = 0;
-
-                while (offset < buffer.Length)
-                {
-                    ct.ThrowIfCancellationRequested();
-                    int read = await fs.ReadAsync(buffer, offset, buffer.Length - offset, ct);
-                    if (read <= 0)
-                    {
-                        break;
-                    }
-                    offset += read;
-                }
-
-                if (offset != buffer.Length)
-                {
-                    // 부분 읽힘
-                    byte[] trimmed = new byte[offset];
-                    Buffer.BlockCopy(buffer, 0, trimmed, 0, offset);
-                    buffer = trimmed;
-                }
-
-                result.succeed = true;
-                result.failReason = IOFailReason.None;
-                return result;
-            }
-        }
-        catch (OperationCanceledException oce)
-        {
-            result.failReason = IOFailReason.Canceled;
-            result.exception = oce;
-            return result;
-        }
-        catch (UnauthorizedAccessException uae)
-        {
-            result.failReason = IOFailReason.AccessDenied;
-            result.exception = uae;
-            return result;
-        }
-        catch (Exception e)
-        {
-            result.failReason = IOFailReason.Unknown;
-            result.exception = e;
-            return result;
-        }
+        return LeaseRead(path);
     }
 
-    public async Task<IOResult> LoadTextAsync(string path, CancellationToken ct = default)
+#region Resource Management IO
+    internal async Task<IOResult> SaveAsync(string path, byte[] bytes, CancellationToken ct = default)
     {
-        IOResult result = new IOResult();
-        result.Clear();
-
-        IOResult br = await LoadBytesAsync(path, ct);
-        if (!br.succeed)
-        {
-            return br;
-        }
-
-        try
-        {
-            result.succeed = true;
-            result.failReason = IOFailReason.None;
-            return result;
-        }
-        catch (Exception e)
-        {
-            result.failReason = IOFailReason.Unknown;
-            result.exception = e;
-            return result;
-        }
-    }
-
-    public async Task<IOResult> SaveBytesAsync(string path, byte[] bytes, CancellationToken ct = default)
-    {
-        IOResult result = new IOResult();
-        result.Clear();
-
         if (string.IsNullOrEmpty(path))
         {
-            result.failReason = IOFailReason.InvalidPath;
-            return result;
+            return IOResult.Fail(IOFailReason.InvalidPath);
         }
 
         if (bytes == null)
         {
-            result.failReason = IOFailReason.SaveFailed;
-            result.exception = new ArgumentNullException(nameof(bytes));
-            return result;
+            return IOResult.Fail(IOFailReason.SaveFailed, new ArgumentNullException(nameof(bytes)));
         }
 
         string tempPath = path + ".tmp";
@@ -810,22 +697,26 @@ public class ResourceManager : MonoBehaviour
         }
         catch (Exception e)
         {
-            result.failReason = IOFailReason.InvalidPath;
-            result.exception = e;
-            return result;
+            return IOResult.Fail(IOFailReason.InvalidPath, e);
         }
 
         try
         {
             ct.ThrowIfCancellationRequested();
 
-            // temp 정리
-            if (File.Exists(tempPath))
+            // temp cleanup
+            try
             {
-                File.Delete(tempPath);
+                if (File.Exists(tempPath))
+                {
+                    File.Delete(tempPath);
+                }
+            }
+            catch
+            {
             }
 
-            // temp write
+            // write temp
             using (FileStream fs = new FileStream(
                 tempPath,
                 FileMode.CreateNew,
@@ -850,15 +741,10 @@ public class ResourceManager : MonoBehaviour
                 File.Move(tempPath, path);
             }, ct);
 
-            result.succeed = true;
-            result.failReason = IOFailReason.None;
-            return result;
+            return IOResult.Ok();
         }
         catch (OperationCanceledException oce)
         {
-            result.failReason = IOFailReason.Canceled;
-            result.exception = oce;
-
             try
             {
                 if (File.Exists(tempPath))
@@ -870,13 +756,10 @@ public class ResourceManager : MonoBehaviour
             {
             }
 
-            return result;
+            return IOResult.Fail(IOFailReason.Canceled, oce);
         }
         catch (UnauthorizedAccessException uae)
         {
-            result.failReason = IOFailReason.AccessDenied;
-            result.exception = uae;
-
             try
             {
                 if (File.Exists(tempPath))
@@ -888,13 +771,10 @@ public class ResourceManager : MonoBehaviour
             {
             }
 
-            return result;
+            return IOResult.Fail(IOFailReason.AccessDenied, uae);
         }
         catch (Exception e)
         {
-            result.failReason = IOFailReason.SaveFailed;
-            result.exception = e;
-
             try
             {
                 if (File.Exists(tempPath))
@@ -906,34 +786,15 @@ public class ResourceManager : MonoBehaviour
             {
             }
 
-            return result;
+            return IOResult.Fail(IOFailReason.SaveFailed, e);
         }
     }
 
-    public Task<IOResult> SaveTextAsync(string path, string text, CancellationToken ct = default)
+    internal async Task<IOResult> DeleteAsync(string path, CancellationToken ct = default)
     {
-        if (text == null)
-        {
-            IOResult result = new IOResult();
-            result.Clear();
-            result.failReason = IOFailReason.SaveFailed;
-            result.exception = new ArgumentNullException(nameof(text));
-            return Task.FromResult(result);
-        }
-
-        byte[] bytes = System.Text.Encoding.UTF8.GetBytes(text);
-        return SaveBytesAsync(path, bytes, ct);
-    }
-
-    public async Task<IOResult> DeleteAsync(string path, CancellationToken ct = default)
-    {
-        IOResult result = new IOResult();
-        result.Clear();
-
         if (string.IsNullOrEmpty(path))
         {
-            result.failReason = IOFailReason.InvalidPath;
-            return result;
+            return IOResult.Fail(IOFailReason.InvalidPath);
         }
 
         try
@@ -948,48 +809,32 @@ public class ResourceManager : MonoBehaviour
                 }
             }, ct);
 
-            result.succeed = true;
-            result.failReason = IOFailReason.None;
-            return result;
+            return IOResult.Ok();
         }
         catch (OperationCanceledException oce)
         {
-            result.failReason = IOFailReason.Canceled;
-            result.exception = oce;
-            return result;
+            return IOResult.Fail(IOFailReason.Canceled, oce);
         }
         catch (UnauthorizedAccessException uae)
         {
-            result.failReason = IOFailReason.AccessDenied;
-            result.exception = uae;
-            return result;
+            return IOResult.Fail(IOFailReason.AccessDenied, uae);
         }
         catch (Exception e)
         {
-            result.failReason = IOFailReason.Unknown;
-            result.exception = e;
-            return result;
+            return IOResult.Fail(IOFailReason.Unknown, e);
         }
     }
 
-    /// <summary>
-    /// 다운로드: 메모리에 캐시하지 않고 tempPath로 받고 commit으로 교체
-    /// </summary>
-    public async Task<IOResult> DownloadAsync(string uri, string path, CancellationToken ct = default)
+    internal async Task<IOResult> DownloadAsync(string uri, string path, CancellationToken ct = default)
     {
-        IOResult result = new IOResult();
-        result.Clear();
-
         if (string.IsNullOrEmpty(uri))
         {
-            result.failReason = IOFailReason.InvalidUri;
-            return result;
+            return IOResult.Fail(IOFailReason.InvalidUri);
         }
 
         if (string.IsNullOrEmpty(path))
         {
-            result.failReason = IOFailReason.InvalidPath;
-            return result;
+            return IOResult.Fail(IOFailReason.InvalidPath);
         }
 
         string tempPath = path + ".tmp";
@@ -1007,9 +852,7 @@ public class ResourceManager : MonoBehaviour
         }
         catch (Exception e)
         {
-            result.failReason = IOFailReason.InvalidPath;
-            result.exception = e;
-            return result;
+            return IOResult.Fail(IOFailReason.InvalidPath, e);
         }
 
         // temp cleanup
@@ -1022,12 +865,10 @@ public class ResourceManager : MonoBehaviour
         }
         catch (Exception e)
         {
-            result.failReason = IOFailReason.AccessDenied;
-            result.exception = e;
-            return result;
+            return IOResult.Fail(IOFailReason.AccessDenied, e);
         }
 
-        bool downloaded = false;
+        long httpCode = 0;
 
         // download
         try
@@ -1044,25 +885,28 @@ public class ResourceManager : MonoBehaviour
                     await Task.Yield();
                 }
 
-                result.httpResponseCode = req.responseCode;
+                httpCode = req.responseCode;
 
-                bool httpOk = (req.responseCode >= 200) && (req.responseCode < 300);
+                bool httpOk = (httpCode >= 200) && (httpCode < 300);
                 if (req.result != UnityWebRequest.Result.Success || !httpOk)
                 {
-                    result.failReason = IOFailReason.NetworkError;
-                    downloaded = false;
-                }
-                else
-                {
-                    downloaded = true;
+                    try
+                    {
+                        if (File.Exists(tempPath))
+                        {
+                            File.Delete(tempPath);
+                        }
+                    }
+                    catch
+                    {
+                    }
+
+                    return IOResult.Fail(IOFailReason.NetworkError, new Exception(req.error), httpCode);
                 }
             }
         }
         catch (OperationCanceledException oce)
         {
-            result.failReason = IOFailReason.Canceled;
-            result.exception = oce;
-
             try
             {
                 if (File.Exists(tempPath))
@@ -1074,13 +918,10 @@ public class ResourceManager : MonoBehaviour
             {
             }
 
-            return result;
+            return IOResult.Fail(IOFailReason.Canceled, oce);
         }
         catch (Exception e)
         {
-            result.failReason = IOFailReason.NetworkError;
-            result.exception = e;
-
             try
             {
                 if (File.Exists(tempPath))
@@ -1092,26 +933,10 @@ public class ResourceManager : MonoBehaviour
             {
             }
 
-            return result;
+            return IOResult.Fail(IOFailReason.NetworkError, e, httpCode);
         }
 
-        if (!downloaded)
-        {
-            try
-            {
-                if (File.Exists(tempPath))
-                {
-                    File.Delete(tempPath);
-                }
-            }
-            catch
-            {
-            }
-
-            return result;
-        }
-
-        // commit 
+        // commit
         try
         {
             await Task.Run(() =>
@@ -1124,15 +949,12 @@ public class ResourceManager : MonoBehaviour
                 File.Move(tempPath, path);
             }, ct);
 
-            result.succeed = true;
-            result.failReason = IOFailReason.None;
-            return result;
+            IOResult ok = IOResult.Ok();
+            ok.httpResponseCode = httpCode;
+            return ok;
         }
         catch (OperationCanceledException oce)
         {
-            result.failReason = IOFailReason.Canceled;
-            result.exception = oce;
-
             try
             {
                 if (File.Exists(tempPath))
@@ -1144,13 +966,10 @@ public class ResourceManager : MonoBehaviour
             {
             }
 
-            return result;
+            return IOResult.Fail(IOFailReason.Canceled, oce, httpCode);
         }
         catch (UnauthorizedAccessException uae)
         {
-            result.failReason = IOFailReason.AccessDenied;
-            result.exception = uae;
-
             try
             {
                 if (File.Exists(tempPath))
@@ -1162,13 +981,10 @@ public class ResourceManager : MonoBehaviour
             {
             }
 
-            return result;
+            return IOResult.Fail(IOFailReason.AccessDenied, uae, httpCode);
         }
         catch (Exception e)
         {
-            result.failReason = IOFailReason.SaveFailed;
-            result.exception = e;
-
             try
             {
                 if (File.Exists(tempPath))
@@ -1180,12 +996,12 @@ public class ResourceManager : MonoBehaviour
             {
             }
 
-            return result;
+            return IOResult.Fail(IOFailReason.SaveFailed, e, httpCode);
         }
     }
-    #endregion
+#endregion
 
-    #region Content Methods
+#region Content Methods
     public bool LoadContentManifest(out ContentManifest manifest)
     {
         manifest = LoadContentPayload<ContentManifest>("ContentManifest", "Manifest");

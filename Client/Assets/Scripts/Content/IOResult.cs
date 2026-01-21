@@ -27,4 +27,22 @@ public sealed class IOResult
         failReason = IOFailReason.None;
         exception = null;
     }
+
+    public static IOResult Ok()
+    {
+        IOResult r = new IOResult();
+        r.succeed = true;
+        r.failReason = IOFailReason.None;
+        return r;
+    }
+
+    public static IOResult Fail(IOFailReason reason, Exception e = null, long httpCode = 0)
+    {
+        IOResult r = new IOResult();
+        r.succeed = false;
+        r.failReason = reason;
+        r.exception = e;
+        r.httpResponseCode = httpCode;
+        return r;
+    }
 }
