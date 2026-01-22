@@ -1627,7 +1627,7 @@ public partial class @InputActions: IInputActionCollection2, IDisposable
     /// <summary>
     /// Destroys this asset and all associated <see cref="InputAction"/> instances.
     /// </summary>
-    public void Dispose()
+    public void Release()
     {
         UnityEngine.Object.Destroy(asset);
     }

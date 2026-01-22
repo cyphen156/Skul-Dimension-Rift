@@ -477,11 +477,12 @@ public class ResourceManager : MonoBehaviour
     #region StreamContainer 
     /// <summary>
     /// 외부로 스트림을 노출시킬 스트림 컨테이너
-    /// - 생성/바인딩/정리는 RM만 가능
+    /// - 스트림의 생성/바인딩/정리는 RM만 가능
     /// - 외부는 Stream 사용
     /// - Dispose는 RM이 Task 완료 시점에 강제
+    /// - Release를 통해 스트림 컨테이너를 조기 반환 가능
     /// </summary>
-    public sealed class StreamContainer : IContainer, IDisposable
+    public sealed class StreamContainer : IContainer
     {
         public bool Succeeded
         {
@@ -526,9 +527,12 @@ public class ResourceManager : MonoBehaviour
             return Interlocked.Exchange(ref disposed, 1) == 0;
         }
 
-        public void Dispose()
+        /// <summary>
+        /// 외부 조기 반납
+        /// </summary>
+        public void Release()
         {
-            ResourceManager.instance.ForceDispose(this);
+            ResourceManager.instance.Dispose(this);
         }
     }
 
@@ -581,20 +585,22 @@ public class ResourceManager : MonoBehaviour
         }
     }
 
-    public StreamContainer GetReadOnlyStreamContainer(string path)
-    {
-        return LeaseRead(path);
-    }
-    public void Bind(StreamContainer container, Task work)
+    /// <summary>
+    /// Taks완료 시점에 스트림 컨테이너 정리 바인딩
+    /// Task가 무한 루프를 도는 경우는 상위 로직에서 방지해야 함
+    /// </summary>
+    /// <param name="container"></param>
+    /// <param name="work"></param>
+    public void BindTask(StreamContainer container, Task work)
     {
         if (container == null)
         {
             return;
         }
 
-        if (work == null)
+        if (!container.Succeeded || work == null)
         {
-            ForceDispose(container);
+            Dispose(container);
             return;
         }
 
@@ -605,7 +611,7 @@ public class ResourceManager : MonoBehaviour
             OnWorkCompleted,
             state,
             CancellationToken.None,
-            TaskContinuationOptions.None,
+            TaskContinuationOptions.ExecuteSynchronously,
             TaskScheduler.Default
         );
     }
@@ -624,10 +630,10 @@ public class ResourceManager : MonoBehaviour
             return;
         }
 
-        ResourceManager.instance.ForceDispose(c);
+        ResourceManager.instance.Dispose(c);
     }
 
-    public void ForceDispose(StreamContainer container)
+    private void Dispose(StreamContainer container)
     {
         if (container == null)
         {
@@ -660,17 +666,39 @@ public class ResourceManager : MonoBehaviour
         container.Clear();
     }
     #endregion
-    /// <summary>
-    /// 읽기 전용 스트림 컨테이너 획득
-    /// </summary>
-    /// <param name="path"></param>
-    /// <returns></returns>
+
+    #region Resource Management IO
     public StreamContainer GetStreamContainer(string path)
     {
         return LeaseRead(path);
     }
+    
+    internal async Task<IOResult> LoadBundleAsync(string path)
+    {
+    }
 
-#region Resource Management IO
+    internal async Task<IOResult> LoadAssetAsync(string path)
+    {
+        
+    }
+
+    internal async Task<IOResult> UnLoadBundleAsync()
+    {
+    }
+    internal async Task<IOResult> UnLoadAssetAsync()
+    {
+    }
+
+    internal bool Register<T>(uint staticKey)
+    {
+
+    }
+
+    internal void UnRegister<T>(uint staticKey)
+    {
+
+    }
+
     internal async Task<IOResult> SaveAsync(string path, byte[] bytes, CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(path))
@@ -1001,7 +1029,7 @@ public class ResourceManager : MonoBehaviour
     }
 #endregion
 
-#region Content Methods
+    #region Content Methods
     public bool LoadContentManifest(out ContentManifest manifest)
     {
         manifest = LoadContentPayload<ContentManifest>("ContentManifest", "Manifest");
