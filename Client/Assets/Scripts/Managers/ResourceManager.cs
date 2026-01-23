@@ -21,6 +21,9 @@ public class ResourceManager : MonoBehaviour
 {
     public static ResourceManager instance;
 
+    [Header("StreamContainer")]
+    
+
     [Header("ContentManifest")]
     private const string defaultContentManifestPath = "Data/Manifest/ContentManifest";
     private ContentManifest contentManifest;
@@ -496,12 +499,32 @@ public class ResourceManager : MonoBehaviour
             private set;
         }
 
+        /// <summary>
+        /// 빌린 경로
+        /// </summary>
+        internal string LeasedPath
+        {
+            get;
+            private set;
+        }
+
+        /// <summary>
+        /// 빌려간 쪽 태그
+        /// </summary>
+        internal string OwnerTag
+        {
+            get;
+            private set;
+        }
+
         private int disposed;
 
         private StreamContainer()
         {
             Succeeded = false;
             Stream = null;
+            LeasedPath = null;
+            OwnerTag = null;
             disposed = 0;
         }
 
@@ -510,9 +533,11 @@ public class ResourceManager : MonoBehaviour
             return new StreamContainer();
         }
 
-        internal void Bind(Stream stream)
+        internal void Bind(Stream stream, string path, string ownerTag)
         {
             Stream = stream;
+            LeasedPath = path;
+            OwnerTag = ownerTag;
             Succeeded = (stream != null);
         }
 
@@ -520,6 +545,8 @@ public class ResourceManager : MonoBehaviour
         {
             Succeeded = false;
             Stream = null;
+            LeasedPath = null;
+            OwnerTag = null;
         }
 
         internal bool TryDispose()
@@ -536,26 +563,93 @@ public class ResourceManager : MonoBehaviour
         }
     }
 
-    private sealed class StreamWorkState
+    private struct LeaseRecord
     {
-        public StreamContainer Container;
+        public string OwnerTag;
+        public long OpenedUtcTicks;
     }
 
-    private readonly object streamWorkLock = new object();
+    private readonly object streamLeaseLock = new object();
     private readonly HashSet<StreamContainer> streamContainers = new HashSet<StreamContainer>();
+    private readonly Dictionary<string, LeaseRecord> leasedPaths = new Dictionary<string, LeaseRecord>();
 
-    private StreamContainer LeaseRead(string path)
+    private bool denyDuplicatePathLease = true;
+
+    private bool TryReservePath(string path, string ownerTag, out string reason)
     {
+        reason = null;
+
+        if (!denyDuplicatePathLease)
+        {
+            return true;
+        }
+
+        if (string.IsNullOrEmpty(path))
+        {
+            reason = "Invalid path.";
+            return false;
+        }
+
+        LeaseRecord record;
+        if (leasedPaths.TryGetValue(path, out record))
+        {
+            string owner = record.OwnerTag;
+            if (string.IsNullOrEmpty(owner))
+            {
+                owner = "Unknown";
+            }
+
+            reason = $"Path already leased. owner={owner}";
+            return false;
+        }
+
+        LeaseRecord newRecord = new LeaseRecord();
+        newRecord.OwnerTag = string.IsNullOrEmpty(ownerTag) ? "Unknown" : ownerTag;
+        newRecord.OpenedUtcTicks = DateTime.UtcNow.Ticks;
+
+        leasedPaths[path] = newRecord;
+        return true;
+    }
+
+    private void ReleaseReservedPath(string path)
+    {
+        if (!denyDuplicatePathLease)
+        {
+            return;
+        }
+
+        if (string.IsNullOrEmpty(path))
+        {
+            return;
+        }
+
+        leasedPaths.Remove(path);
+    }
+
+    private StreamContainer LeaseRead(string path, string ownerTag, out string reason)
+    {
+        reason = null;
+
         StreamContainer container = StreamContainer.Create();
 
         if (string.IsNullOrEmpty(path))
         {
+            reason = "Invalid path.";
             return container;
         }
 
         if (File.Exists(path) == false)
         {
+            reason = "File does not exist.";
             return container;
+        }
+
+        lock (streamLeaseLock)
+        {
+            if (!TryReservePath(path, ownerTag, out reason))
+            {
+                return container;
+            }
         }
 
         try
@@ -569,18 +663,24 @@ public class ResourceManager : MonoBehaviour
                 FileOptions.Asynchronous | FileOptions.SequentialScan
             );
 
-            container.Bind(fs);
+            container.Bind(fs, path, ownerTag);
 
-            lock (streamWorkLock)
+            lock (streamLeaseLock)
             {
                 streamContainers.Add(container);
             }
 
             return container;
         }
-        catch
+        catch (Exception e)
         {
+            lock (streamLeaseLock)
+            {
+                ReleaseReservedPath(path);
+            }
+
             container.Clear();
+            reason = $"Open failed: {e.Message}";
             return container;
         }
     }
@@ -604,12 +704,9 @@ public class ResourceManager : MonoBehaviour
             return;
         }
 
-        StreamWorkState state = new StreamWorkState();
-        state.Container = container;
-
         work.ContinueWith(
             OnWorkCompleted,
-            state,
+            container,
             CancellationToken.None,
             TaskContinuationOptions.ExecuteSynchronously,
             TaskScheduler.Default
@@ -618,19 +715,13 @@ public class ResourceManager : MonoBehaviour
 
     private static void OnWorkCompleted(Task t, object state)
     {
-        StreamWorkState s = state as StreamWorkState;
-        if (s == null)
+        StreamContainer container = state as StreamContainer;
+        if (container == null)
         {
             return;
         }
 
-        StreamContainer c = s.Container;
-        if (c == null)
-        {
-            return;
-        }
-
-        ResourceManager.instance.Dispose(c);
+        ResourceManager.instance.Dispose(container);
     }
 
     private void Dispose(StreamContainer container)
@@ -645,9 +736,12 @@ public class ResourceManager : MonoBehaviour
             return;
         }
 
-        lock (streamWorkLock)
+        string leasedPath = container.LeasedPath;
+
+        lock (streamLeaseLock)
         {
             streamContainers.Remove(container);
+            ReleaseReservedPath(leasedPath);
         }
 
         Stream stream = container.Stream;
@@ -668,30 +762,61 @@ public class ResourceManager : MonoBehaviour
     #endregion
 
     #region Resource Management IO
+    /// <summary>
+    /// 경로 스트림 대여
+    /// 실패 시 container.Succeeded=false, reason에 사유가 들어갑니다.
+    /// </summary>
+    public bool TryGetStreamContainer(string path, string ownerTag, out StreamContainer container, out string reason)
+    {
+        container = LeaseRead(path, ownerTag, out reason);
+        return container != null && container.Succeeded;
+    }
+
     public StreamContainer GetStreamContainer(string path)
     {
-        return LeaseRead(path);
+        string reason;
+        StreamContainer c = LeaseRead(path, "Unknown", out reason);
+        return c;
     }
-    
-    internal async Task<IOResult> LoadBundleAsync(string path)
+
+    public bool IsPathLeased(string path, out string ownerTag)
     {
+        ownerTag = null;
+
+        lock (streamLeaseLock)
+        {
+            LeaseRecord record;
+            if (leasedPaths.TryGetValue(path, out record))
+            {
+                ownerTag = record.OwnerTag;
+                return true;
+            }
+        }
+
+        return false;
     }
+
+    //internal async Task<IOResult> LoadBundleAsync(string path)
+    //{
+    //}
 
     internal async Task<IOResult> LoadAssetAsync(string path)
     {
-        
+
     }
 
-    internal async Task<IOResult> UnLoadBundleAsync()
-    {
-    }
+    //internal async Task<IOResult> UnLoadBundleAsync()
+    //{
+    //}
+
     internal async Task<IOResult> UnLoadAssetAsync()
     {
     }
 
     internal bool Register<T>(uint staticKey)
     {
-
+        if ()
+        return true;
     }
 
     internal void UnRegister<T>(uint staticKey)
