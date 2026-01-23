@@ -21,8 +21,14 @@ public class ResourceManager : MonoBehaviour
 {
     public static ResourceManager instance;
 
-    [Header("StreamContainer")]
-    
+    [Header("DomainSystem_Inline_Nessesary")]
+    [Header("DomainProvider")]
+    [SerializeField] private DomainAddressResolver domainAddressResolver;
+    /// <summary>
+    /// 부트 시점에 반드시 적재되어야 하는 도메인 키
+    /// </summary>
+    [SerializeField] private uint manifestStaticKey = 0x00001; // ContentManifest StaticKey
+    [SerializeField] private uint manifestVerifyContextKey = 0x00002; // ContentVerifyContext StaticKey
 
     [Header("ContentManifest")]
     private const string defaultContentManifestPath = "Data/Manifest/ContentManifest";
@@ -50,8 +56,6 @@ public class ResourceManager : MonoBehaviour
     private readonly Dictionary<uint, SceneEntry> sceneEntries = new Dictionary<uint, SceneEntry>();
     private readonly Dictionary<string, CatalogState> catalogStates = new Dictionary<string, CatalogState>();
 
-    [Header("DomainProvider")]
-    [SerializeField] private DomainAddressResolver domainAddressResolver;
 #if UNITY_EDITOR
     [SerializeField]
     private List<SerializableKeyValuePair> domainResolverDebugList
@@ -100,8 +104,6 @@ public class ResourceManager : MonoBehaviour
         }
         userDataPath = Path.Combine(Application.persistentDataPath, userDataFileName);
         
-        Initialize();
-        
         domainAddressResolver = new DomainAddressResolver();
         uint titleStaticKey = DomainKey.GetStaticId(
             DomainKey.Make(
@@ -112,11 +114,11 @@ public class ResourceManager : MonoBehaviour
                 0
             )
         );
-        
         domainAddressResolver.Register(titleStaticKey, "Prefab/StageTitle_0");
 #if UNITY_EDITOR
         domainResolverDebugList = Serializer.ToDebugList<uint, string>(domainAddressResolver.Map);
 #endif
+        Initialize();
     }
     #endregion Unity Methods
 
@@ -204,7 +206,10 @@ public class ResourceManager : MonoBehaviour
 
         // 컨트롤 이미지 불러오기
         controlSprites.Clear();
+        
         // 콘텐츠 매니페스트 로드 => PersistentDataPath 우선, 없으면 Resources 폴더에서 로드
+
+
         if (!LoadContentManifest(out contentManifest))
         {
             Debug.LogError("Error : ContentManifest Not Exists!");
@@ -796,26 +801,66 @@ public class ResourceManager : MonoBehaviour
         return false;
     }
 
-    //internal async Task<IOResult> LoadBundleAsync(string path)
-    //{
-    //}
-
-    internal async Task<IOResult> LoadAssetAsync(string path)
+    /// <summary>
+    /// 파일을 직접 읽어서 호출자가 해석하도록 바이트 배열로 반환
+    /// </summary>
+    /// <param name="path"></param>
+    /// <returns></returns>
+    public async Task<(IOResult result, byte[] data)> ReadAllBytesAsync(string path, CancellationToken ct = default)
     {
+        if (string.IsNullOrEmpty(path))
+        {
+            return (IOResult.Fail(IOFailReason.InvalidPath), null);
+        }
 
+        try
+        {
+            ct.ThrowIfCancellationRequested();
+
+            if (!File.Exists(path))
+            {
+                return (IOResult.Fail(IOFailReason.NotFound), null);
+            }
+
+            byte[] data = await File.ReadAllBytesAsync(path, ct);
+
+            return (IOResult.Ok(), data);
+        }
+        catch (OperationCanceledException oce)
+        {
+            return (IOResult.Fail(IOFailReason.Canceled, oce), null);
+        }
+        catch (UnauthorizedAccessException uae)
+        {
+            return (IOResult.Fail(IOFailReason.AccessDenied, uae), null);
+        }
+        catch (FileNotFoundException fnf)
+        {
+            return (IOResult.Fail(IOFailReason.NotFound, fnf), null);
+        }
+        catch (DirectoryNotFoundException dnf)
+        {
+            return (IOResult.Fail(IOFailReason.NotFound, dnf), null);
+        }
+        catch (IOException ioe)
+        {
+            return (IOResult.Fail(IOFailReason.AccessDenied, ioe), null);
+        }
+        catch (Exception e)
+        {
+            return (IOResult.Fail(IOFailReason.Unknown, e), null);
+        }
     }
 
-    //internal async Task<IOResult> UnLoadBundleAsync()
-    //{
-    //}
-
-    internal async Task<IOResult> UnLoadAssetAsync()
-    {
-    }
-
+    /// <summary>
+    /// 애셋을 사용하기 위해 필요한 정보를 등록하는 함수
+    /// ResolveMap, DataSet, Catalog 등
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="staticKey"></param>
+    /// <returns></returns>
     internal bool Register<T>(uint staticKey)
     {
-        if ()
         return true;
     }
 
@@ -823,6 +868,22 @@ public class ResourceManager : MonoBehaviour
     {
 
     }
+
+    /// <summary>
+    /// 애셋을 리졸브맵과 어드레서블 시스템을 이용하여 비동기로 적재
+    /// 실제 Get으로 다른 시스템이 가져가 사용할 수 있도록 준비
+    /// </summary>
+    /// <param name="path"></param>
+    /// <returns></returns>
+    internal async Task<IOResult> LoadAssetAsync(string path)
+    {
+
+    }
+
+    internal async Task<IOResult> UnLoadAssetAsync()
+    {
+    }
+
 
     internal async Task<IOResult> SaveAsync(string path, byte[] bytes, CancellationToken ct = default)
     {
@@ -978,7 +1039,74 @@ public class ResourceManager : MonoBehaviour
         }
     }
 
-    internal async Task<IOResult> DownloadAsync(string uri, string path, CancellationToken ct = default)
+    /// <summary>
+    /// 문서 사이즈가 작은 경우, 버퍼로 바로 다운로드
+    /// 외부 시스템에서 직접 파싱하도록 바이트 배열로 반환
+    /// </summary>
+    /// <param name="uri"></param>
+    /// <param name="ct"></param>
+    /// <returns></returns>
+    public async Task<(IOResult result, byte[] data)> DownloadBufferAsync(string uri, CancellationToken ct = default)
+    {
+        byte[] data = null;
+
+        if (string.IsNullOrEmpty(uri))
+        {
+            return (IOResult.Fail(IOFailReason.InvalidUri), data);
+        }
+
+        long httpCode = 0;
+
+        try
+        {
+            using (UnityWebRequest req = UnityWebRequest.Get(uri))
+            {
+                req.downloadHandler = new DownloadHandlerBuffer();
+
+                UnityWebRequestAsyncOperation op = req.SendWebRequest();
+
+                while (!op.isDone)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    await Task.Yield();
+                }
+
+                httpCode = req.responseCode;
+
+                bool httpOk = (httpCode >= 200) && (httpCode < 300);
+                if (req.result != UnityWebRequest.Result.Success || !httpOk)
+                {
+                    return (IOResult.Fail(IOFailReason.NetworkError, new Exception(req.error), httpCode), null);
+                }
+
+                data = req.downloadHandler.data;
+
+                if (data == null || data.Length == 0)
+                {
+                    return (IOResult.Fail(IOFailReason.NetworkError, new Exception("Empty response body."), httpCode), data);
+                }
+            }
+        }
+        catch (OperationCanceledException oce)
+        {
+            return (IOResult.Fail(IOFailReason.Canceled, oce, httpCode), null);
+        }
+        catch (Exception e)
+        {
+            return (IOResult.Fail(IOFailReason.NetworkError, e, httpCode), null);
+        }
+
+        return (IOResult.Ok(), data);
+    }
+
+    /// <summary>
+    /// 버퍼를 쓰지 않고 파일에 직접 다운로드
+    /// </summary>
+    /// <param name="uri"></param>
+    /// <param name="path"></param>
+    /// <param name="ct"></param>
+    /// <returns></returns>
+    internal async Task<IOResult> DownloadFileAsync(string uri, string path, CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(uri))
         {

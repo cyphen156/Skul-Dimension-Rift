@@ -35,7 +35,11 @@ namespace Assets.Scripts.Data
     /// </summary>
     public enum Domain : byte
     {
-        None = 0x0,
+        /// <summary>
+        /// 시스템, 메타데이터 등 시스템 전용 도메인.
+        /// 리졸브맵, 어드레서블 카탈로그 등 CMS 관련 리소스 식별에 사용.
+        /// </summary>
+        System = 0x0,
 
         /// <summary>
         /// 인벤토리/필드 드랍/장비 등 모든 아이템 계열.

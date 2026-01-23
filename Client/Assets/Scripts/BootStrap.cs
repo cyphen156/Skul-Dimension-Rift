@@ -1,4 +1,3 @@
-using Assets.Scripts.Content;
 using System.Collections;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
