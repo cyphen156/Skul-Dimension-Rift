@@ -24,11 +24,10 @@ public class ResourceManager : MonoBehaviour
     [Header("DomainSystem_Inline_Nessesary")]
     [Header("DomainProvider")]
     [SerializeField] private DomainAddressResolver domainAddressResolver;
-    /// <summary>
-    /// 부트 시점에 반드시 적재되어야 하는 도메인 키
-    /// </summary>
-    [SerializeField] private uint manifestStaticKey = 0x00001; // ContentManifest StaticKey
-    [SerializeField] private uint manifestVerifyContextKey = 0x00002; // ContentVerifyContext StaticKey
+
+    [Header("Content Asset Storage")]
+    private readonly Dictionary<Type, object> typedMaps
+        = new Dictionary<Type, object>();
 
     [Header("ContentManifest")]
     private const string defaultContentManifestPath = "Data/Manifest/ContentManifest";
@@ -128,6 +127,7 @@ public class ResourceManager : MonoBehaviour
     /// </summary>
     private void Initialize()
     {
+        InitializeTypedMaps();
         // 시스템 리소스 로드
         prefabs.Clear();
         var Prefabs = Resources.LoadAll<GameObject>("Prefab");
@@ -218,6 +218,28 @@ public class ResourceManager : MonoBehaviour
 #endif
             return;
         }
+    }
+
+    private void InitializeTypedMaps()
+    {
+        typedMaps.Clear();
+
+        // Content Documents
+        typedMaps[typeof(ContentManifest)] = new Dictionary<uint, ContentManifest>();
+        typedMaps[typeof(ContentMeta)] = new Dictionary<uint, ContentMeta>();
+        typedMaps[typeof(ContentCatalog)] = new Dictionary<uint, ContentCatalog>();
+        typedMaps[typeof(ContentVerifyContext)] = new Dictionary<uint, ContentVerifyContext>();
+
+        // Unity Assets
+        typedMaps[typeof(Sprite)] = new Dictionary<uint, Sprite>();
+        typedMaps[typeof(GameObject)] = new Dictionary<uint, GameObject>();
+        typedMaps[typeof(AudioClip)] = new Dictionary<uint, AudioClip>();
+        typedMaps[typeof(TextAsset)] = new Dictionary<uint, TextAsset>();
+
+        // DataSets (예시)
+        // typedMaps[typeof(ItemDataSet)] = new Dictionary<uint, ItemDataSet>();
+        // typedMaps[typeof(MonsterDataSet)] = new Dictionary<uint, MonsterDataSet>();
+        // typedMaps[typeof(StageDataSet)] = new Dictionary<uint, StageDataSet>();
     }
     #endregion
 
@@ -1425,13 +1447,18 @@ public class ResourceManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Addressable 애셋 로드
-    /// </summary>
-    /// <param name="id"></param>
-    public IEnumerator C_LoadSceneData(uint sceneId)
+    public bool TryGetAsset<T>(uint staticKey, out T asset)
     {
-        yield return null;
+        asset = default;
+
+        object boxed;
+        if (!typedMaps.TryGetValue(typeof(T), out boxed))
+        {
+            return false;
+        }
+
+        Dictionary<uint, T> map = (Dictionary<uint, T>)boxed;
+        return map.TryGetValue(staticKey, out asset);
     }
     #endregion
 }
