@@ -1,9 +1,33 @@
+using Assets.Scripts.Data;
+
 /// <summary>
 /// 컨텐츠 관련 정책을 관리, 제공하는 시스템
 /// </summary>
 public static class ContentManagementSystem
 {
+    internal static class TypeSelector<T>
+    {
+        internal static T TryParse(uint staicKey)
+        {
+            T value;
+            Domain domain = DomainKey.GetDomain(staicKey);
+            switch (domain)
+            {
+                case Domain.System:
+                    {
+                        
+                    }
+                    return default;
+                default:
+                    value = (T)default;
+                    break;
+            }
 
+            return value;
+        }
+    }
+
+    //public static 
     //    public static IEnumerator CheckContentConsistency(ContentVerifyContext result)
     //    {
     //        if (result == null)

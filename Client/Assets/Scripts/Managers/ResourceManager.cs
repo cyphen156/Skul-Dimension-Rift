@@ -3,14 +3,15 @@ using Assets.Scripts.Data;
 using Assets.Scripts.Interface;
 using Assets.Scripts.Utility;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
 using UnityEngine.InputSystem;
 using UnityEngine.Networking;
+using UnityEngine.ResourceManagement.AsyncOperations;
 
 /// <summary>
 /// 리소스 관리를 위한 매니저 클래스
@@ -23,7 +24,7 @@ public class ResourceManager : MonoBehaviour
 
     [Header("DomainSystem_Inline_Nessesary")]
     [Header("DomainProvider")]
-    [SerializeField] private DomainAddressResolver domainAddressResolver;
+    [SerializeField] internal DomainAddressResolver domainAddressResolver; /// 리졸버에 한해 CMS에 직접 노출, 외부 접근 금지 ==> 아예 애셋 관리 시스템에서 제외
 
     [Header("Content Asset Storage")]
     private readonly Dictionary<Type, object> typedMaps
@@ -881,14 +882,37 @@ public class ResourceManager : MonoBehaviour
     /// <typeparam name="T"></typeparam>
     /// <param name="staticKey"></param>
     /// <returns></returns>
-    internal bool Register<T>(uint staticKey)
+    internal bool Register<T>(uint staticKey, T asset)
     {
+        if (asset == null)
+        {
+            return false;
+        }
+        /// 딕셔너리 유무 확인
+        object boxed;
+        if (!typedMaps.TryGetValue(typeof(T), out boxed))
+        {
+            return false;
+        }
+
+        Dictionary<uint, T> map = (Dictionary<uint, T>)boxed;
+
+        map[staticKey] = asset;
         return true;
     }
 
     internal void UnRegister<T>(uint staticKey)
     {
+        /// 딕셔너리 유무 확인
+        object boxed;
+        if (!typedMaps.TryGetValue(typeof(T), out boxed))
+        {
+            return;
+        }
 
+        Dictionary<uint, T> map = (Dictionary<uint, T>)boxed;
+
+        map.Remove(staticKey);
     }
 
     /// <summary>
@@ -897,15 +921,58 @@ public class ResourceManager : MonoBehaviour
     /// </summary>
     /// <param name="path"></param>
     /// <returns></returns>
-    internal async Task<IOResult> LoadAssetAsync(string path)
+    internal async Task<IOResult> LoadAssetAsync<T>(uint staticKey)
+        where T : UnityEngine.Object
     {
+        string resolvedPath;
+        if (domainAddressResolver == null || domainAddressResolver.TryResolve(staticKey, out resolvedPath) == false)
+        {
+            return IOResult.Fail(reason: IOFailReason.InvalidPath);
+        }
 
+        AsyncOperationHandle<T> handle = Addressables.LoadAssetAsync<T>(resolvedPath);
+
+        await handle.Task;
+
+        if (handle.Status != AsyncOperationStatus.Succeeded)
+        {
+            return IOResult.Fail(reason: IOFailReason.InvalidPath);
+        }
+
+        T asset = handle.Result;
+        if (asset == null)
+        {
+            return IOResult.Fail(reason: IOFailReason.InvalidPath);
+        }
+
+        Register<T>(staticKey, asset);
+        return IOResult.Ok();
     }
 
-    internal async Task<IOResult> UnLoadAssetAsync()
+    internal IOResult UnloadAsset<T>(uint staticKey)
+        where T : UnityEngine.Object
     {
+        T asset;
+        if (TryGetAsset<T>(staticKey, out asset) == false)
+        {
+            return IOResult.Fail(reason: IOFailReason.NotFound);
+        }
+
+        UnRegister<T>(staticKey);
+
+        if (asset != null)
+        {
+            Addressables.Release(asset);
+        }
+
+        return IOResult.Ok();
     }
 
+    internal void ForceGarbageCollecting()
+    {
+        GC.Collect();
+        Resources.UnloadUnusedAssets();
+    }
 
     internal async Task<IOResult> SaveAsync(string path, byte[] bytes, CancellationToken ct = default)
     {

@@ -5,16 +5,7 @@ namespace Assets.Scripts.Data
 {
     public sealed class DomainAddressResolver : IResolver<uint, string>
     {
-        private readonly Dictionary<Domain, string> domainMap = new Dictionary<Domain, string>();
         private readonly Dictionary<uint, string> map = new Dictionary<uint, string>();
-
-        public Dictionary<Domain, string> DomainMap
-        { 
-            get 
-            { 
-                return domainMap; 
-            } 
-        }
 
         public IReadOnlyDictionary<uint, string> Map
         {
@@ -24,19 +15,24 @@ namespace Assets.Scripts.Data
             }
         }
 
-        public void RegisterDomain(Domain domain, string DomainName)
+        public bool Register(uint staticKey, string address)
         {
-            domainMap.Add(domain, DomainName);
-        }
-
-        public void Register(uint staticKey, string address)
-        {
+            if (map.ContainsKey(staticKey))
+            {
+                return false;
+            }
             map[staticKey] = address;
+            return true;
         }
 
         public bool TryResolve(uint input, out string output)
         {
             return map.TryGetValue(input, out output);
+        }
+
+        public void Unregister(uint input)
+        {
+            map.Remove(input);
         }
     }
 }
