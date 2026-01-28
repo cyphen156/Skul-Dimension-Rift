@@ -27,7 +27,7 @@ public class ResourceManager : MonoBehaviour
     [SerializeField] internal DomainAddressResolver domainAddressResolver; /// 리졸버에 한해 CMS에 직접 노출, 외부 접근 금지 ==> 아예 애셋 관리 시스템에서 제외
 
     [Header("Content Asset Storage")]
-    private readonly Dictionary<Type, object> typedMaps
+    private readonly Dictionary<Type, object> assetMaps
         = new Dictionary<Type, object>();
 
     [Header("ContentManifest")]
@@ -58,8 +58,8 @@ public class ResourceManager : MonoBehaviour
 
 #if UNITY_EDITOR
     [SerializeField]
-    private List<SerializableKeyValuePair> domainResolverDebugList
-        = new List<SerializableKeyValuePair>();
+    private List<DebugKeyValuePair> domainResolverDebugList
+        = new List<DebugKeyValuePair>();
 #endif
     [Header("Resources")]
     private Dictionary<string, GameObject> prefabs = new Dictionary<string, GameObject>();
@@ -110,13 +110,13 @@ public class ResourceManager : MonoBehaviour
                 Domain.Scene,
                 0,
                 (byte)SceneRole.StagePrefab,
-                ClassCodec.Pack(0, 0),
+                NibblePacker.Pack(0, 0),
                 0
             )
         );
         domainAddressResolver.Register(titleStaticKey, "Prefab/StageTitle_0");
 #if UNITY_EDITOR
-        domainResolverDebugList = Serializer.ToDebugList<uint, string>(domainAddressResolver.Map);
+        domainResolverDebugList = DebugUtility.ToDebugList<uint, string>(domainAddressResolver.Map);
 #endif
         Initialize();
     }
@@ -128,7 +128,6 @@ public class ResourceManager : MonoBehaviour
     /// </summary>
     private void Initialize()
     {
-        InitializeTypedMaps();
         // 시스템 리소스 로드
         prefabs.Clear();
         var Prefabs = Resources.LoadAll<GameObject>("Prefab");
@@ -219,28 +218,6 @@ public class ResourceManager : MonoBehaviour
 #endif
             return;
         }
-    }
-
-    private void InitializeTypedMaps()
-    {
-        typedMaps.Clear();
-
-        // Content Documents
-        typedMaps[typeof(ContentManifest)] = new Dictionary<uint, ContentManifest>();
-        typedMaps[typeof(ContentMeta)] = new Dictionary<uint, ContentMeta>();
-        typedMaps[typeof(ContentCatalog)] = new Dictionary<uint, ContentCatalog>();
-        typedMaps[typeof(ContentVerifyContext)] = new Dictionary<uint, ContentVerifyContext>();
-
-        // Unity Assets
-        typedMaps[typeof(Sprite)] = new Dictionary<uint, Sprite>();
-        typedMaps[typeof(GameObject)] = new Dictionary<uint, GameObject>();
-        typedMaps[typeof(AudioClip)] = new Dictionary<uint, AudioClip>();
-        typedMaps[typeof(TextAsset)] = new Dictionary<uint, TextAsset>();
-
-        // DataSets (예시)
-        // typedMaps[typeof(ItemDataSet)] = new Dictionary<uint, ItemDataSet>();
-        // typedMaps[typeof(MonsterDataSet)] = new Dictionary<uint, MonsterDataSet>();
-        // typedMaps[typeof(StageDataSet)] = new Dictionary<uint, StageDataSet>();
     }
     #endregion
 
@@ -890,7 +867,7 @@ public class ResourceManager : MonoBehaviour
         }
         /// 딕셔너리 유무 확인
         object boxed;
-        if (!typedMaps.TryGetValue(typeof(T), out boxed))
+        if (!assetMaps.TryGetValue(typeof(T), out boxed))
         {
             return false;
         }
@@ -905,7 +882,7 @@ public class ResourceManager : MonoBehaviour
     {
         /// 딕셔너리 유무 확인
         object boxed;
-        if (!typedMaps.TryGetValue(typeof(T), out boxed))
+        if (!assetMaps.TryGetValue(typeof(T), out boxed))
         {
             return;
         }
@@ -1514,12 +1491,27 @@ public class ResourceManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// CMS가 애셋을 담을 맵을 할당
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <returns></returns>
+    internal bool AllocateAssetMap<T>()
+    {
+        if (assetMaps.ContainsKey(typeof(T)))
+        {
+            return false;
+        }
+        assetMaps[typeof(T)] = new Dictionary<uint, T>();
+        return true;
+    }
+
     public bool TryGetAsset<T>(uint staticKey, out T asset)
     {
         asset = default;
 
         object boxed;
-        if (!typedMaps.TryGetValue(typeof(T), out boxed))
+        if (!assetMaps.TryGetValue(typeof(T), out boxed))
         {
             return false;
         }

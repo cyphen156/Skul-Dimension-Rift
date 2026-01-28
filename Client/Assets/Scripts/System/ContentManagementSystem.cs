@@ -5,26 +5,8 @@ using Assets.Scripts.Data;
 /// </summary>
 public static class ContentManagementSystem
 {
-    internal static class TypeSelector<T>
+    internal static class ContentCodec
     {
-        internal static T TryParse(uint staicKey)
-        {
-            T value;
-            Domain domain = DomainKey.GetDomain(staicKey);
-            switch (domain)
-            {
-                case Domain.System:
-                    {
-                        
-                    }
-                    return default;
-                default:
-                    value = (T)default;
-                    break;
-            }
-
-            return value;
-        }
     }
 
     //public static 

@@ -6,7 +6,7 @@
 
 namespace Assets.Scripts.Utility
 {
-    public static class ClassCodec
+    public static class NibblePacker
     {
         public static byte Pack(byte mainIndex, byte subIndex)
         {
