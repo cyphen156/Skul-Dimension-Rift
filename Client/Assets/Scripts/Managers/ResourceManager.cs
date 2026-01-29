@@ -1,4 +1,3 @@
-using Assets.Scripts.Content;
 using Assets.Scripts.Data;
 using Assets.Scripts.Interface;
 using Assets.Scripts.Utility;
@@ -22,20 +21,12 @@ public class ResourceManager : MonoBehaviour
 {
     public static ResourceManager instance;
 
-    [Header("DomainSystem_Inline_Nessesary")]
     [Header("DomainProvider")]
-    [SerializeField] internal DomainAddressResolver domainAddressResolver; /// 리졸버에 한해 CMS에 직접 노출, 외부 접근 금지 ==> 아예 애셋 관리 시스템에서 제외
+    internal DomainAddressResolver domainAddressResolver; /// 리졸버에 한해 CMS에 직접 노출, 외부 접근 금지 ==> 아예 애셋 관리 시스템에서 제외
+    internal HashSet<string> activeContents = new HashSet<string>();
 
     [Header("Content Asset Storage")]
-    private readonly Dictionary<Type, object> assetMaps
-        = new Dictionary<Type, object>();
-
-    [Header("ContentManifest")]
-    private const string defaultContentManifestPath = "Data/Manifest/ContentManifest";
-    private ContentManifest contentManifest;
-    public ContentManifest ContentManifest => contentManifest;
-    private ContentVerifyContext manifestVerifyContext; // Manifest 검증용 컨텍스트 -> 유지 이유 : RequiredOnBoot 옵션에 따른 지연 검증 처리
-    public ContentVerifyContext ManifestVerifyContext => manifestVerifyContext;
+    private readonly Dictionary<Type, object> assetMaps = new Dictionary<Type, object>();
 
     [SerializeField] private string defaultInputActionPath = "Input/InputActions";
   
@@ -52,15 +43,6 @@ public class ResourceManager : MonoBehaviour
         { "Gamepad_Switch", "Control/GamePad/NintendoSwitch" },
     };
 
-    [Header("ContentPacks")]
-    private readonly Dictionary<uint, SceneEntry> sceneEntries = new Dictionary<uint, SceneEntry>();
-    private readonly Dictionary<string, CatalogState> catalogStates = new Dictionary<string, CatalogState>();
-
-#if UNITY_EDITOR
-    [SerializeField]
-    private List<DebugKeyValuePair> domainResolverDebugList
-        = new List<DebugKeyValuePair>();
-#endif
     [Header("Resources")]
     private Dictionary<string, GameObject> prefabs = new Dictionary<string, GameObject>();
     private Dictionary<string, AudioClip> bgmClips = new Dictionary<string, AudioClip>();
@@ -105,18 +87,8 @@ public class ResourceManager : MonoBehaviour
         userDataPath = Path.Combine(Application.persistentDataPath, userDataFileName);
         
         domainAddressResolver = new DomainAddressResolver();
-        uint titleStaticKey = DomainKey.GetStaticId(
-            DomainKey.Make(
-                Domain.Scene,
-                0,
-                (byte)SceneRole.StagePrefab,
-                NibblePacker.Pack(0, 0),
-                0
-            )
-        );
-        domainAddressResolver.Register(titleStaticKey, "Prefab/StageTitle_0");
 #if UNITY_EDITOR
-        domainResolverDebugList = DebugUtility.ToDebugList<uint, string>(domainAddressResolver.Map);
+        List<DebugKeyValuePair> resolver = DebugUtility.ToDebugList(domainAddressResolver.Map);
 #endif
         Initialize();
     }
@@ -206,18 +178,6 @@ public class ResourceManager : MonoBehaviour
 
         // 컨트롤 이미지 불러오기
         controlSprites.Clear();
-        
-        // 콘텐츠 매니페스트 로드 => PersistentDataPath 우선, 없으면 Resources 폴더에서 로드
-
-
-        if (!LoadContentManifest(out contentManifest))
-        {
-            Debug.LogError("Error : ContentManifest Not Exists!");
-#if UNITY_EDITOR
-            UnityEditor.EditorApplication.isPlaying = false;
-#endif
-            return;
-        }
     }
     #endregion
 
@@ -852,6 +812,20 @@ public class ResourceManager : MonoBehaviour
         }
     }
 
+    /// CMS가 애셋을 담을 맵을 할당
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <returns></returns>
+    internal bool AllocateAssetMap<T>()
+    {
+        if (assetMaps.ContainsKey(typeof(T)))
+        {
+            return false;
+        }
+        assetMaps[typeof(T)] = new Dictionary<uint, T>();
+        return true;
+    }
+
     /// <summary>
     /// 애셋을 사용하기 위해 필요한 정보를 등록하는 함수
     /// ResolveMap, DataSet, Catalog 등
@@ -859,6 +833,7 @@ public class ResourceManager : MonoBehaviour
     /// <typeparam name="T"></typeparam>
     /// <param name="staticKey"></param>
     /// <returns></returns>
+    /// <summary>
     internal bool Register<T>(uint staticKey, T asset)
     {
         if (asset == null)
@@ -913,12 +888,14 @@ public class ResourceManager : MonoBehaviour
 
         if (handle.Status != AsyncOperationStatus.Succeeded)
         {
+            Addressables.Release(handle);
             return IOResult.Fail(reason: IOFailReason.InvalidPath);
         }
 
         T asset = handle.Result;
         if (asset == null)
         {
+            Addressables.Release(handle);
             return IOResult.Fail(reason: IOFailReason.InvalidPath);
         }
 
@@ -930,7 +907,8 @@ public class ResourceManager : MonoBehaviour
         where T : UnityEngine.Object
     {
         T asset;
-        if (TryGetAsset<T>(staticKey, out asset) == false)
+
+        if (!TryGetAsset<T>(staticKey, out asset))
         {
             return IOResult.Fail(reason: IOFailReason.NotFound);
         }
@@ -1348,164 +1326,14 @@ public class ResourceManager : MonoBehaviour
     }
 #endregion
 
-    #region Content Methods
-    public bool LoadContentManifest(out ContentManifest manifest)
-    {
-        manifest = LoadContentPayload<ContentManifest>("ContentManifest", "Manifest");
-
-        if (manifest == null)
-        {
-            TextAsset defaultAsset = Resources.Load<TextAsset>(defaultContentManifestPath);
-
-            if (defaultAsset == null)
-            {
-                return false;
-            }
-
-            manifest = JsonUtility.FromJson<ContentManifest>(defaultAsset.text);
-        }
-
-        return manifest != null;
-    }
-
-    public T LoadContentPayload<T>(string id, string schema) where T : class
-    {
-        string payloadPath = Path.Combine(
-            Application.persistentDataPath,
-            "Data",
-            schema,
-            id + ".json"
-        );
-
-        if (File.Exists(payloadPath) == false)
-        {
-            return default(T);
-        }
-
-        string json = File.ReadAllText(payloadPath);
-
-        if (string.IsNullOrEmpty(json))
-        {
-            return default(T);
-        }
-
-        T local = JsonUtility.FromJson<T>(json);
-        return local;
-    }
-
-    public bool LoadContentMeta(out ContentMeta meta, string id, string schema)
-    {
-        meta = null;
-
-        string metaPath = Path.Combine(
-                        Application.persistentDataPath,
-                        "Meta",
-                        schema,
-                        id + ".meta.json"
-                    );
-
-        if (!File.Exists(metaPath))
-        {
-            return false;
-        }
-
-        string json = File.ReadAllText(metaPath);
-
-        if (string.IsNullOrEmpty(json))
-        {
-            return false;
-        }
-
-        meta = JsonUtility.FromJson<ContentMeta>(json);
-        return meta != null;
-    }
-
+    #region Content Access Methods
     /// <summary>
-    /// 컨텐츠 본문 저장
+    /// 게임 시스템이 로딩된 애셋을 가져가는 함수
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    /// <param name="id"></param>
-    /// <param name="schema"></param>
-    /// <returns></returns>
-    public bool SaveContentPayLoad<T>(T payLoad, string path)
-    {
-        try
-        {
-            if (payLoad == null)
-            {
-                return false;
-            }
-            string json = JsonUtility.ToJson(payLoad, true);
-            string directory = Path.GetDirectoryName(path);
-
-            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-            {
-                Directory.CreateDirectory(directory);
-            }
-            File.WriteAllText(path, json);
-            return true;
-        }
-        catch (Exception e)
-        {
-            Debug.LogWarning($"[ResourceManager] SaveContentManifest failed: {e.Message}");
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// 메타 파일 저장
-    /// </summary>
-    /// <param name="ctx"></param>
-    /// <returns></returns>
-    public bool SaveContentMeta(ContentVerifyContext ctx)
-    {
-        try
-        {
-            if (ctx == null || ctx.remoteMeta == null)
-            {
-                return false;
-            }
-
-            string json = JsonUtility.ToJson(ctx.remoteMeta, true);
-            string metaPath = Path.Combine(
-                Application.persistentDataPath,
-                "Meta",
-                ctx.targetSchema,
-                ctx.targetId + ".meta.json"
-            );
-
-            string directory = Path.GetDirectoryName(metaPath);
-
-            if (string.IsNullOrEmpty(directory) == false && Directory.Exists(directory) == false)
-            {
-                Directory.CreateDirectory(directory);
-            }
-
-            File.WriteAllText(metaPath, json);
-            return true;
-        }
-        catch (Exception e)
-        {
-            Debug.LogWarning($"[ResourceManager] SaveContentMeta failed: {e.Message}");
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// CMS가 애셋을 담을 맵을 할당
-    /// </summary>
-    /// <typeparam name="T"></typeparam>
-    /// <returns></returns>
-    internal bool AllocateAssetMap<T>()
-    {
-        if (assetMaps.ContainsKey(typeof(T)))
-        {
-            return false;
-        }
-        assetMaps[typeof(T)] = new Dictionary<uint, T>();
-        return true;
-    }
-
+    /// <param name="staticKey">DomainKey</param>
+    /// <param name="asset">return To</param>
+    /// <returns>if (!= T || null => default/null) Else than T value</returns>
     public bool TryGetAsset<T>(uint staticKey, out T asset)
     {
         asset = default;
