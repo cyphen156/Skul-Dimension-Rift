@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
+using UnityEngine.AddressableAssets.ResourceLocators;
 using UnityEngine.InputSystem;
 using UnityEngine.Networking;
 using UnityEngine.ResourceManagement.AsyncOperations;
@@ -20,6 +21,13 @@ using UnityEngine.ResourceManagement.AsyncOperations;
 public class ResourceManager : MonoBehaviour
 {
     public static ResourceManager instance;
+
+    [Header("ResourceManager - CMS internal Share Field")]
+    private readonly object assetMapLock = new object();
+    //internal readonly Dictionary<Type, object> systemMaps = new Dictionary<Type, object>();
+    internal Dictionary <uint, IResourceLocator> activelocators = new Dictionary<uint, IResourceLocator>(); // use addressables Catalog Locator
+
+    internal Dictionary<uint, AsyncOperationHandle> activeStaticKeys = new Dictionary<uint, AsyncOperationHandle>();
 
     [Header("DomainProvider")]
     internal DomainAddressResolver domainAddressResolver; /// 리졸버에 한해 CMS에 직접 노출, 외부 접근 금지 ==> 아예 애셋 관리 시스템에서 제외
@@ -876,6 +884,31 @@ public class ResourceManager : MonoBehaviour
     internal async Task<IOResult> LoadAssetAsync<T>(uint staticKey)
         where T : UnityEngine.Object
     {
+        AsyncOperationHandle prevHandle;
+
+        lock (assetMapLock)
+        {
+            activeStaticKeys.TryGetValue(staticKey, out prevHandle);
+        }
+
+        // 이전에 핸들이 할당되었음
+        if (prevHandle.IsValid())
+        {
+            // 로딩작업 끝남?
+            if (!prevHandle.IsDone)
+            {
+                // 아니면 기다려
+                await prevHandle.Task;
+            }
+
+            // 끝낫는데 그 결과가 성공임?
+            if (prevHandle.Status == AsyncOperationStatus.Succeeded)
+            {
+                // 이번에 들어온 로드 작업을 중복 실행으로 간주하고 종료함
+                return IOResult.Ok();
+            }
+        }
+
         string resolvedPath;
         if (domainAddressResolver == null || domainAddressResolver.TryResolve(staticKey, out resolvedPath) == false)
         {

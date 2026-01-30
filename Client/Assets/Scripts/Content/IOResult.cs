@@ -7,6 +7,7 @@ public enum IOFailReason
     InvalidPath,
     NotFound,
     AccessDenied,
+    LoadFailed,
     NetworkError,
     SaveFailed,
     Canceled,

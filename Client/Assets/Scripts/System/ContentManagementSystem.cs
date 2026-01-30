@@ -1,14 +1,24 @@
-using Assets.Scripts.Data;
+using System.Collections.Generic;
+using UnityEngine.AddressableAssets;
+using UnityEngine.AddressableAssets.ResourceLocators;
 
 /// <summary>
 /// 컨텐츠 관련 정책을 관리, 제공하는 시스템
 /// </summary>
 public static class ContentManagementSystem
 {
-    internal static class ContentCodec
+    private static void UpdateContentCatalog(List<IResourceLocator> registers, List<IResourceLocator> unregisters)
     {
-    }
+        foreach (IResourceLocator locator in registers)
+        {
+            Addressables.AddResourceLocator(locator);
+        }
 
+        foreach (IResourceLocator locator in unregisters)
+        {
+            Addressables.RemoveResourceLocator(locator);
+        }
+    }
     //public static 
     //    public static IEnumerator CheckContentConsistency(ContentVerifyContext result)
     //    {
