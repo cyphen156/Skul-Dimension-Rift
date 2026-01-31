@@ -23,7 +23,7 @@ public class ResourceManager : MonoBehaviour
     public static ResourceManager instance;
 
     [Header("ResourceManager - CMS internal Share Field")]
-    private readonly object assetMapLock = new object();
+    private readonly object assetLoadLock = new object();
     //internal readonly Dictionary<Type, object> systemMaps = new Dictionary<Type, object>();
     internal Dictionary <uint, IResourceLocator> activelocators = new Dictionary<uint, IResourceLocator>(); // use addressables Catalog Locator
 
@@ -884,29 +884,11 @@ public class ResourceManager : MonoBehaviour
     internal async Task<IOResult> LoadAssetAsync<T>(uint staticKey)
         where T : UnityEngine.Object
     {
-        AsyncOperationHandle prevHandle;
+        T loadedAsset;
 
-        lock (assetMapLock)
+        if (TryGetAsset<T>(staticKey, out loadedAsset))
         {
-            activeStaticKeys.TryGetValue(staticKey, out prevHandle);
-        }
-
-        // 이전에 핸들이 할당되었음
-        if (prevHandle.IsValid())
-        {
-            // 로딩작업 끝남?
-            if (!prevHandle.IsDone)
-            {
-                // 아니면 기다려
-                await prevHandle.Task;
-            }
-
-            // 끝낫는데 그 결과가 성공임?
-            if (prevHandle.Status == AsyncOperationStatus.Succeeded)
-            {
-                // 이번에 들어온 로드 작업을 중복 실행으로 간주하고 종료함
-                return IOResult.Ok();
-            }
+            return IOResult.Ok();
         }
 
         string resolvedPath;
@@ -915,25 +897,76 @@ public class ResourceManager : MonoBehaviour
             return IOResult.Fail(reason: IOFailReason.InvalidPath);
         }
 
-        AsyncOperationHandle<T> handle = Addressables.LoadAssetAsync<T>(resolvedPath);
+        AsyncOperationHandle handle;
+        bool isOwner;
 
-        await handle.Task;
-
-        if (handle.Status != AsyncOperationStatus.Succeeded)
+        lock (assetLoadLock)
         {
-            Addressables.Release(handle);
-            return IOResult.Fail(reason: IOFailReason.InvalidPath);
+            if (activeStaticKeys.TryGetValue(staticKey, out handle))
+            {
+                isOwner = false;
+            }
+            else
+            {
+                AsyncOperationHandle<T> created = Addressables.LoadAssetAsync<T>(resolvedPath);
+                handle = created;
+                activeStaticKeys[staticKey] = handle;
+                isOwner = true;
+            }
         }
 
-        T asset = handle.Result;
-        if (asset == null)
+        try
         {
-            Addressables.Release(handle);
-            return IOResult.Fail(reason: IOFailReason.InvalidPath);
-        }
+            await handle.Task;
 
-        Register<T>(staticKey, asset);
-        return IOResult.Ok();
+            if (handle.Status != AsyncOperationStatus.Succeeded)
+            {
+                return IOResult.Fail(reason: IOFailReason.InvalidPath);
+            }
+
+            if (TryGetAsset<T>(staticKey, out loadedAsset))
+            {
+                return IOResult.Ok();
+            }
+
+            AsyncOperationHandle<T> typed = handle.Convert<T>();
+            T asset = typed.Result;
+
+            if (asset == null)
+            {
+                return IOResult.Fail(reason: IOFailReason.InvalidPath);
+            }
+
+            if (Register<T>(staticKey, asset) == false)
+            {
+                if (isOwner)
+                {
+                    Addressables.Release(typed);
+                }
+
+                return IOResult.Fail(reason: IOFailReason.SaveFailed);
+            }
+
+            return IOResult.Ok();
+        }
+        finally
+        {
+            if (isOwner)
+            {
+                lock (assetLoadLock)
+                {
+                    activeStaticKeys.Remove(staticKey);
+                }
+
+                if (handle.Status != AsyncOperationStatus.Succeeded)
+                {
+                    if (handle.IsValid())
+                    {
+                        Addressables.Release(handle);
+                    }
+                }
+            }
+        }
     }
 
     internal IOResult UnloadAsset<T>(uint staticKey)
