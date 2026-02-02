@@ -23,7 +23,7 @@ public class ResourceManager : MonoBehaviour
     public static ResourceManager instance;
 
     [Header("ResourceManager - CMS internal Share Field")]
-    private readonly object assetLoadLock = new object();
+    private readonly object assetMapLock = new object();
     //internal readonly Dictionary<Type, object> systemMaps = new Dictionary<Type, object>();
     internal Dictionary <uint, IResourceLocator> activelocators = new Dictionary<uint, IResourceLocator>(); // use addressables Catalog Locator
 
@@ -59,11 +59,6 @@ public class ResourceManager : MonoBehaviour
     private readonly Dictionary<string, string> controlBindings = new Dictionary<string, string>();
     private readonly Dictionary<string, Sprite> controlSprites = new Dictionary<string, Sprite>();
     private Sprite placeHolderSprite;
-
-    // ObjectKey 기반 스프라이트 캐시
-    private readonly Dictionary<uint, Sprite> itemSprites = new Dictionary<uint, Sprite>();
-    private readonly Dictionary<uint, Sprite> monsterSprites = new Dictionary<uint, Sprite>();
-    private readonly Dictionary<uint, Sprite> worldObjectSprites = new Dictionary<uint, Sprite>();
 
     [Header("UserDatas")]
     [SerializeField] private UserData userData;
@@ -745,13 +740,6 @@ public class ResourceManager : MonoBehaviour
         return container != null && container.Succeeded;
     }
 
-    public StreamContainer GetStreamContainer(string path)
-    {
-        string reason;
-        StreamContainer c = LeaseRead(path, "Unknown", out reason);
-        return c;
-    }
-
     public bool IsPathLeased(string path, out string ownerTag)
     {
         ownerTag = null;
@@ -812,7 +800,7 @@ public class ResourceManager : MonoBehaviour
         }
         catch (IOException ioe)
         {
-            return (IOResult.Fail(IOFailReason.AccessDenied, ioe), null);
+            return (IOResult.Fail(IOFailReason.Unknown, ioe), null);
         }
         catch (Exception e)
         {
@@ -824,14 +812,17 @@ public class ResourceManager : MonoBehaviour
     /// </summary>
     /// <typeparam name="T"></typeparam>
     /// <returns></returns>
-    internal bool AllocateAssetMap<T>()
+    internal bool AllocateTypeMap<T>()
     {
-        if (assetMaps.ContainsKey(typeof(T)))
+        lock (assetMapLock)
         {
-            return false;
+            if (assetMaps.ContainsKey(typeof(T)))
+            {
+                return false;
+            }
+            assetMaps[typeof(T)] = new Dictionary<uint, T>();
+            return true;
         }
-        assetMaps[typeof(T)] = new Dictionary<uint, T>();
-        return true;
     }
 
     /// <summary>
@@ -849,30 +840,36 @@ public class ResourceManager : MonoBehaviour
             return false;
         }
         /// 딕셔너리 유무 확인
-        object boxed;
-        if (!assetMaps.TryGetValue(typeof(T), out boxed))
+        lock (assetMapLock)
         {
-            return false;
+            object boxed;
+            if (!assetMaps.TryGetValue(typeof(T), out boxed))
+            {
+                return false;
+            }
+
+            Dictionary<uint, T> map = (Dictionary<uint, T>)boxed;
+
+            map[staticKey] = asset;
+            return true;
         }
-
-        Dictionary<uint, T> map = (Dictionary<uint, T>)boxed;
-
-        map[staticKey] = asset;
-        return true;
     }
 
     internal void UnRegister<T>(uint staticKey)
     {
-        /// 딕셔너리 유무 확인
-        object boxed;
-        if (!assetMaps.TryGetValue(typeof(T), out boxed))
+        lock (assetMapLock)
         {
-            return;
+            /// 딕셔너리 유무 확인
+            object boxed;
+            if (!assetMaps.TryGetValue(typeof(T), out boxed))
+            {
+                return;
+            }
+
+            Dictionary<uint, T> map = (Dictionary<uint, T>)boxed;
+
+            map.Remove(staticKey);
         }
-
-        Dictionary<uint, T> map = (Dictionary<uint, T>)boxed;
-
-        map.Remove(staticKey);
     }
 
     /// <summary>
@@ -900,7 +897,7 @@ public class ResourceManager : MonoBehaviour
         AsyncOperationHandle handle;
         bool isOwner;
 
-        lock (assetLoadLock)
+        lock (assetMapLock)
         {
             if (activeStaticKeys.TryGetValue(staticKey, out handle))
             {
@@ -953,7 +950,7 @@ public class ResourceManager : MonoBehaviour
         {
             if (isOwner)
             {
-                lock (assetLoadLock)
+                lock (assetMapLock)
                 {
                     activeStaticKeys.Remove(staticKey);
                 }
@@ -1009,6 +1006,7 @@ public class ResourceManager : MonoBehaviour
 
         string tempPath = path + ".tmp";
 
+        // ensure dir
         try
         {
             ct.ThrowIfCancellationRequested();
@@ -1019,28 +1017,43 @@ public class ResourceManager : MonoBehaviour
                 Directory.CreateDirectory(dir);
             }
         }
+        catch (OperationCanceledException oce)
+        {
+            return IOResult.Fail(IOFailReason.Canceled, oce);
+        }
         catch (Exception e)
         {
             return IOResult.Fail(IOFailReason.InvalidPath, e);
         }
 
+        // temp cleanup
+        try
+        {
+            ct.ThrowIfCancellationRequested();
+            File.Delete(tempPath);
+        }
+        catch (OperationCanceledException oce)
+        {
+            return IOResult.Fail(IOFailReason.Canceled, oce);
+        }
+        catch (UnauthorizedAccessException uae)
+        {
+            return IOResult.Fail(IOFailReason.AccessDenied, uae);
+        }
+        catch (IOException ioe)
+        {
+            return IOResult.Fail(IOFailReason.AccessDenied, ioe);
+        }
+        catch (Exception e)
+        {
+            return IOResult.Fail(IOFailReason.InvalidPath, e);
+        }
+
+        // write temp
         try
         {
             ct.ThrowIfCancellationRequested();
 
-            // temp cleanup
-            try
-            {
-                if (File.Exists(tempPath))
-                {
-                    File.Delete(tempPath);
-                }
-            }
-            catch
-            {
-            }
-
-            // write temp
             using (FileStream fs = new FileStream(
                 tempPath,
                 FileMode.CreateNew,
@@ -1053,28 +1066,12 @@ public class ResourceManager : MonoBehaviour
                 await fs.WriteAsync(bytes, 0, bytes.Length, ct);
                 await fs.FlushAsync(ct);
             }
-
-            // commit
-            await Task.Run(() =>
-            {
-                if (File.Exists(path))
-                {
-                    File.Delete(path);
-                }
-
-                File.Move(tempPath, path);
-            }, ct);
-
-            return IOResult.Ok();
         }
         catch (OperationCanceledException oce)
         {
             try
             {
-                if (File.Exists(tempPath))
-                {
-                    File.Delete(tempPath);
-                }
+                File.Delete(tempPath);
             }
             catch
             {
@@ -1086,10 +1083,7 @@ public class ResourceManager : MonoBehaviour
         {
             try
             {
-                if (File.Exists(tempPath))
-                {
-                    File.Delete(tempPath);
-                }
+                File.Delete(tempPath);
             }
             catch
             {
@@ -1101,10 +1095,7 @@ public class ResourceManager : MonoBehaviour
         {
             try
             {
-                if (File.Exists(tempPath))
-                {
-                    File.Delete(tempPath);
-                }
+                File.Delete(tempPath);
             }
             catch
             {
@@ -1112,40 +1103,178 @@ public class ResourceManager : MonoBehaviour
 
             return IOResult.Fail(IOFailReason.SaveFailed, e);
         }
-    }
 
-    internal async Task<IOResult> DeleteAsync(string path, CancellationToken ct = default)
-    {
-        if (string.IsNullOrEmpty(path))
+        // backUp
+        string back = path + ".bak";
+        bool isBackUped = false;
+
+        if (File.Exists(path))
         {
-            return IOResult.Fail(IOFailReason.InvalidPath);
+            try
+            {
+                ct.ThrowIfCancellationRequested();
+
+                try
+                {
+                    File.Delete(back);
+                }
+                catch
+                {
+                }
+
+                File.Move(path, back);
+                isBackUped = true;
+            }
+            catch (OperationCanceledException oce)
+            {
+                try
+                {
+                    File.Delete(tempPath);
+                }
+                catch
+                {
+                }
+
+                return IOResult.Fail(IOFailReason.Canceled, oce);
+            }
+            catch (UnauthorizedAccessException uae)
+            {
+                try
+                {
+                    File.Delete(tempPath);
+                }
+                catch
+                {
+                }
+
+                return IOResult.Fail(IOFailReason.AccessDenied, uae);
+            }
+            catch (Exception e)
+            {
+                try
+                {
+                    File.Delete(tempPath);
+                }
+                catch
+                {
+                }
+
+                return IOResult.Fail(IOFailReason.SaveFailed, e);
+            }
         }
 
+        IOResult result;
+
+        // Commit
         try
         {
             ct.ThrowIfCancellationRequested();
 
-            await Task.Run(() =>
-            {
-                if (File.Exists(path))
-                {
-                    File.Delete(path);
-                }
-            }, ct);
+            File.Move(tempPath, path);
 
-            return IOResult.Ok();
+            try
+            {
+                if (isBackUped)
+                {
+                    File.Delete(back);
+                }
+            }
+            catch
+            {
+            }
+
+            result = IOResult.Ok();
         }
         catch (OperationCanceledException oce)
         {
-            return IOResult.Fail(IOFailReason.Canceled, oce);
+            try
+            {
+                if (isBackUped)
+                {
+                    File.Delete(path);
+                    File.Move(back, path);
+                }
+            }
+            catch
+            {
+            }
+
+            result = IOResult.Fail(IOFailReason.Canceled, oce);
         }
         catch (UnauthorizedAccessException uae)
         {
-            return IOResult.Fail(IOFailReason.AccessDenied, uae);
+            try
+            {
+                if (isBackUped)
+                {
+                    File.Delete(path);
+                    File.Move(back, path);
+                }
+            }
+            catch
+            {
+            }
+
+            result = IOResult.Fail(IOFailReason.AccessDenied, uae);
         }
         catch (Exception e)
         {
-            return IOResult.Fail(IOFailReason.Unknown, e);
+            try
+            {
+                if (isBackUped)
+                {
+                    File.Delete(path);
+                    File.Move(back, path);
+                }
+            }
+            catch
+            {
+            }
+
+            result = IOResult.Fail(IOFailReason.SaveFailed, e);
+        }
+        finally
+        {
+            try
+            {
+                File.Delete(tempPath);
+            }
+            catch
+            {
+            }
+        }
+
+        return result;
+    }
+
+
+    internal Task<IOResult> Delete(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return Task.FromResult(IOResult.Fail(IOFailReason.InvalidPath));
+        }
+
+        try
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+
+            return Task.FromResult(IOResult.Ok());
+        }
+        catch (OperationCanceledException oce)
+        {
+            return Task.FromResult(IOResult.Fail(IOFailReason.Canceled, oce));
+        }
+        catch (UnauthorizedAccessException uae)
+        {
+            return Task.FromResult(IOResult.Fail(IOFailReason.AccessDenied, uae));
+        }
+        catch (Exception e)
+        {
+            return Task.FromResult(IOResult.Fail(IOFailReason.Unknown, e));
         }
     }
 
@@ -1177,7 +1306,19 @@ public class ResourceManager : MonoBehaviour
 
                 while (!op.isDone)
                 {
-                    ct.ThrowIfCancellationRequested();
+                    if (ct.IsCancellationRequested)
+                    {
+                        try
+                        {
+                            req.Abort();
+                        }
+                        catch
+                        {
+                        }
+
+                        ct.ThrowIfCancellationRequested();
+                    }
+
                     await Task.Yield();
                 }
 
@@ -1196,6 +1337,10 @@ public class ResourceManager : MonoBehaviour
                     return (IOResult.Fail(IOFailReason.NetworkError, new Exception("Empty response body."), httpCode), data);
                 }
             }
+
+            IOResult ok = IOResult.Ok();
+            ok.httpResponseCode = httpCode;
+            return (ok, data);
         }
         catch (OperationCanceledException oce)
         {
@@ -1205,8 +1350,6 @@ public class ResourceManager : MonoBehaviour
         {
             return (IOResult.Fail(IOFailReason.NetworkError, e, httpCode), null);
         }
-
-        return (IOResult.Ok(), data);
     }
 
     /// <summary>
@@ -1249,14 +1392,24 @@ public class ResourceManager : MonoBehaviour
         // temp cleanup
         try
         {
-            if (File.Exists(tempPath))
-            {
-                File.Delete(tempPath);
-            }
+            ct.ThrowIfCancellationRequested();
+            File.Delete(tempPath);
+        }
+        catch (OperationCanceledException oce)
+        {
+            return IOResult.Fail(IOFailReason.Canceled, oce);
+        }
+        catch (UnauthorizedAccessException uae)
+        {
+            return IOResult.Fail(IOFailReason.AccessDenied, uae);
+        }
+        catch (IOException ioe)
+        {
+            return IOResult.Fail(IOFailReason.AccessDenied, ioe);
         }
         catch (Exception e)
         {
-            return IOResult.Fail(IOFailReason.AccessDenied, e);
+            return IOResult.Fail(IOFailReason.InvalidPath, e);
         }
 
         long httpCode = 0;
@@ -1272,7 +1425,19 @@ public class ResourceManager : MonoBehaviour
 
                 while (!op.isDone)
                 {
-                    ct.ThrowIfCancellationRequested();
+                    if (ct.IsCancellationRequested)
+                    {
+                        try
+                        {
+                            req.Abort();
+                        }
+                        catch
+                        {
+                        }
+
+                        ct.ThrowIfCancellationRequested();
+                    }
+
                     await Task.Yield();
                 }
 
@@ -1283,10 +1448,7 @@ public class ResourceManager : MonoBehaviour
                 {
                     try
                     {
-                        if (File.Exists(tempPath))
-                        {
-                            File.Delete(tempPath);
-                        }
+                        File.Delete(tempPath);
                     }
                     catch
                     {
@@ -1300,25 +1462,19 @@ public class ResourceManager : MonoBehaviour
         {
             try
             {
-                if (File.Exists(tempPath))
-                {
-                    File.Delete(tempPath);
-                }
+                File.Delete(tempPath);
             }
             catch
             {
             }
 
-            return IOResult.Fail(IOFailReason.Canceled, oce);
+            return IOResult.Fail(IOFailReason.Canceled, oce, httpCode);
         }
         catch (Exception e)
         {
             try
             {
-                if (File.Exists(tempPath))
-                {
-                    File.Delete(tempPath);
-                }
+                File.Delete(tempPath);
             }
             catch
             {
@@ -1327,91 +1483,144 @@ public class ResourceManager : MonoBehaviour
             return IOResult.Fail(IOFailReason.NetworkError, e, httpCode);
         }
 
-        // commit
-        try
-        {
-            await Task.Run(() =>
-            {
-                if (File.Exists(path))
-                {
-                    File.Delete(path);
-                }
+        // backUp
+        string back = path + ".bak";
+        bool isBackUped = false;
 
-                File.Move(tempPath, path);
-            }, ct);
-
-            IOResult ok = IOResult.Ok();
-            ok.httpResponseCode = httpCode;
-            return ok;
-        }
-        catch (OperationCanceledException oce)
+        if (File.Exists(path))
         {
             try
             {
-                if (File.Exists(tempPath))
+                try
+                {
+                    File.Delete(back);
+                }
+                catch 
+                {
+                }
+
+                File.Move(path, back);
+                isBackUped = true;
+            }
+            // 백업 실패시 커밋 하지 않음
+            catch (UnauthorizedAccessException uae)
+            {
+                try
                 {
                     File.Delete(tempPath);
+                }
+                catch
+                {
+                }
+
+                return IOResult.Fail(IOFailReason.AccessDenied, uae, httpCode);
+            }
+            catch (Exception e)
+            {
+                try
+                {
+                    File.Delete(tempPath);
+                }
+                catch
+                {
+                }
+
+                return IOResult.Fail(IOFailReason.SaveFailed, e, httpCode);
+            }
+        }
+
+        IOResult result;
+
+        // Commit
+        try
+        {
+            File.Move(tempPath, path);
+
+            try
+            {
+                if (isBackUped)
+                {
+                    File.Delete(back);
                 }
             }
             catch
             {
             }
 
-            return IOResult.Fail(IOFailReason.Canceled, oce, httpCode);
+            result = IOResult.Ok();
+            result.httpResponseCode = httpCode;
         }
         catch (UnauthorizedAccessException uae)
         {
             try
             {
-                if (File.Exists(tempPath))
+                if (isBackUped)
                 {
-                    File.Delete(tempPath);
+                    File.Delete(path);
+                    File.Move(back, path);
                 }
             }
             catch
             {
             }
 
-            return IOResult.Fail(IOFailReason.AccessDenied, uae, httpCode);
+            result = IOResult.Fail(IOFailReason.AccessDenied, uae, httpCode);
         }
         catch (Exception e)
         {
             try
             {
-                if (File.Exists(tempPath))
+                if (isBackUped)
                 {
-                    File.Delete(tempPath);
+                    File.Delete(path);
+                    File.Move(back, path);
                 }
             }
             catch
             {
             }
 
-            return IOResult.Fail(IOFailReason.SaveFailed, e, httpCode);
+            result = IOResult.Fail(IOFailReason.SaveFailed, e, httpCode);
         }
+        finally
+        {
+            try
+            {
+                File.Delete(tempPath);
+            }
+            catch
+            {
+            }
+        }
+
+        return result;
     }
 #endregion
 
-    #region Content Access Methods
-    /// <summary>
-    /// 게임 시스템이 로딩된 애셋을 가져가는 함수
-    /// </summary>
-    /// <typeparam name="T"></typeparam>
-    /// <param name="staticKey">DomainKey</param>
-    /// <param name="asset">return To</param>
-    /// <returns>if (!= T || null => default/null) Else than T value</returns>
+        #region Content Access Methods
+        /// <summary>
+        /// 게임 시스템이 로딩된 애셋을 가져가는 함수
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="staticKey">DomainKey</param>
+        /// <param name="asset">return To</param>
+        /// <returns>if (!= T || null => default/null) Else than T value</returns>
     public bool TryGetAsset<T>(uint staticKey, out T asset)
     {
         asset = default;
-
-        object boxed;
-        if (!assetMaps.TryGetValue(typeof(T), out boxed))
+        
+        lock (assetMapLock)
         {
-            return false;
-        }
 
-        Dictionary<uint, T> map = (Dictionary<uint, T>)boxed;
-        return map.TryGetValue(staticKey, out asset);
+            object boxed;
+            if (!assetMaps.TryGetValue(typeof(T), out boxed))
+            {
+                return false;
+            }
+
+            Dictionary<uint, T> map = (Dictionary<uint, T>)boxed;
+            return map.TryGetValue(staticKey, out asset);
+        }
     }
     #endregion
 }
