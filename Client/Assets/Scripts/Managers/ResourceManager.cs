@@ -968,34 +968,38 @@ public class ResourceManager : MonoBehaviour
     }
 
     internal IOResult UnloadAsset<T>(uint staticKey)
-        where T : UnityEngine.Object
+    where T : UnityEngine.Object
     {
         T asset;
+        bool hasAsset = TryGetAsset<T>(staticKey, out asset);
 
-        bool isExisted = TryGetAsset<T>(staticKey, out asset);
+        AsyncOperationHandle handle;
+        bool hasHandle = TryGetAsset_Internal<AsyncOperationHandle>(staticKey, AccessMode.Internal, out handle);
 
+        // 공개 애셋 접근 먼저 정리
         UnRegister<T>(staticKey, AccessMode.Public);
 
-        if (isExisted && asset != null)
+        if (hasHandle)
         {
-            AsyncOperationHandle handle;
+            // 핸들 정리
+            UnRegister<AsyncOperationHandle>(staticKey, AccessMode.Internal);
 
-            if (TryGetAsset_Internal<AsyncOperationHandle>(staticKey, AccessMode.Internal, out handle))
+            if (handle.IsValid())
             {
-                UnRegister<AsyncOperationHandle>(staticKey, AccessMode.Internal);
-                if (handle.IsValid())
-                {
-                    Addressables.Release(handle);
-                }
+                Addressables.Release(handle);
             }
-            else
-            {
-                Addressables.Release(asset);
-            }
+
+            return IOResult.Ok();
         }
-        
+
+        if (hasAsset && asset != null)
+        {
+            Addressables.Release(asset);
+        }
+
         return IOResult.Ok();
     }
+
 
     internal void ForceGarbageCollecting()
     {
