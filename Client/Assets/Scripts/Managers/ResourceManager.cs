@@ -23,8 +23,7 @@ public class ResourceManager : MonoBehaviour
     public static ResourceManager instance;
 
     [Header("ResourceManager - CMS internal Share Field")]
-    private readonly object assetMapLock = new object();
-    //internal readonly Dictionary<Type, object> systemMaps = new Dictionary<Type, object>();
+    internal TypeMapContainer[] assetContainers = new TypeMapContainer[Enum.GetValues(typeof(AccessMode)).Length];
     internal Dictionary <uint, IResourceLocator> activelocators = new Dictionary<uint, IResourceLocator>(); // use addressables Catalog Locator
 
     internal Dictionary<uint, AsyncOperationHandle> activeStaticKeys = new Dictionary<uint, AsyncOperationHandle>();
@@ -34,7 +33,6 @@ public class ResourceManager : MonoBehaviour
     internal HashSet<string> activeContents = new HashSet<string>();
 
     [Header("Content Asset Storage")]
-    private readonly Dictionary<Type, object> assetMaps = new Dictionary<Type, object>();
 
     [SerializeField] private string defaultInputActionPath = "Input/InputActions";
   
@@ -181,6 +179,12 @@ public class ResourceManager : MonoBehaviour
 
         // 컨트롤 이미지 불러오기
         controlSprites.Clear();
+
+        // 애셋 컨테이너 초기화
+        foreach (AccessMode mode in Enum.GetValues(typeof(AccessMode)))
+        {
+            assetContainers[(int)mode] = new TypeMapContainer(mode);
+        }
     }
     #endregion
 
@@ -812,15 +816,17 @@ public class ResourceManager : MonoBehaviour
     /// </summary>
     /// <typeparam name="T"></typeparam>
     /// <returns></returns>
-    internal bool AllocateTypeMap<T>()
+    internal bool AllocateTypeMap<T>(AccessMode mode)
     {
-        lock (assetMapLock)
-        {
-            if (assetMaps.ContainsKey(typeof(T)))
+        TypeMapContainer container = assetContainers[(int)mode];
+        /// 딕셔너리 유무 확인
+        lock (container.LockObj)
+        {   
+            if (container.Maps.ContainsKey(typeof(T)))
             {
                 return false;
             }
-            assetMaps[typeof(T)] = new Dictionary<uint, T>();
+            container.Maps[typeof(T)] = new Dictionary<uint, T>();
             return true;
         }
     }
@@ -833,41 +839,36 @@ public class ResourceManager : MonoBehaviour
     /// <param name="staticKey"></param>
     /// <returns></returns>
     /// <summary>
-    internal bool Register<T>(uint staticKey, T asset)
+    internal bool Register<T>(uint staticKey, T asset, AccessMode mode)
     {
         if (asset == null)
         {
             return false;
         }
-        /// 딕셔너리 유무 확인
-        lock (assetMapLock)
+
+        TypeMapContainer container = assetContainers[(int)mode];
+        lock (container.LockObj)
         {
-            object boxed;
-            if (!assetMaps.TryGetValue(typeof(T), out boxed))
+            if (!container.Maps.TryGetValue(typeof(T), out object boxed))
             {
                 return false;
             }
-
             Dictionary<uint, T> map = (Dictionary<uint, T>)boxed;
-
             map[staticKey] = asset;
             return true;
         }
     }
 
-    internal void UnRegister<T>(uint staticKey)
+    internal void UnRegister<T>(uint staticKey, AccessMode mode)
     {
-        lock (assetMapLock)
+        TypeMapContainer container = assetContainers[(int)mode];
+        lock (container.LockObj)
         {
-            /// 딕셔너리 유무 확인
-            object boxed;
-            if (!assetMaps.TryGetValue(typeof(T), out boxed))
+            if (!container.Maps.TryGetValue(typeof(T), out object boxed))
             {
                 return;
             }
-
             Dictionary<uint, T> map = (Dictionary<uint, T>)boxed;
-
             map.Remove(staticKey);
         }
     }
@@ -971,18 +972,28 @@ public class ResourceManager : MonoBehaviour
     {
         T asset;
 
-        if (!TryGetAsset<T>(staticKey, out asset))
+        bool isExisted = TryGetAsset<T>(staticKey, out asset);
+
+        UnRegister<T>(staticKey, AccessMode.Public);
+
+        if (isExisted && asset != null)
         {
-            return IOResult.Fail(reason: IOFailReason.NotFound);
+            AsyncOperationHandle handle;
+
+            if (TryGetAsset_Internal<AsyncOperationHandle>(staticKey, AccessMode.Internal, out handle))
+            {
+                UnRegister<AsyncOperationHandle>(staticKey, AccessMode.Internal);
+                if (handle.IsValid())
+                {
+                    Addressables.Release(handle);
+                }
+            }
+            else
+            {
+                Addressables.Release(asset);
+            }
         }
-
-        UnRegister<T>(staticKey);
-
-        if (asset != null)
-        {
-            Addressables.Release(asset);
-        }
-
+        
         return IOResult.Ok();
     }
 
@@ -1597,23 +1608,35 @@ public class ResourceManager : MonoBehaviour
     }
 #endregion
 
-        #region Content Access Methods
-        /// <summary>
-        /// 게임 시스템이 로딩된 애셋을 가져가는 함수
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="staticKey">DomainKey</param>
-        /// <param name="asset">return To</param>
-        /// <returns>if (!= T || null => default/null) Else than T value</returns>
+    #region Content Access Methods
+    /// <summary>
+    /// 게임 시스템이 로딩된 애셋을 가져가는 함수
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="staticKey">DomainKey</param>
+    /// <param name="asset">return To</param>
+    /// <returns>if (!= T || null => default/null) Else than T value</returns>
     public bool TryGetAsset<T>(uint staticKey, out T asset)
     {
-        asset = default;
-        
-        lock (assetMapLock)
-        {
+        return TryGetAsset_Internal<T>(staticKey, AccessMode.Public, out asset);
+    }
 
+    internal bool TryGetAsset_Internal<T>(uint staticKey, AccessMode mode, out T asset)
+    {
+        asset = default;
+
+        int index = (int)mode;
+
+        TypeMapContainer container = assetContainers[index];
+        if (container == null)
+        {
+            return false;
+        }
+
+        lock (container.LockObj)
+        {
             object boxed;
-            if (!assetMaps.TryGetValue(typeof(T), out boxed))
+            if (!container.Maps.TryGetValue(typeof(T), out boxed))
             {
                 return false;
             }
