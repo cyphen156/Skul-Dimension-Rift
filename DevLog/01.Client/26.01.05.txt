@@ -1,6 +1,6 @@
 Branch #10 리소스 로드 시스템 어드레서블 개편
 
-Commit 
+Commit 7a23180
     [Feat][Refactor] Content Sync 플로우 확정 및 ROB 카탈로그/번들 업데이트 규약 완성
 
 변경 요약

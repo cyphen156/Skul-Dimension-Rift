@@ -8,6 +8,7 @@ public enum IOFailReason
     NotFound,
     AccessDenied,
     LoadFailed,
+    RegistrationFailed,
     NetworkError,
     SaveFailed,
     Canceled,

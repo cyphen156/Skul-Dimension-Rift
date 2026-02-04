@@ -8,7 +8,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
-using UnityEngine.AddressableAssets.ResourceLocators;
 using UnityEngine.InputSystem;
 using UnityEngine.Networking;
 using UnityEngine.ResourceManagement.AsyncOperations;
@@ -22,23 +21,16 @@ public class ResourceManager : MonoBehaviour
 {
     public static ResourceManager instance;
 
-    [Header("ResourceManager - CMS internal Share Field")]
-    internal TypeMapContainer[] assetContainers = new TypeMapContainer[Enum.GetValues(typeof(AccessMode)).Length];
-    internal Dictionary <uint, IResourceLocator> activelocators = new Dictionary<uint, IResourceLocator>(); // use addressables Catalog Locator
-
-    internal Dictionary<uint, AsyncOperationHandle> activeStaticKeys = new Dictionary<uint, AsyncOperationHandle>();
-
-    [Header("DomainProvider")]
-    internal DomainAddressResolver domainAddressResolver; /// 리졸버에 한해 CMS에 직접 노출, 외부 접근 금지 ==> 아예 애셋 관리 시스템에서 제외
-    internal HashSet<string> activeContents = new HashSet<string>();
-
-    [Header("Content Asset Storage")]
-
+    [Header("paths")]
     [SerializeField] private string defaultInputActionPath = "Input/InputActions";
-  
     private const string userDataFileName = "UserData.json"; 
     private string userDataPath;
 
+    [Header("DomainProvider")]
+    internal DomainAddressResolver domainAddressResolver; /// 리졸버에 한해 CMS에 직접 노출, 외부 접근 금지 ==> 아예 애셋 관리 시스템에서 제외
+
+    [Header("Content Asset Storage")]
+    internal TypeMapContainer[] assetContainers = new TypeMapContainer[Enum.GetValues(typeof(AccessMode)).Length];
     private readonly Dictionary<string, string> controlPaths = new()
     {
         { "Keyboard&Mouse", "Control/Keyboard&Mouse" },
@@ -48,8 +40,6 @@ public class ResourceManager : MonoBehaviour
         { "Gamepad_PS",     "Control/GamePad/PlayStation" },
         { "Gamepad_Switch", "Control/GamePad/NintendoSwitch" },
     };
-
-    [Header("Resources")]
     private Dictionary<string, GameObject> prefabs = new Dictionary<string, GameObject>();
     private Dictionary<string, AudioClip> bgmClips = new Dictionary<string, AudioClip>();
     private Dictionary<string, AudioClip> sfxClips = new Dictionary<string, AudioClip>();
@@ -57,7 +47,6 @@ public class ResourceManager : MonoBehaviour
     private readonly Dictionary<string, string> controlBindings = new Dictionary<string, string>();
     private readonly Dictionary<string, Sprite> controlSprites = new Dictionary<string, Sprite>();
     private Sprite placeHolderSprite;
-
     [Header("UserDatas")]
     [SerializeField] private UserData userData;
     [SerializeField] private InputActionAsset userInputAsset;
@@ -185,6 +174,8 @@ public class ResourceManager : MonoBehaviour
         {
             assetContainers[(int)mode] = new TypeMapContainer(mode);
         }
+        AllocateTypeMap<Task<IOResult>>(AccessMode.Internal);
+        AllocateTypeMap<AsyncOperationHandle>(AccessMode.Internal);
     }
     #endregion
 
@@ -811,7 +802,7 @@ public class ResourceManager : MonoBehaviour
             return (IOResult.Fail(IOFailReason.Unknown, e), null);
         }
     }
-
+    /// <summary>
     /// CMS가 애셋을 담을 맵을 할당
     /// </summary>
     /// <typeparam name="T"></typeparam>
@@ -838,15 +829,15 @@ public class ResourceManager : MonoBehaviour
     /// <typeparam name="T"></typeparam>
     /// <param name="staticKey"></param>
     /// <returns></returns>
-    /// <summary>
     internal bool Register<T>(uint staticKey, T asset, AccessMode mode)
     {
-        if (asset == null)
+        if (asset is null)
         {
             return false;
         }
 
         TypeMapContainer container = assetContainers[(int)mode];
+
         lock (container.LockObj)
         {
             if (!container.Maps.TryGetValue(typeof(T), out object boxed))
@@ -880,126 +871,212 @@ public class ResourceManager : MonoBehaviour
     /// <param name="path"></param>
     /// <returns></returns>
     internal async Task<IOResult> LoadAssetAsync<T>(uint staticKey)
-        where T : UnityEngine.Object
+    where T : UnityEngine.Object
     {
-        T loadedAsset;
-
-        if (TryGetAsset<T>(staticKey, out loadedAsset))
-        {
-            return IOResult.Ok();
-        }
-
         string resolvedPath;
         if (domainAddressResolver == null || domainAddressResolver.TryResolve(staticKey, out resolvedPath) == false)
         {
-            return IOResult.Fail(reason: IOFailReason.InvalidPath);
+            return IOResult.Fail(IOFailReason.InvalidPath);
         }
 
-        AsyncOperationHandle handle;
-        bool isOwner;
-
-        lock (assetMapLock)
+        TypeMapContainer internalContainer = assetContainers[(int)AccessMode.Internal];
+        if (internalContainer == null)
         {
-            if (activeStaticKeys.TryGetValue(staticKey, out handle))
+            return IOResult.Fail(IOFailReason.NotFound);
+        }
+
+        Task<IOResult> previousTask = null;
+        TaskCompletionSource<IOResult> tcs =
+            new TaskCompletionSource<IOResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task<IOResult> enqueuedTask = tcs.Task;
+
+        lock (internalContainer.LockObj)
+        {
+            TryGetAsset_Internal<Task<IOResult>>(staticKey, AccessMode.Internal, out previousTask);
+            Register<Task<IOResult>>(staticKey, enqueuedTask, AccessMode.Internal);
+        }
+
+        if (previousTask != null)
+        {
+            try
             {
-                isOwner = false;
+                await previousTask;
             }
-            else
+            catch
             {
-                AsyncOperationHandle<T> created = Addressables.LoadAssetAsync<T>(resolvedPath);
-                handle = created;
-                activeStaticKeys[staticKey] = handle;
-                isOwner = true;
             }
         }
+
+        IOResult result = IOResult.Ok();
+        AsyncOperationHandle<T> typedHandle = default;
+        bool isOwner = false;
 
         try
         {
-            await handle.Task;
-
-            if (handle.Status != AsyncOperationStatus.Succeeded)
+            // 먼저 작업에서 애셋을 성공적으로 로드해서 공개처리되엇는가?
+            if (TryGetAsset_Internal<T>(staticKey, AccessMode.Public, out _))
             {
-                return IOResult.Fail(reason: IOFailReason.InvalidPath);
+                result = IOResult.Ok();
+                return result;
             }
 
-            if (TryGetAsset<T>(staticKey, out loadedAsset))
+            // 아니라면 로드를 시작한다
+            typedHandle = Addressables.LoadAssetAsync<T>(resolvedPath);
+            isOwner = true;
+
+            await typedHandle.Task;
+
+            // 어드레서블 로드 실패
+            if (typedHandle.Status != AsyncOperationStatus.Succeeded)
             {
-                return IOResult.Ok();
+                result = IOResult.Fail(IOFailReason.LoadFailed);
+                return result;
             }
 
-            AsyncOperationHandle<T> typed = handle.Convert<T>();
-            T asset = typed.Result;
-
-            if (asset == null)
+            // 로드된 애셋이 이상함
+            T loaded = typedHandle.Result;
+            if (loaded == null)
             {
-                return IOResult.Fail(reason: IOFailReason.InvalidPath);
+                result = IOResult.Fail(IOFailReason.LoadFailed);
+                return result;
             }
 
-            if (Register<T>(staticKey, asset) == false)
+            // 공개된건 없는 데 기존 핸들이 남아있음
+            if (TryGetAsset_Internal<AsyncOperationHandle>(staticKey, AccessMode.Internal, out var existingHandle))
             {
-                if (isOwner)
+                // 기존 핸들을 해제하고
+                UnRegister<AsyncOperationHandle>(staticKey, AccessMode.Internal);
+
+                // 방출하기
+                if (existingHandle.IsValid())
                 {
-                    Addressables.Release(typed);
+                    Addressables.Release(existingHandle);
                 }
-
-                return IOResult.Fail(reason: IOFailReason.SaveFailed);
             }
 
-            return IOResult.Ok();
+            // 재등록
+            Register<AsyncOperationHandle>(staticKey, typedHandle, AccessMode.Internal);
+
+            // 공개 등록 실패
+            if (!Register<T>(staticKey, loaded, AccessMode.Public))
+            {
+                UnRegister<AsyncOperationHandle>(staticKey, AccessMode.Internal);
+                Addressables.Release(typedHandle);
+                result = IOResult.Fail(IOFailReason.RegistrationFailed);
+                return result;
+            }
+
+            result = IOResult.Ok();
+            return result;
+        }
+        catch (Exception e)
+        {
+            result = IOResult.Fail(IOFailReason.Unknown, e);
+            return result;
         }
         finally
         {
-            if (isOwner)
+            if (isOwner && typedHandle.IsValid() && typedHandle.Status != AsyncOperationStatus.Succeeded)
             {
-                lock (assetMapLock)
-                {
-                    activeStaticKeys.Remove(staticKey);
-                }
+                Addressables.Release(typedHandle);
+            }
 
-                if (handle.Status != AsyncOperationStatus.Succeeded)
+            tcs.TrySetResult(result);
+
+            lock (internalContainer.LockObj)
+            {
+                if (TryGetAsset_Internal<Task<IOResult>>(staticKey, AccessMode.Internal, out var currentTail))
                 {
-                    if (handle.IsValid())
+                    if (object.ReferenceEquals(currentTail, enqueuedTask))
                     {
-                        Addressables.Release(handle);
+                        UnRegister<Task<IOResult>>(staticKey, AccessMode.Internal);
                     }
                 }
             }
         }
     }
 
-    internal IOResult UnloadAsset<T>(uint staticKey)
+    internal async Task<IOResult> UnloadAssetAsync<T>(uint staticKey)
     where T : UnityEngine.Object
     {
-        T asset;
-        bool hasAsset = TryGetAsset<T>(staticKey, out asset);
-
-        AsyncOperationHandle handle;
-        bool hasHandle = TryGetAsset_Internal<AsyncOperationHandle>(staticKey, AccessMode.Internal, out handle);
-
-        // 공개 애셋 접근 먼저 정리
-        UnRegister<T>(staticKey, AccessMode.Public);
-
-        if (hasHandle)
+        TypeMapContainer internalContainer = assetContainers[(int)AccessMode.Internal];
+        if (internalContainer == null)
         {
-            // 핸들 정리
-            UnRegister<AsyncOperationHandle>(staticKey, AccessMode.Internal);
+            return IOResult.Fail(IOFailReason.NotFound);
+        }
 
-            if (handle.IsValid())
+        Task<IOResult> previousTask = null;
+
+        TaskCompletionSource<IOResult> tcs =
+            new TaskCompletionSource<IOResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Task<IOResult> enqueuedTask = tcs.Task;
+
+        lock (internalContainer.LockObj)
+        {
+            TryGetAsset_Internal<Task<IOResult>>(staticKey, AccessMode.Internal, out previousTask);
+            Register<Task<IOResult>>(staticKey, enqueuedTask, AccessMode.Internal);
+        }
+
+        if (previousTask != null)
+        {
+            try
+            {
+                await previousTask;
+            }
+            catch
+            {
+            }
+        }
+
+        IOResult result = IOResult.Ok();
+
+        try
+        {
+            UnRegister<T>(staticKey, AccessMode.Public);
+
+            AsyncOperationHandle handle = default;
+            bool hasHandle = false;
+
+            lock (internalContainer.LockObj)
+            {
+                hasHandle = TryGetAsset_Internal<AsyncOperationHandle>(staticKey, AccessMode.Internal, out handle);
+
+                if (hasHandle)
+                {
+                    UnRegister<AsyncOperationHandle>(staticKey, AccessMode.Internal);
+                }
+            }
+
+            if (hasHandle && handle.IsValid())
             {
                 Addressables.Release(handle);
             }
 
-            return IOResult.Ok();
+            result = IOResult.Ok();
+            return result;
         }
-
-        if (hasAsset && asset != null)
+        catch (Exception e)
         {
-            Addressables.Release(asset);
+            result = IOResult.Fail(IOFailReason.Unknown, e);
+            return result;
         }
+        finally
+        {
+            tcs.TrySetResult(result);
 
-        return IOResult.Ok();
+            lock (internalContainer.LockObj)
+            {
+                if (TryGetAsset_Internal<Task<IOResult>>(staticKey, AccessMode.Internal, out var currentTail))
+                {
+                    if (object.ReferenceEquals(currentTail, enqueuedTask))
+                    {
+                        UnRegister<Task<IOResult>>(staticKey, AccessMode.Internal);
+                    }
+                }
+            }
+        }
     }
-
 
     internal void ForceGarbageCollecting()
     {
@@ -1261,7 +1338,6 @@ public class ResourceManager : MonoBehaviour
 
         return result;
     }
-
 
     internal Task<IOResult> Delete(string path)
     {
