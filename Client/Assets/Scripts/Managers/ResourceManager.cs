@@ -1126,6 +1126,15 @@ public class ResourceManager : MonoBehaviour
         Resources.UnloadUnusedAssets();
     }
 
+    public IOResult Exists(string path)
+    {
+        if (!File.Exists(path))
+        {
+            return IOResult.Fail(IOFailReason.NotFound);
+        }
+        return IOResult.Ok();
+    }
+
     internal async Task<IOResult> SaveAsync(string path, byte[] bytes, CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(path))

@@ -1,13 +1,15 @@
 using Assets.Scripts.Content;
+using Assets.Scripts.Data;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.AddressableAssets.ResourceLocators;
+using static ResourceManager;
 
 /// <summary>
 /// 컨텐츠 관련 정책을 관리, 제공하는 시스템
@@ -16,12 +18,15 @@ public static class ContentManagementSystem
 {
     public static async Task<IOResult> ApplyGameIdentityAsync(string path, Type caller, CancellationToken ct = default)
     {
-        // 2. 허용되지 않은 호출자면 거부
-        if (caller != typeof(BootStrap))
+        // 1. 허용되지 않은 호출자면 거부
+        if (caller == null || caller != typeof(BootStrap))
         {
-            UnityEngine.Debug.LogError($"[Access Denied] {caller.Name}은 이 함수를 호출할 권한이 없습니다.");
+            UnityEngine.Debug.LogError(
+                $"[Access Denied] {(caller == null ? "null" : caller.Name)}은 이 함수를 호출할 권한이 없습니다."
+            );
             return IOResult.Fail(IOFailReason.AccessDenied);
         }
+
 
         if (string.IsNullOrEmpty(path))
         {
@@ -31,32 +36,95 @@ public static class ContentManagementSystem
         ResourceManager rm = ResourceManager.instance;
         if (rm == null)
         {
-            return IOResult.Fail(IOFailReason.AccessDenied);
+            return IOResult.Fail(IOFailReason.LoadFailed);
         }
 
         // defaultContentManifest적재
-        (IOResult, TextAsset) result = await ResourceManager.instance.LoadDefaultAssetAsync<TextAsset>(path);
+        (IOResult result, TextAsset asset) loaded =
+                    await rm.LoadDefaultAssetAsync<TextAsset>(path, ct);
 
-        ContentManifest manifest = JsonUtility.FromJson<ContentManifest>(result.Item2.text);
+        if (loaded.result == null || loaded.result.succeed == false)
+        {
+            return loaded.result ?? IOResult.Fail(IOFailReason.LoadFailed);
+        }
 
-        uint GameKey = DomainKey.Make(0,0,0,0,0);
-        ResourceManager.instance.Register(GameKey, manifest, Assets.Scripts.Data.AccessMode.Public);
-        
+        if (loaded.asset == null || string.IsNullOrEmpty(loaded.asset.text))
+        {
+            return IOResult.Fail(IOFailReason.LoadFailed);
+        }
+
+        ContentManifest defaultManifest;
+
+        try
+        {
+            defaultManifest = JsonUtility.FromJson<ContentManifest>(loaded.asset.text);
+        }
+        catch (Exception e)
+        {
+            return IOResult.Fail(IOFailReason.LoadFailed, e);
+        }
+
+        if (defaultManifest == null)
+        {
+            return IOResult.Fail(IOFailReason.LoadFailed);
+        }
+
+        ContentManifest manifest;
+        string localManifestPath = Path.Combine(
+            Application.persistentDataPath,
+            "Data",
+            defaultManifest.schema,
+            defaultManifest.id + ".json"
+        );
+
+        // 이 과정은 실패할 수도 있지만 허용함 다음 게임 실행 또는 파일 최신화 검증과정에서 다시하면 됨
+        IOResult existsResult = rm.Exists(localManifestPath);
+
+        if (existsResult.succeed)
+        {
+            byte[] bytes = await rm.ReadAllBytesAsync(, localManifestPath);
+            manifest = 
+        }
+
+        if (!existsResult.succeed)
+        {
+            if (existsResult.failReason != IOFailReason.NotFound)
+            {
+                return existsResult;
+            }
+
+            byte[] jsonBytes = Encoding.UTF8.GetBytes(loaded.asset.text);
+
+            IOResult saveResult = await rm.SaveAsync(localManifestPath, jsonBytes, ct);
+            manifest = defaultManifest;
+        }
+
+        uint gameKey = DomainKey.Make(0, 0, 0, 0, 0);
+
+        if (!rm.Register(gameKey, manifest, AccessMode.Public))
+        {
+            return IOResult.Fail(IOFailReason.RegistrationFailed);
+        }
+
         return IOResult.Ok();
     }
-
 
     /// <summary>
     /// 외부에서 어떤 컨텐츠를 호출할 때 사용되는 key
     /// </summary>
     /// <param name="staticKey"></param>
     /// <returns></returns>
-    public static bool PrepareContent(uint staticKey)
-    {
+    //public static IEnumerator PrepareContent(uint staticKey)
+    //{
 
-        return true;
-    }
+    //    return true;
+    //}
 
+
+    //public static IEnumerator SyncContent(uint staticKey)
+    //{
+
+    //}
     private static void UpdateContentCatalog(List<IResourceLocator> registers, List<IResourceLocator> unregisters)
     {
         foreach (IResourceLocator locator in registers)
