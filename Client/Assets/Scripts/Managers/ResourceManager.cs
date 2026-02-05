@@ -865,6 +865,48 @@ public class ResourceManager : MonoBehaviour
     }
 
     /// <summary>
+    /// 애플리케이션에 기본적으로 내장되는 Resources로 호출되는 애셋 호출기
+    /// </summary>
+    /// <returns></returns>
+    internal async Task<(IOResult result, T asset)> LoadDefaultAssetAsync<T>(string path, CancellationToken ct = default) 
+        where T : UnityEngine.Object
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return (IOResult.Fail(IOFailReason.InvalidPath), null);
+        }
+
+        ResourceRequest request;
+
+        try
+        {
+            request = Resources.LoadAsync<T>(path);
+        }
+        catch (Exception e)
+        {
+            return (IOResult.Fail(IOFailReason.LoadFailed, e), null);
+        }
+
+        while (request.isDone == false)
+        {
+            if (ct.IsCancellationRequested)
+            {
+                return (IOResult.Fail(IOFailReason.Canceled), null);
+            }
+
+            await Task.Yield();
+        }
+
+        T loaded = request.asset as T;
+        if (loaded == null)
+        {
+            return (IOResult.Fail(IOFailReason.NotFound), null);
+        }
+
+        return (IOResult.Ok(), loaded);
+    }
+
+    /// <summary>
     /// 애셋을 리졸브맵과 어드레서블 시스템을 이용하여 비동기로 적재
     /// 실제 Get으로 다른 시스템이 가져가 사용할 수 있도록 준비
     /// </summary>

@@ -1,4 +1,11 @@
+using Assets.Scripts.Content;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.AddressableAssets.ResourceLocators;
 
@@ -7,6 +14,49 @@ using UnityEngine.AddressableAssets.ResourceLocators;
 /// </summary>
 public static class ContentManagementSystem
 {
+    public static async Task<IOResult> ApplyGameIdentityAsync(string path, Type caller, CancellationToken ct = default)
+    {
+        // 2. 허용되지 않은 호출자면 거부
+        if (caller != typeof(BootStrap))
+        {
+            UnityEngine.Debug.LogError($"[Access Denied] {caller.Name}은 이 함수를 호출할 권한이 없습니다.");
+            return IOResult.Fail(IOFailReason.AccessDenied);
+        }
+
+        if (string.IsNullOrEmpty(path))
+        {
+            return IOResult.Fail(IOFailReason.InvalidPath);
+        }
+
+        ResourceManager rm = ResourceManager.instance;
+        if (rm == null)
+        {
+            return IOResult.Fail(IOFailReason.AccessDenied);
+        }
+
+        // defaultContentManifest적재
+        (IOResult, TextAsset) result = await ResourceManager.instance.LoadDefaultAssetAsync<TextAsset>(path);
+
+        ContentManifest manifest = JsonUtility.FromJson<ContentManifest>(result.Item2.text);
+
+        uint GameKey = DomainKey.Make(0,0,0,0,0);
+        ResourceManager.instance.Register(GameKey, manifest, Assets.Scripts.Data.AccessMode.Public);
+        
+        return IOResult.Ok();
+    }
+
+
+    /// <summary>
+    /// 외부에서 어떤 컨텐츠를 호출할 때 사용되는 key
+    /// </summary>
+    /// <param name="staticKey"></param>
+    /// <returns></returns>
+    public static bool PrepareContent(uint staticKey)
+    {
+
+        return true;
+    }
+
     private static void UpdateContentCatalog(List<IResourceLocator> registers, List<IResourceLocator> unregisters)
     {
         foreach (IResourceLocator locator in registers)
@@ -19,7 +69,6 @@ public static class ContentManagementSystem
             Addressables.RemoveResourceLocator(locator);
         }
     }
-    //public static 
     //    public static IEnumerator CheckContentConsistency(ContentVerifyContext result)
     //    {
     //        if (result == null)

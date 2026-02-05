@@ -13,11 +13,11 @@ staticKey 단위 동시성 규약(Task tailing)을 도입하여
 
 상세 변경 내용
 1. RM 책임 재정의 및 역할 분리
-RM은 실행자/저장소 역할로 고정
-- Addressables Load/Unload 수행
-- 로드된 리소스 Get 제공
-- 파일/네트워크 IO 유틸 제공
-콘텐츠 동기화(Manifest→Catalog→Bundle) 오케스트레이션은 CMS로 분리
+    RM은 실행자/저장소 역할로 고정
+    - Addressables Load/Unload 수행
+    - 로드된 리소스 Get 제공
+    - 파일/네트워크 IO 유틸 제공
+    콘텐츠 동기화(Manifest→Catalog→Bundle) 오케스트레이션은 CMS로 분리
 
 2. TypeMapContainer + AccessMode 기반 저장소 통합
     리소스 캐시를 타입/키 기반 저장소로 통일

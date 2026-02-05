@@ -1,4 +1,6 @@
+using Assets.Scripts.Utility;
 using System.Collections;
+using System.Threading.Tasks;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
 using UnityEngine;
@@ -22,8 +24,9 @@ public class BootStrap : MonoBehaviour
 {
     private static BootStrap instance;
 
-    #region Unity Methods
+    private const string defaultManifestPath = "Data/Manifest/ContentManifest";
 
+    #region Unity Methods
     private void Awake()
     {
         if (instance == null)
@@ -75,6 +78,34 @@ public class BootStrap : MonoBehaviour
         // 2. ResourceManager 초기화
         ResourceManager rm = PromoteOrCreate<ResourceManager>("ResourceManager");
         yield return null; // 한 프레임 대기
+
+        // 2_1 시스템 데이터 등록
+        Task<IOResult> applyGameIdentityTask = ContentManagementSystem.ApplyGameIdentityAsync(defaultManifestPath, this.GetType());
+
+        while (applyGameIdentityTask.IsCompleted == false)
+        {
+            yield return null;
+        }
+
+        if (applyGameIdentityTask.IsFaulted || !applyGameIdentityTask.Result.succeed)
+        {
+            Notifier.NotifyError(
+                "치명적 오류",
+                "부트스트랩 초기화에 실패했습니다.\n필수 매니페스트를 준비할 수 없습니다.\n앱을 종료합니다.",
+                NotifyChannel.Native,
+                () =>
+                {
+#if UNITY_EDITOR
+                    UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
+                }
+            );
+
+            yield break;
+        }
+
         // 3. PoolManager 초기화
         PromoteOrCreate<PoolManager>("PoolManager");
         // 4. GraphicManager 초기화
@@ -102,6 +133,7 @@ public class BootStrap : MonoBehaviour
         T existing = FindFirstObjectByType<T>(FindObjectsInactive.Include);
         if (existing != null)
         {
+            existing.gameObject.SetActive(true);
             return existing;
         }
 
@@ -110,6 +142,5 @@ public class BootStrap : MonoBehaviour
         return go.AddComponent<T>();
     }
  
-
-    #endregion Custom Methods
+#endregion Custom Methods
 }
