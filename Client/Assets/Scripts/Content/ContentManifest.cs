@@ -22,13 +22,8 @@ namespace Assets.Scripts.Content
     [Serializable]
     public sealed class ContentManifest
     {
-        public int version = 1;
-
         public string verifyRoot;
         public string metaApi;
-
-        public string id;
-        public string schema;
 
         public List<ContentCatalogEntry> contentCatalogs = new List<ContentCatalogEntry>();
         public List<SceneEntry> scenes = new List<SceneEntry>();

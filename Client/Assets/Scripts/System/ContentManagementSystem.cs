@@ -2,8 +2,6 @@ using Assets.Scripts.Content;
 using Assets.Scripts.Data;
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -70,40 +68,40 @@ public static class ContentManagementSystem
         }
 
         ContentManifest manifest;
-        string localManifestPath = Path.Combine(
-            Application.persistentDataPath,
-            "Data",
-            defaultManifest.schema,
-            defaultManifest.id + ".json"
-        );
+        //string localManifestPath = Path.Combine(
+        //    Application.persistentDataPath,
+        //    "Data",
+        //    defaultManifest.schema,
+        //    defaultManifest.id + ".json"
+        //);
 
-        // 이 과정은 실패할 수도 있지만 허용함 다음 게임 실행 또는 파일 최신화 검증과정에서 다시하면 됨
-        IOResult existsResult = rm.Exists(localManifestPath);
+        //// 이 과정은 실패할 수도 있지만 허용함 다음 게임 실행 또는 파일 최신화 검증과정에서 다시하면 됨
+        //IOResult existsResult = rm.Exists(localManifestPath);
 
-        if (existsResult.succeed)
-        {
-            byte[] bytes = await rm.ReadAllBytesAsync(, localManifestPath);
-        }
+        //if (existsResult.succeed)
+        //{
+        //    byte[] bytes = await rm.ReadAllBytesAsync(, localManifestPath);
+        //}
 
-        if (!existsResult.succeed)
-        {
-            if (existsResult.failReason != IOFailReason.NotFound)
-            {
-                return existsResult;
-            }
+        //if (!existsResult.succeed)
+        //{
+        //    if (existsResult.failReason != IOFailReason.NotFound)
+        //    {
+        //        return existsResult;
+        //    }
 
-            byte[] jsonBytes = Encoding.UTF8.GetBytes(loaded.asset.text);
+        //    byte[] jsonBytes = Encoding.UTF8.GetBytes(loaded.asset.text);
 
-            IOResult saveResult = await rm.SaveAsync(localManifestPath, jsonBytes, ct);
-            manifest = defaultManifest;
-        }
+        //    IOResult saveResult = await rm.SaveAsync(localManifestPath, jsonBytes, ct);
+        //    manifest = defaultManifest;
+        //}
 
-        uint gameKey = DomainKey.Make(0, 0, 0, 0, 0);
+        //uint gameKey = DomainKey.Make(0, 0, 0, 0, 0);
 
-        if (!rm.Register(gameKey, manifest, AccessMode.Public))
-        {
-            return IOResult.Fail(IOFailReason.RegistrationFailed);
-        }
+        //if (!rm.Register(gameKey, manifest, AccessMode.Public))
+        //{
+        //    return IOResult.Fail(IOFailReason.RegistrationFailed);
+        //}
 
         return IOResult.Ok();
     }
