@@ -83,7 +83,6 @@ public static class ContentManagementSystem
         if (existsResult.succeed)
         {
             byte[] bytes = await rm.ReadAllBytesAsync(, localManifestPath);
-            manifest = 
         }
 
         if (!existsResult.succeed)

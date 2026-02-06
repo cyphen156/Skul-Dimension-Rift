@@ -4,6 +4,7 @@ using Assets.Scripts.Utility;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -750,6 +751,63 @@ public class ResourceManager : MonoBehaviour
         }
 
         return false;
+    }
+    
+    /// <summary>
+    /// 텍스트 애셋을 읽어서 반환
+    /// </summary>
+    /// <param name="path"></param>
+    /// <param name="ct"></param>
+    /// <returns></returns>
+    public async Task<(IOResult result, string data)> ReadAllTextsAsync(string path, CancellationToken ct = default)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return (IOResult.Fail(IOFailReason.InvalidPath), null);
+        }
+
+        try
+        {
+            ct.ThrowIfCancellationRequested();
+
+            if (!File.Exists(path))
+            {
+                return (IOResult.Fail(IOFailReason.NotFound), null);
+            }
+
+            string text = await File.ReadAllTextAsync(path, Encoding.UTF8, ct);
+
+            if (string.IsNullOrEmpty(text))
+            {
+                return (IOResult.Fail(IOFailReason.LoadFailed), null);
+            }
+
+            return (IOResult.Ok(), text);
+        }
+        catch (OperationCanceledException oce)
+        {
+            return (IOResult.Fail(IOFailReason.Canceled, oce), null);
+        }
+        catch (UnauthorizedAccessException uae)
+        {
+            return (IOResult.Fail(IOFailReason.AccessDenied, uae), null);
+        }
+        catch (FileNotFoundException fnf)
+        {
+            return (IOResult.Fail(IOFailReason.NotFound, fnf), null);
+        }
+        catch (DirectoryNotFoundException dnf)
+        {
+            return (IOResult.Fail(IOFailReason.NotFound, dnf), null);
+        }
+        catch (IOException ioe)
+        {
+            return (IOResult.Fail(IOFailReason.LoadFailed, ioe), null);
+        }
+        catch (Exception e)
+        {
+            return (IOResult.Fail(IOFailReason.Unknown, e), null);
+        }
     }
 
     /// <summary>
