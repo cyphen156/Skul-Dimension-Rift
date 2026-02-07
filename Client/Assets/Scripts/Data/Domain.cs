@@ -118,6 +118,14 @@ namespace Assets.Scripts.Data
     /// Item 도메인 내부 역할(타입) 정의.
     /// Domain.Item 과 함께 사용된다.
     /// </summary>
+    /// 
+
+    // SystemRole
+    public enum SystemRole : byte
+    {
+        ContentManifest = 0x0,
+    }
+
     public enum ItemRole : byte
     {
         None = 0x0,
