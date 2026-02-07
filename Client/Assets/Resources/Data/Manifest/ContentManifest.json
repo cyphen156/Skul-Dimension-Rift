@@ -1,31 +1,41 @@
 {
-  "version": 1,
-  "verifyRoot": "http://127.0.0.1:5001",
-  "metaApi": "api/meta?id={Id}&schema={Schema}&platform={Platform}",
-  "id": "ContentManifest",
-  "schema": "Manifest",
-  "contentCatalogs": [
-    {
-      "id": "Common",
-      "schema": "ContentCatalog",
-      "requiredOnBoot": true
-    },
-    {
-      "id": "Stage0",
-      "schema": "ContentCatalog",
-      "requiredOnBoot": false
-    }
-  ],
-  "scenes": [
-    {
-      "sceneName": "TitleScene",
-      "staticKey": "0x70100000",
-      "ownerCatalogId": "Common"
-    },
-    {
-      "sceneName": "Stage0Scene",
-      "staticKey": "0x71100000",
-      "ownerCatalogId": "Stage0"
-    }
-  ]
+  "header": {
+    "staticKey": "0x00001000",
+    "id": "ContentManifest",
+    "category": 0,
+    "version": 1
+  },
+  "body": {
+    "staticKey": "0x00001000",
+    "id": "ContentManifest",
+    "schema": "ContentManifest",
+    "verifyRoot": "http://127.0.0.1:5001",
+    "metaApi": "api/meta?id={Id}&schema={Schema}&platform={Platform}",
+    "contentCatalogs": [
+      {
+        "staticKey": 1895825408,
+        "id": "Common",
+        "schema": "ContentCatalog",
+        "requiredOnBoot": true
+      },
+      {
+        "staticKey": 1895890944,
+        "id": "Stage0",
+        "schema": "ContentCatalog",
+        "requiredOnBoot": false
+      }
+    ],
+    "scenes": [
+      {
+        "staticKey": 1896871936,
+        "sceneName": "TitleScene",
+        "ownerCatalogId": "Common"
+      },
+      {
+        "staticKey": 1900085248,
+        "sceneName": "Stage0Scene",
+        "ownerCatalogId": "Stage0"
+      }
+    ]
+  }
 }

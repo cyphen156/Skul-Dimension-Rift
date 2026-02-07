@@ -12,16 +12,16 @@ namespace Assets.Scripts.Content
     [Serializable]
     public struct ContentHeader
     {
-        public Catagory category;
         public string staticKey;
         public string id;
+        public Catagory category;
         public int version;
 
         public ContentHeader(Catagory category, uint staticKey, string id, int version)
         {
-            this.category = category;
             this.staticKey = DomainKeyParser.ToHex(staticKey);
             this.id = id;
+            this.category = category;
             this.version = version;
         }
     }

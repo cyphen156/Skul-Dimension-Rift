@@ -36,7 +36,7 @@ namespace Assets.Scripts.Data
     public enum Domain : byte
     {
         /// <summary>
-        /// 시스템, 메타데이터 등 시스템 전용 도메인.
+        /// 시스템 전용 도메인.
         /// 리졸브맵, 어드레서블 카탈로그 등 CMS 관련 리소스 식별에 사용.
         /// </summary>
         System = 0x0,
@@ -124,6 +124,8 @@ namespace Assets.Scripts.Data
     public enum SystemRole : byte
     {
         ContentManifest = 0x0,
+        ContentCatalog = 0x1,
+        ContentMeta = 0x2,
     }
 
     public enum ItemRole : byte

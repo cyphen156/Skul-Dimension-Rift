@@ -1,7 +1,8 @@
 using Assets.Scripts.Content;
-using Assets.Scripts.Data;
 using System;
 using System.Collections.Generic;
+using System.Data.Common;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -51,29 +52,34 @@ public static class ContentManagementSystem
             return IOResult.Fail(IOFailReason.LoadFailed);
         }
 
-        ContentManifest defaultManifest;
+        ContentRecord defaultManifestRecord;
 
         try
         {
-            defaultManifest = JsonUtility.FromJson<ContentManifest>(loaded.asset.text);
+            defaultManifestRecord =
+                JsonSerializer.Deserialize<ContentRecord>(loaded.asset.text, ContentJsonOptions.Options);
         }
         catch (Exception e)
         {
             return IOResult.Fail(IOFailReason.LoadFailed, e);
         }
 
-        if (defaultManifest == null)
+        if (defaultManifestRecord == null)
         {
             return IOResult.Fail(IOFailReason.LoadFailed);
         }
 
-        ContentManifest manifest;
-        //string localManifestPath = Path.Combine(
-        //    Application.persistentDataPath,
-        //    "Data",
-        //    defaultManifest.schema,
-        //    defaultManifest.id + ".json"
-        //);
+        if (ContentRecordCodec.TryDecode(defaultManifestRecord, out var manifest) == false)
+        {
+            return IOResult.Fail(IOFailReason.LoadFailed);
+        }
+
+        string localManifestPath = Path.Combine(
+            Application.persistentDataPath,
+            "Data",
+            defaultManifest.schema,
+            defaultManifest.id + ".json"
+        );
 
         //// 이 과정은 실패할 수도 있지만 허용함 다음 게임 실행 또는 파일 최신화 검증과정에서 다시하면 됨
         //IOResult existsResult = rm.Exists(localManifestPath);

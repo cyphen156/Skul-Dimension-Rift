@@ -6,6 +6,7 @@ namespace Assets.Scripts.Content
     [Serializable]
     public sealed class ContentCatalogEntry
     {
+        public uint staticKey;
         public string id;
         public string schema;
         public bool requiredOnBoot;
@@ -14,14 +15,18 @@ namespace Assets.Scripts.Content
     [Serializable] 
     public sealed class SceneEntry
     {
-        public string sceneName;
-        public string staticKey;
+        public uint staticKey;
+        public string id;
+        public string schema;
         public string ownerCatalogId;
     }
 
     [Serializable]
     public sealed class ContentManifest
     {
+        public uint staticKey;
+        public string id;
+        public string schema;
         public string verifyRoot;
         public string metaApi;
 
