@@ -1,7 +1,10 @@
 using Assets.Scripts.Content;
+using Assets.Scripts.Data;
 using System;
 using System.Collections.Generic;
-using System.Data.Common;
+using System.IO;
+using System.IO.Pipelines;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -69,45 +72,80 @@ public static class ContentManagementSystem
             return IOResult.Fail(IOFailReason.LoadFailed);
         }
 
-        if (ContentRecordCodec.TryDecode(defaultManifestRecord, out var manifest) == false)
+        if (!ContentRecordCodec.TryDecode(defaultManifestRecord, out var body))
         {
             return IOResult.Fail(IOFailReason.LoadFailed);
         }
 
+        if (body is not ContentManifest manifest)
+        {
+            return IOResult.Fail(IOFailReason.DecodeFailed);
+        }
+
         string localManifestPath = Path.Combine(
             Application.persistentDataPath,
-            "Data",
-            defaultManifest.schema,
-            defaultManifest.id + ".json"
+            defaultManifestRecord.header.category.ToString(),
+            manifest.schema,
+            manifest.id + ".json"
         );
 
-        //// 이 과정은 실패할 수도 있지만 허용함 다음 게임 실행 또는 파일 최신화 검증과정에서 다시하면 됨
-        //IOResult existsResult = rm.Exists(localManifestPath);
+        // 이 과정은 실패할 수도 있지만 허용함 다음 게임 실행 또는 파일 최신화 검증과정에서 다시하면 됨
+        IOResult existsResult = rm.Exists(localManifestPath);
 
-        //if (existsResult.succeed)
-        //{
-        //    byte[] bytes = await rm.ReadAllBytesAsync(, localManifestPath);
-        //}
+        if (!existsResult.succeed)
+        {
+            if (existsResult.failReason != IOFailReason.NotFound)
+            {
+                return existsResult;
+            }
 
-        //if (!existsResult.succeed)
-        //{
-        //    if (existsResult.failReason != IOFailReason.NotFound)
-        //    {
-        //        return existsResult;
-        //    }
+            byte[] jsonBytes = Encoding.UTF8.GetBytes(loaded.asset.text);
+            IOResult saveResult = await rm.SaveAsync(localManifestPath, jsonBytes, ct);
 
-        //    byte[] jsonBytes = Encoding.UTF8.GetBytes(loaded.asset.text);
+            if (!saveResult.succeed)
+            {
+                return saveResult;
+            }
 
-        //    IOResult saveResult = await rm.SaveAsync(localManifestPath, jsonBytes, ct);
-        //    manifest = defaultManifest;
-        //}
+            // 로컬 Manifest기준으로 다시 읽어옴 (PersistancePath)
+            (IOResult readResult, string localJson) read = await rm.ReadAllTextsAsync(localManifestPath, ct);
+            if (!read.readResult.succeed)
+            {
+                return read.readResult;
+            }
 
-        //uint gameKey = DomainKey.Make(0, 0, 0, 0, 0);
+            ContentRecord localRecord;
+            try
+            {
+                localRecord = JsonSerializer.Deserialize<ContentRecord>(read.localJson, ContentJsonOptions.Options);
+            }
+            catch (Exception e)
+            {
+                return IOResult.Fail(IOFailReason.LoadFailed, e);
+            }
 
-        //if (!rm.Register(gameKey, manifest, AccessMode.Public))
-        //{
-        //    return IOResult.Fail(IOFailReason.RegistrationFailed);
-        //}
+            if (localRecord == null)
+            {
+                return IOResult.Fail(IOFailReason.LoadFailed);
+            }
+
+            if (!ContentRecordCodec.TryDecode(localRecord, out var localBody))
+            {
+                return IOResult.Fail(IOFailReason.DecodeFailed);
+            }
+
+            if (localBody is not ContentManifest localManifest)
+            {
+                return IOResult.Fail(IOFailReason.DecodeFailed);
+            }
+
+            manifest = localManifest;
+        }
+
+        if (!rm.Register(manifest.staticKey, manifest, AccessMode.Public))
+        {
+            return IOResult.Fail(IOFailReason.RegistrationFailed);
+        }
 
         return IOResult.Ok();
     }

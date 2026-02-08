@@ -24,7 +24,7 @@ public class BootStrap : MonoBehaviour
 {
     private static BootStrap instance;
 
-    private const string defaultManifestPath = "Data/Manifest/ContentManifest";
+    private const string defaultManifestPath = "Data/ContentManifest/";
 
     #region Unity Methods
     private void Awake()
@@ -79,8 +79,9 @@ public class BootStrap : MonoBehaviour
         ResourceManager rm = PromoteOrCreate<ResourceManager>("ResourceManager");
         yield return null; // 한 프레임 대기
 
+        string applicationName = Application.productName.Replace(" : ", "-").Replace(" ", "_");
         // 2_1 시스템 데이터 등록
-        Task<IOResult> applyGameIdentityTask = ContentManagementSystem.ApplyGameIdentityAsync(defaultManifestPath, this.GetType());
+        Task<IOResult> applyGameIdentityTask = ContentManagementSystem.ApplyGameIdentityAsync(defaultManifestPath + applicationName, this.GetType());
 
         while (applyGameIdentityTask.IsCompleted == false)
         {

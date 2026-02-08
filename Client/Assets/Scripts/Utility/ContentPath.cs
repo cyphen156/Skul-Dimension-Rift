@@ -4,7 +4,7 @@ namespace Assets.Scripts.Utility
 {
     public static class ContentPath
     {
-        public static string BuildMetaUri(string verifyRoot, string metaApiTemplate, string id, string schema, string platform)
+        public static string BuildMetaAPIUri(string verifyRoot, string metaApiTemplate, string id, string schema, string platform)
         {
             if (string.IsNullOrEmpty(metaApiTemplate))
             {

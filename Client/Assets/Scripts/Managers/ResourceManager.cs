@@ -2,8 +2,10 @@ using Assets.Scripts.Data;
 using Assets.Scripts.Interface;
 using Assets.Scripts.Utility;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -32,6 +34,7 @@ public class ResourceManager : MonoBehaviour
 
     [Header("Content Asset Storage")]
     internal TypeMapContainer[] assetContainers = new TypeMapContainer[Enum.GetValues(typeof(AccessMode)).Length];
+
     private readonly Dictionary<string, string> controlPaths = new()
     {
         { "Keyboard&Mouse", "Control/Keyboard&Mouse" },
@@ -54,6 +57,7 @@ public class ResourceManager : MonoBehaviour
 
 #if UNITY_EDITOR
     [Header("DEBUG")]
+    [SerializeField] private List<DebugKeyValuePair> debugAssetMaps = new List<DebugKeyValuePair>();
     [SerializeField] private List<string> prefabKeys = new List<string>();
     [SerializeField] private List<string> bgmKeys = new List<string>();
     [SerializeField] private List<string> sfxKeys = new List<string>();
@@ -76,11 +80,6 @@ public class ResourceManager : MonoBehaviour
             return;
         }
         userDataPath = Path.Combine(Application.persistentDataPath, userDataFileName);
-        
-        domainAddressResolver = new DomainAddressResolver();
-#if UNITY_EDITOR
-        List<DebugKeyValuePair> resolver = DebugUtility.ToDebugList(domainAddressResolver.Map);
-#endif
         Initialize();
     }
     #endregion Unity Methods
@@ -175,8 +174,6 @@ public class ResourceManager : MonoBehaviour
         {
             assetContainers[(int)mode] = new TypeMapContainer(mode);
         }
-        AllocateTypeMap<Task<IOResult>>(AccessMode.Internal);
-        AllocateTypeMap<AsyncOperationHandle>(AccessMode.Internal);
     }
     #endregion
 
@@ -898,12 +895,23 @@ public class ResourceManager : MonoBehaviour
 
         lock (container.LockObj)
         {
+            if (!container.Maps.ContainsKey(typeof(T)))
+            {
+                if (!AllocateTypeMap<T>(mode))
+                {
+                    return false;
+                }
+            }
+
             if (!container.Maps.TryGetValue(typeof(T), out object boxed))
             {
                 return false;
             }
             Dictionary<uint, T> map = (Dictionary<uint, T>)boxed;
             map[staticKey] = asset;
+#if UNITY_EDITOR
+        RefreshDebugRegisteredAssets();
+#endif
             return true;
         }
     }
@@ -920,6 +928,9 @@ public class ResourceManager : MonoBehaviour
             Dictionary<uint, T> map = (Dictionary<uint, T>)boxed;
             map.Remove(staticKey);
         }
+#if UNITY_EDITOR
+            RefreshDebugRegisteredAssets();
+#endif
     }
 
     /// <summary>
@@ -1191,6 +1202,22 @@ public class ResourceManager : MonoBehaviour
             return IOResult.Fail(IOFailReason.NotFound);
         }
         return IOResult.Ok();
+    }
+
+    internal async Task<IOResult> SaveTextAsync(string path, string text, CancellationToken ct = default)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return IOResult.Fail(IOFailReason.InvalidPath);
+        }
+
+        if (text == null)
+        {
+            return IOResult.Fail(IOFailReason.SaveFailed, new ArgumentNullException(nameof(text)));
+        }
+
+        byte[] bytes = Encoding.UTF8.GetBytes(text);
+        return await SaveAsync(path, bytes, ct);
     }
 
     internal async Task<IOResult> SaveAsync(string path, byte[] bytes, CancellationToken ct = default)
@@ -1833,6 +1860,81 @@ public class ResourceManager : MonoBehaviour
             Dictionary<uint, T> map = (Dictionary<uint, T>)boxed;
             return map.TryGetValue(staticKey, out asset);
         }
+    }
+    #endregion
+
+    #region DebugHelper
+#if UNITY_EDITOR
+    private void RefreshDebugRegisteredAssets()
+    {
+        debugAssetMaps.Clear();
+
+        if (assetContainers == null)
+        {
+            return;
+        }
+
+        // 4개의 컨테이너
+        for (int i = 0; i < assetContainers.Length; i++)
+        {
+            TypeMapContainer container = assetContainers[i];
+            if (container == null)
+            {
+                continue;
+            }
+
+            lock (container.LockObj)
+            {
+                foreach (KeyValuePair<Type, object> typeEntry in container.Maps)
+                {
+                    Type assetType = typeEntry.Key;
+                    object boxedMap = typeEntry.Value;
+
+                    if (boxedMap == null)
+                    {
+                        continue;
+                    }
+
+                    IEnumerable enumerable = boxedMap as IEnumerable;
+                    if (enumerable == null)
+                    {
+                        continue;
+                    }
+
+                    foreach (object entry in enumerable)
+                    {
+                        if (entry == null)
+                        {
+                            continue;
+                        }
+
+                        Type entryType = entry.GetType();
+                        PropertyInfo keyProp = entryType.GetProperty("Key");
+                        PropertyInfo valProp = entryType.GetProperty("Value");
+
+                        object kObj = null;
+                        object vObj = null;
+
+                        if (keyProp != null)
+                        {
+                            kObj = keyProp.GetValue(entry);
+                        }
+
+                        if (valProp != null)
+                        {
+                            vObj = valProp.GetValue(entry);
+                        }
+
+                        string k = Formatter.ToDebugString(kObj);
+                        string v = Formatter.ToDebugString(vObj);
+
+                        DebugKeyValuePair kv = new DebugKeyValuePair(k, v);
+                        debugAssetMaps.Add(kv);
+                    }
+                }
+            }
+        }
+#endif
     }
     #endregion
 }

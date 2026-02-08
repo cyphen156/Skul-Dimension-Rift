@@ -1,13 +1,13 @@
 {
   "header": {
     "staticKey": "0x00001000",
-    "id": "ContentManifest",
+    "id": "Skul-Dimension_Rift",
     "category": 0,
     "version": 1
   },
   "body": {
     "staticKey": "0x00001000",
-    "id": "ContentManifest",
+    "id": "Skul-Dimension_Rift",
     "schema": "ContentManifest",
     "verifyRoot": "http://127.0.0.1:5001",
     "metaApi": "api/meta?id={Id}&schema={Schema}&platform={Platform}",

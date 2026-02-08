@@ -1,5 +1,5 @@
-﻿using System;
-using Assets.Scripts.Interface;
+﻿using Assets.Scripts.Interface;
+using System;
 using System.Collections.Generic;
 
 namespace Assets.Scripts.Data
@@ -12,6 +12,7 @@ namespace Assets.Scripts.Data
         Private = 3,
     }
 
+    [Serializable]
     internal class TypeMapContainer : IContainer
     {
         internal readonly Dictionary<Type, object> Maps = new Dictionary<Type, object>();
@@ -23,5 +24,6 @@ namespace Assets.Scripts.Data
         {
             this.mode = mode;
         }
+
     }
 }
