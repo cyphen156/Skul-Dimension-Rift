@@ -24,12 +24,7 @@ namespace Assets.Scripts.Content
 
                 ContentRecord record = new ContentRecord();
                 record.header = JsonSerializer.Deserialize<ContentHeader>(headerElement.GetRawText(), options);
-                record.body = bodyElement.GetRawText();
-
-                if (record.body == null)
-                {
-                    record.body = string.Empty;
-                }
+                record.body = bodyElement.Clone();
 
                 return record;
             }
@@ -37,23 +32,28 @@ namespace Assets.Scripts.Content
 
         public override void Write(Utf8JsonWriter writer, ContentRecord value, JsonSerializerOptions options)
         {
+            if (value == null)
+            {
+                writer.WriteNullValue();
+                return;
+            }
             writer.WriteStartObject();
 
             writer.WritePropertyName("header");
             JsonSerializer.Serialize(writer, value.header, options);
 
             writer.WritePropertyName("body");
-
-            if (string.IsNullOrEmpty(value.body))
+            if (value.body.ValueKind == JsonValueKind.Undefined)
+            {
+                writer.WriteNullValue();
+            }
+            else if (value.body.ValueKind == JsonValueKind.Null)
             {
                 writer.WriteNullValue();
             }
             else
             {
-                using (JsonDocument bodyDoc = JsonDocument.Parse(value.body))
-                {
-                    bodyDoc.RootElement.WriteTo(writer);
-                }
+                value.body.WriteTo(writer);
             }
 
             writer.WriteEndObject();

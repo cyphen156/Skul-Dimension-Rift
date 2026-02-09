@@ -2,7 +2,7 @@
   "header": {
     "staticKey": "0x00001000",
     "id": "Skul-Dimension_Rift",
-    "category": 0,
+    "category": "Data",
     "version": 1
   },
   "body": {
@@ -13,13 +13,13 @@
     "metaApi": "api/meta?id={Id}&schema={Schema}&platform={Platform}",
     "contentCatalogs": [
       {
-        "staticKey": 1895825408,
+        "staticKey": "0x71000000",
         "id": "Common",
         "schema": "ContentCatalog",
         "requiredOnBoot": true
       },
       {
-        "staticKey": 1895890944,
+        "staticKey": "0x71010000",
         "id": "Stage0",
         "schema": "ContentCatalog",
         "requiredOnBoot": false
@@ -27,13 +27,15 @@
     ],
     "scenes": [
       {
-        "staticKey": 1896871936,
-        "sceneName": "TitleScene",
+        "staticKey": "0x72000000",
+        "id": "TitleScene",
+        "schema": "SceneEntry",
         "ownerCatalogId": "Common"
       },
       {
-        "staticKey": 1900085248,
-        "sceneName": "Stage0Scene",
+        "staticKey": "0x72010000",
+        "id": "Stage0Scene",
+        "schema": "SceneEntry",
         "ownerCatalogId": "Stage0"
       }
     ]

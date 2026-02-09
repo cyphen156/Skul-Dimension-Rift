@@ -1,6 +1,6 @@
 Branch #10 리소스 로드 시스템 어드레서블 개편
 
-Commit [Refactor] ResourceManager 1차 리팩토링 종료
+Commit [Refactor][Feat] 부트스트랩 전용 CMS - RM 기본 데이터 특례함수생성중
 
 변경 요약
 

@@ -1,9 +1,9 @@
 using Assets.Scripts.Content;
 using Assets.Scripts.Data;
+using Assets.Scripts.Utility;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Pipelines;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -28,7 +28,6 @@ public static class ContentManagementSystem
             );
             return IOResult.Fail(IOFailReason.AccessDenied);
         }
-
 
         if (string.IsNullOrEmpty(path))
         {
@@ -106,43 +105,47 @@ public static class ContentManagementSystem
             {
                 return saveResult;
             }
-
-            // 로컬 Manifest기준으로 다시 읽어옴 (PersistancePath)
-            (IOResult readResult, string localJson) read = await rm.ReadAllTextsAsync(localManifestPath, ct);
-            if (!read.readResult.succeed)
-            {
-                return read.readResult;
-            }
-
-            ContentRecord localRecord;
-            try
-            {
-                localRecord = JsonSerializer.Deserialize<ContentRecord>(read.localJson, ContentJsonOptions.Options);
-            }
-            catch (Exception e)
-            {
-                return IOResult.Fail(IOFailReason.LoadFailed, e);
-            }
-
-            if (localRecord == null)
-            {
-                return IOResult.Fail(IOFailReason.LoadFailed);
-            }
-
-            if (!ContentRecordCodec.TryDecode(localRecord, out var localBody))
-            {
-                return IOResult.Fail(IOFailReason.DecodeFailed);
-            }
-
-            if (localBody is not ContentManifest localManifest)
-            {
-                return IOResult.Fail(IOFailReason.DecodeFailed);
-            }
-
-            manifest = localManifest;
+        }
+        // 로컬 Manifest기준으로 다시 읽어옴 (PersistancePath)
+        (IOResult readResult, string localJson) read = await rm.ReadAllTextsAsync(localManifestPath, ct);
+        if (!read.readResult.succeed)
+        {
+            return read.readResult;
         }
 
+        ContentRecord localRecord;
+        try
+        {
+            localRecord = JsonSerializer.Deserialize<ContentRecord>(read.localJson, ContentJsonOptions.Options);
+        }
+        catch (Exception e)
+        {
+            return IOResult.Fail(IOFailReason.LoadFailed, e);
+        }
+
+        if (localRecord == null)
+        {
+            return IOResult.Fail(IOFailReason.LoadFailed);
+        }
+
+        if (!ContentRecordCodec.TryDecode(localRecord, out var localBody))
+        {
+            return IOResult.Fail(IOFailReason.DecodeFailed);
+        }
+
+        if (localBody is not ContentManifest localManifest)
+        {
+            return IOResult.Fail(IOFailReason.DecodeFailed);
+        }
+
+        manifest = localManifest;
+
         if (!rm.Register(manifest.staticKey, manifest, AccessMode.Public))
+        {
+            return IOResult.Fail(IOFailReason.RegistrationFailed);
+        }
+
+        if(!ResourceManager.InitializeManifestStaticKey(manifest.staticKey))
         {
             return IOResult.Fail(IOFailReason.RegistrationFailed);
         }
@@ -151,21 +154,118 @@ public static class ContentManagementSystem
     }
 
     /// <summary>
-    /// 외부에서 어떤 컨텐츠를 호출할 때 사용되는 key
+    /// Content의 Meta를 기준으로 서버와 비교하여 최신 상태인지 아닌지를 판별하여 반환한다.
     /// </summary>
     /// <param name="staticKey"></param>
     /// <returns></returns>
-    //public static IEnumerator PrepareContent(uint staticKey)
-    //{
+    private static async Task<ContentVerifyContext> VerifyContentAsync(uint staticKey)
+    {
+        ContentVerifyContext cts = new ContentVerifyContext();
+        
+        ResourceManager rm = ResourceManager.instance;
 
-    //    return true;
-    //}
+        ContentManifest manifest;
+        if (!rm.TryGetAsset(ResourceManager.ManifestStaticKey, out manifest))
+        {
+            cts.result = VerifyResult.Failed;
+            cts.failReason = VerifyFailReason.AccessDenied;
+            return cts;
+        }
 
+        ContentPath.BuildMetaAPIUri(manifest.verifyRoot, manifest.metaApi, )
+    }
 
-    //public static IEnumerator SyncContent(uint staticKey)
-    //{
+    //private static IEnumerator VerifyContentMeta(ContentMeta localMeta, string id, string schema, ContentVerifyContext ctx)
+    //    {
+    //        if (ctx == null)
+    //        {
+    //            yield break;
+    //        }
 
-    //}
+    //        ctx.Bind(id, schema);
+
+    //        string platform = ContentPath.GetPlatformFolder();
+
+    //        string remoteMetaUri = ContentPath.BuildMetaUri(
+    //            contentManifest.verifyRoot,
+    //            contentManifest.metaApi,
+    //            id,
+    //            schema,
+    //            platform
+    //        );
+
+    //        if (string.IsNullOrEmpty(remoteMetaUri))
+    //        {
+    //            ctx.result = VerifyResult.Failed;
+    //            ctx.failReason = VerifyFailReason.InvalidPath;
+    //            yield break;
+    //        }
+
+    //        UnityWebRequest webRequest = UnityWebRequest.Get(remoteMetaUri);
+    //        yield return webRequest.SendWebRequest();
+
+    //        if (webRequest.result != UnityWebRequest.Result.Success)
+    //        {
+    //            ctx.result = VerifyResult.Failed;
+
+    //            if (webRequest.result == UnityWebRequest.Result.ProtocolError)
+    //            {
+    //                long code = webRequest.responseCode;
+    //                if (code >= 400 && code < 500)
+    //                {
+    //                    ctx.failReason = VerifyFailReason.Http4xx;
+    //                }
+    //                else if (code >= 500 && code < 600)
+    //                {
+    //                    ctx.failReason = VerifyFailReason.Http5xx;
+    //                }
+    //                else
+    //                {
+    //                    ctx.failReason = VerifyFailReason.InvalidResponse;
+    //                }
+    //            }
+    //            else
+    //            {
+    //                ctx.failReason = VerifyFailReason.NetworkError;
+    //            }
+
+    //            yield break;
+    //        }
+
+    //        string json = webRequest.downloadHandler.text;
+
+    //        if (string.IsNullOrEmpty(json))
+    //        {
+    //            ctx.result = VerifyResult.Failed;
+    //            ctx.failReason = VerifyFailReason.InvalidResponse;
+    //            yield break;
+    //        }
+
+    //        ContentMeta remoteMeta = JsonUtility.FromJson<ContentMeta>(json);
+    //        if (remoteMeta == null || string.IsNullOrEmpty(remoteMeta.dataUri))
+    //        {
+    //            ctx.result = VerifyResult.Failed;
+    //            ctx.failReason = VerifyFailReason.ParseError;
+    //            yield break;
+    //        }
+
+    //        ctx.remoteMeta = remoteMeta;
+
+    //        if (localMeta == null || string.IsNullOrEmpty(localMeta.sha256))
+    //        {
+    //            ctx.result = VerifyResult.Outdated;
+    //            yield break;
+    //        }
+
+    //        if (string.Equals(localMeta.sha256, remoteMeta.sha256))
+    //        {
+    //            ctx.result = VerifyResult.UpToDate;
+    //            yield break;
+    //        }
+
+    //        ctx.result = VerifyResult.Outdated;
+    //    }
+
     private static void UpdateContentCatalog(List<IResourceLocator> registers, List<IResourceLocator> unregisters)
     {
         foreach (IResourceLocator locator in registers)
@@ -379,249 +479,170 @@ public static class ContentManagementSystem
     //        //}
     //    }
 
-    //    public static IEnumerator SyncContentManifest()
+    /// <summary>
+    /// 서버와의 동기화 함수
+    /// </summary>
+    /// <param name="staticKey"></param>
+    /// <returns></returns>
+    //public static async Task<IOResult> SyncContentAsync(uint staticKey, CancellationToken ct = default)
+    //{
+    //    // 1. 로컬 데이터 세팅
+    //    ResourceManager rm = ResourceManager.instance;
+
+    //    if (rm == null)
     //    {
-    //        ContentMeta localMeta;
-    //        // 1. 로컬 데이터 세팅
-    //        LoadContentMeta(out localMeta, contentManifest.id, contentManifest.schema);
+    //        return IOResult.Fail(IOFailReason.LoadFailed);
+    //    }
 
-    //        if (manifestVerifyContext == null)
-    //        {
-    //            manifestVerifyContext = new ContentVerifyContext();
-    //        }
+    //    rm.TryGetAsset(staticKey, )
+    //    if (manifestVerifyContext == null)
+    //    {
+    //        manifestVerifyContext = new ContentVerifyContext();
+    //    }
 
-    //        // 2. 서버와 비교 검증
-    //        yield return VerifyContentMeta(localMeta, contentManifest.id, contentManifest.schema, manifestVerifyContext);
+    //    // 2. 서버와 비교 검증
+    //    return VerifyContentMeta(localMeta, contentManifest.id, contentManifest.schema, manifestVerifyContext);
 
-    //        // 3, 결과 처리
-    //        switch (manifestVerifyContext.result)
-    //        {
-    //            case VerifyResult.None:
-    //                Debug.LogWarning("[ResourceManager] Content verify result is None");
-    //                break;
-    //            case VerifyResult.Failed:
-    //                // 검증 실패
-    //                // 로컬 데이터 사용
-    //                // 멀티플레이 모드 금지 ==> 재검증 요구
-    //                Debug.LogWarning($"[ResourceManager] Content verify failed: {manifestVerifyContext.failReason}");
-    //                //GameManager.instance.ChangeGameMode(Types.GameMode.Single);
-    //                break;
-    //            case VerifyResult.UpToDate:
-    //                // 최신 상태
-    //                break;
-    //            case VerifyResult.Outdated:
+    //    // 3, 결과 처리
+    //    switch (manifestVerifyContext.result)
+    //    {
+    //        case VerifyResult.None:
+    //            Debug.LogWarning("[ResourceManager] Content verify result is None");
+    //            break;
+    //        case VerifyResult.Failed:
+    //            // 검증 실패
+    //            // 로컬 데이터 사용
+    //            // 멀티플레이 모드 금지 ==> 재검증 요구
+    //            Debug.LogWarning($"[ResourceManager] Content verify failed: {manifestVerifyContext.failReason}");
+    //            //GameManager.instance.ChangeGameMode(Types.GameMode.Single);
+    //            break;
+    //        case VerifyResult.UpToDate:
+    //            // 최신 상태
+    //            break;
+    //        case VerifyResult.Outdated:
+    //            {
+    //                Debug.Log("[ResourceManager] Content is outdated, updating...");
+    //                // 3_1 매니페스트 본문 캐시 업데이트
+    //                yield return UpdateContentManifest(manifestVerifyContext);
+
+    //                if (manifestVerifyContext.dataUpdateSucceeded == false)
     //                {
-    //                    Debug.Log("[ResourceManager] Content is outdated, updating...");
-    //                    // 3_1 매니페스트 본문 캐시 업데이트
-    //                    yield return UpdateContentManifest(manifestVerifyContext);
+    //                    // 매니페스트 업데이트 실패시 중단
+    //                    // -> 로컬 폴백
+    //                    break;
+    //                }
 
-    //                    if (manifestVerifyContext.dataUpdateSucceeded == false)
+    //                bool isContentConsistent = true;
+
+    //                // 3_2 캐시를 이용하여 카탈로그 업데이트 처리
+    //                foreach (ContentCatalogEntry catalogEntry in contentManifest.contentCatalogs)
+    //                {
+    //                    // 필수 항목이 아닌 경우 스킵 
+    //                    // -> 런타임 시점에 필요시점에 검증 처리(SceenLoad 시점)
+    //                    if (catalogEntry.requiredOnBoot == false)
     //                    {
-    //                        // 매니페스트 업데이트 실패시 중단
-    //                        // -> 로컬 폴백
+    //                        continue;
+    //                    }
+
+    //                    if (localMeta != null)
+    //                    {
+    //                        localMeta.Clear();
+    //                    }
+    //                    LoadContentMeta(out localMeta, catalogEntry.id, catalogEntry.schema);
+
+    //                    ContentVerifyContext ctx = new ContentVerifyContext();
+    //                    yield return VerifyContentMeta(localMeta, catalogEntry.id, catalogEntry.schema, ctx);
+
+    //                    if (ctx.result == VerifyResult.Failed)
+    //                    {
+    //                        isContentConsistent = false;
     //                        break;
     //                    }
 
-    //                    bool isContentConsistent = true;
-
-    //                    // 3_2 캐시를 이용하여 카탈로그 업데이트 처리
-    //                    foreach (ContentCatalogEntry catalogEntry in contentManifest.contentCatalogs)
+    //                    if (ctx.result == VerifyResult.UpToDate)
     //                    {
-    //                        // 필수 항목이 아닌 경우 스킵 
-    //                        // -> 런타임 시점에 필요시점에 검증 처리(SceenLoad 시점)
-    //                        if (catalogEntry.requiredOnBoot == false)
+    //                        // 메타가 최신이면 로컬 payload가 반드시 있어야 함
+    //                        ContentCatalog localCatalog = LoadContentPayload<ContentCatalog>(catalogEntry.id, catalogEntry.schema);
+    //                        if (localCatalog == null)
+    //                        {
+    //                            ctx.result = VerifyResult.Outdated;
+    //                        }
+    //                        else
     //                        {
     //                            continue;
     //                        }
-
-    //                        if (localMeta != null)
-    //                        {
-    //                            localMeta.Clear();
-    //                        }
-    //                        LoadContentMeta(out localMeta, catalogEntry.id, catalogEntry.schema);
-
-    //                        ContentVerifyContext ctx = new ContentVerifyContext();
-    //                        yield return VerifyContentMeta(localMeta, catalogEntry.id, catalogEntry.schema, ctx);
-
-    //                        if (ctx.result == VerifyResult.Failed)
-    //                        {
-    //                            isContentConsistent = false;
-    //                            break;
-    //                        }
-
-    //                        if (ctx.result == VerifyResult.UpToDate)
-    //                        {
-    //                            // 메타가 최신이면 로컬 payload가 반드시 있어야 함
-    //                            ContentCatalog localCatalog = LoadContentPayload<ContentCatalog>(catalogEntry.id, catalogEntry.schema);
-    //                            if (localCatalog == null)
-    //                            {
-    //                                ctx.result = VerifyResult.Outdated;
-    //                            }
-    //                            else
-    //                            {
-    //                                continue;
-    //                            }
-    //                        }
-
-    //                        if (ctx.result != VerifyResult.Outdated)
-    //                        {
-    //                            isContentConsistent = false;
-    //                            break;
-    //                        }
-
-    //                        yield return UpdateContentCatalog(ctx);
-
-    //                        if (ctx.dataUpdateSucceeded == false)
-    //                        {
-    //                            isContentConsistent = false;
-    //                            break;
-    //                        }
-
-    //                        ContentCatalog catalog = LoadContentPayload<ContentCatalog>(catalogEntry.id, catalogEntry.schema);
-    //                        if (catalog == null)
-    //                        {
-    //                            isContentConsistent = false;
-    //                            break;
-    //                        }
-
-    //                        yield return UpdateContentBundle(ctx, catalog);
-
-    //                        if (ctx.dataUpdateSucceeded == false)
-    //                        {
-    //                            isContentConsistent = false;
-    //                            break;
-    //                        }
-
-    //                        SaveContentMeta(ctx);
     //                    }
 
-    //                    // 업데이트 도중에 문제가 발생했다면 중단
-    //                    if (isContentConsistent == false)
+    //                    if (ctx.result != VerifyResult.Outdated)
     //                    {
+    //                        isContentConsistent = false;
     //                        break;
     //                    }
 
-    //                    //SaveContentManifest(contentManifest);
-    //                    SaveContentMeta(manifestVerifyContext);
+    //                    return UpdateContentCatalog(ctx);
 
+    //                    if (ctx.dataUpdateSucceeded == false)
+    //                    {
+    //                        isContentConsistent = false;
+    //                        break;
+    //                    }
+
+    //                    ContentCatalog catalog = LoadContentPayload<ContentCatalog>(catalogEntry.id, catalogEntry.schema);
+    //                    if (catalog == null)
+    //                    {
+    //                        isContentConsistent = false;
+    //                        break;
+    //                    }
+
+    //                    return UpdateContentBundle(ctx, catalog);
+
+    //                    if (ctx.dataUpdateSucceeded == false)
+    //                    {
+    //                        isContentConsistent = false;
+    //                        break;
+    //                    }
+
+    //                    SaveContentMeta(ctx);
+    //                }
+
+    //                // 업데이트 도중에 문제가 발생했다면 중단
+    //                if (isContentConsistent == false)
+    //                {
     //                    break;
     //                }
-    //            default:
-    //                Debug.LogWarning("[ResourceManager] Unknown content verify result");
+
+    //                //SaveContentManifest(contentManifest);
+    //                SaveContentMeta(manifestVerifyContext);
+
     //                break;
-    //        }
-
-    //        sceneEntries.Clear();
-
-    //        // 게임 내에서 사용할 수 있는 씬 도메인 엔트리 등록
-    //        for (int i = 0; i < contentManifest.scenes.Count; i++)
-    //        {
-    //            SceneEntry scene = contentManifest.scenes[i];
-    //            if (scene == null)
-    //            {
-    //                continue;
     //            }
-
-    //            uint staticKey;
-    //            if (DomainKeyParser.TryParseStaticKey(scene.staticKey, out staticKey) == false)
-    //            {
-    //                continue;
-    //            }
-
-    //            sceneEntries[staticKey] = scene;
-    //        }
+    //        default:
+    //            Debug.LogWarning("[ResourceManager] Unknown content verify result");
+    //            break;
     //    }
 
-    //    private static IEnumerator VerifyContentMeta(ContentMeta localMeta, string id, string schema, ContentVerifyContext ctx)
+    //    sceneEntries.Clear();
+
+    //    // 게임 내에서 사용할 수 있는 씬 도메인 엔트리 등록
+    //    for (int i = 0; i < contentManifest.scenes.Count; i++)
     //    {
-    //        if (ctx == null)
+    //        SceneEntry scene = contentManifest.scenes[i];
+    //        if (scene == null)
     //        {
-    //            yield break;
+    //            continue;
     //        }
 
-    //        ctx.Bind(id, schema);
-
-    //        string platform = ContentPath.GetPlatformFolder();
-
-    //        string remoteMetaUri = ContentPath.BuildMetaUri(
-    //            contentManifest.verifyRoot,
-    //            contentManifest.metaApi,
-    //            id,
-    //            schema,
-    //            platform
-    //        );
-
-    //        if (string.IsNullOrEmpty(remoteMetaUri))
+    //        uint staticKey;
+    //        if (DomainKeyParser.TryParseStaticKey(scene.staticKey, out staticKey) == false)
     //        {
-    //            ctx.result = VerifyResult.Failed;
-    //            ctx.failReason = VerifyFailReason.InvalidPath;
-    //            yield break;
+    //            continue;
     //        }
 
-    //        UnityWebRequest webRequest = UnityWebRequest.Get(remoteMetaUri);
-    //        yield return webRequest.SendWebRequest();
-
-    //        if (webRequest.result != UnityWebRequest.Result.Success)
-    //        {
-    //            ctx.result = VerifyResult.Failed;
-
-    //            if (webRequest.result == UnityWebRequest.Result.ProtocolError)
-    //            {
-    //                long code = webRequest.responseCode;
-    //                if (code >= 400 && code < 500)
-    //                {
-    //                    ctx.failReason = VerifyFailReason.Http4xx;
-    //                }
-    //                else if (code >= 500 && code < 600)
-    //                {
-    //                    ctx.failReason = VerifyFailReason.Http5xx;
-    //                }
-    //                else
-    //                {
-    //                    ctx.failReason = VerifyFailReason.InvalidResponse;
-    //                }
-    //            }
-    //            else
-    //            {
-    //                ctx.failReason = VerifyFailReason.NetworkError;
-    //            }
-
-    //            yield break;
-    //        }
-
-    //        string json = webRequest.downloadHandler.text;
-
-    //        if (string.IsNullOrEmpty(json))
-    //        {
-    //            ctx.result = VerifyResult.Failed;
-    //            ctx.failReason = VerifyFailReason.InvalidResponse;
-    //            yield break;
-    //        }
-
-    //        ContentMeta remoteMeta = JsonUtility.FromJson<ContentMeta>(json);
-    //        if (remoteMeta == null || string.IsNullOrEmpty(remoteMeta.dataUri))
-    //        {
-    //            ctx.result = VerifyResult.Failed;
-    //            ctx.failReason = VerifyFailReason.ParseError;
-    //            yield break;
-    //        }
-
-    //        ctx.remoteMeta = remoteMeta;
-
-    //        if (localMeta == null || string.IsNullOrEmpty(localMeta.sha256))
-    //        {
-    //            ctx.result = VerifyResult.Outdated;
-    //            yield break;
-    //        }
-
-    //        if (string.Equals(localMeta.sha256, remoteMeta.sha256))
-    //        {
-    //            ctx.result = VerifyResult.UpToDate;
-    //            yield break;
-    //        }
-
-    //        ctx.result = VerifyResult.Outdated;
+    //        sceneEntries[staticKey] = scene;
     //    }
+    //}
+
+    //    
 
     //    /// <summary>
     //    /// 매니페스트  본문 업데이트

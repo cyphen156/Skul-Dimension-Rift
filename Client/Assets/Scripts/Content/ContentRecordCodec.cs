@@ -1,5 +1,4 @@
-﻿using Assets.Scripts.Data;
-using System;
+﻿using System;
 using System.Text.Json;
 
 namespace Assets.Scripts.Content
@@ -31,22 +30,14 @@ namespace Assets.Scripts.Content
             ContentRecord record = new ContentRecord();
             record.header = new ContentHeader(category, staticKey, id, version);
 
-            string jsonBody;
             try
             {
-                jsonBody = JsonSerializer.Serialize(body, Options);
+                record.body = JsonSerializer.SerializeToElement(body, Options);
             }
             catch (Exception e)
             {
-                throw new InvalidOperationException("Failed to serialize body with System.Text.Json.", e);
+                throw new InvalidOperationException("Failed to serialize body.", e);
             }
-
-            if (jsonBody == null)
-            {
-                jsonBody = string.Empty;
-            }
-
-            record.body = jsonBody;
             return record;
         }
 
@@ -69,7 +60,10 @@ namespace Assets.Scripts.Content
 
             ContentRecord record = new ContentRecord();
             record.header = new ContentHeader(category, staticKey, id, version);
-            record.body = rawJsonBody;
+            using (JsonDocument doc = JsonDocument.Parse(rawJsonBody))
+            {
+                record.body = doc.RootElement.Clone();
+            }
             return record;
         }
 
@@ -82,18 +76,13 @@ namespace Assets.Scripts.Content
                 return false;
             }
 
-            if (string.IsNullOrEmpty(record.body))
+            if (record.body.ValueKind == JsonValueKind.Undefined ||
+                record.body.ValueKind == JsonValueKind.Null)
             {
                 return false;
             }
 
-            uint staticKey;
-            if (!DomainKeyParser.TryParseStaticKey(record.header.staticKey, out staticKey))
-            {
-                return false;
-            }
-
-            byte classKey = (byte)((staticKey & ClassMask) >> ClassShift);
+            byte classKey = (byte)((record.header.staticKey & ClassMask) >> ClassShift);
 
             try
             {
@@ -127,6 +116,30 @@ namespace Assets.Scripts.Content
             }
 
             return body != null;
+        }
+
+        public static bool TryDecode<T>(ContentRecord record, out T body)
+        {
+            body = default;
+
+            object decoded;
+            if (!TryDecode(record, out decoded))
+            {
+                return false;
+            }
+
+            if (decoded == null)
+            {
+                return false;
+            }
+
+            if (decoded.GetType() != typeof(T))
+            {
+                return false;
+            }
+
+            body = (T)decoded;
+            return true;
         }
     }
 }

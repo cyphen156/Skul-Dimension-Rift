@@ -24,6 +24,8 @@ public class ResourceManager : MonoBehaviour
 {
     public static ResourceManager instance;
 
+    public static uint ManifestStaticKey { get; private set; }
+
     [Header("paths")]
     [SerializeField] private string defaultInputActionPath = "Input/InputActions";
     private const string userDataFileName = "UserData.json"; 
@@ -175,6 +177,22 @@ public class ResourceManager : MonoBehaviour
             assetContainers[(int)mode] = new TypeMapContainer(mode);
         }
     }
+
+    internal static bool InitializeManifestStaticKey(uint staticKey)
+    {
+        if (staticKey == default)
+        {
+            return false;
+        }
+
+        if (ManifestStaticKey != default)
+        {
+            return false;
+        }
+        ManifestStaticKey = staticKey;
+        return true;
+    }
+
     #endregion
 
     #region Regacy Resource Accessors 

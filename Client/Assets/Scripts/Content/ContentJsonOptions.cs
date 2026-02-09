@@ -13,8 +13,7 @@ namespace Assets.Scripts.Content
             options.PropertyNameCaseInsensitive = false;
 
             options.Converters.Add(new ContentRecordJsonConverter());
-            options.Converters.Add(new JsonHexUInt32Converter());
-            options.Converters.Add(new EnumStringJsonConverter<Catagory>());
+            options.Converters.Add(new EnumStringJsonConverterFactory());
 
             return options;
         }

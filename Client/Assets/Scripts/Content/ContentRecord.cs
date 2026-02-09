@@ -1,5 +1,6 @@
-﻿using Assets.Scripts.Data;
-using System;
+﻿using System;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Assets.Scripts.Content
 {
@@ -12,14 +13,16 @@ namespace Assets.Scripts.Content
     [Serializable]
     public struct ContentHeader
     {
-        public string staticKey;
+        [JsonConverter(typeof(JsonHexUInt32Converter))]
+        public uint staticKey;
+
         public string id;
         public Catagory category;
         public int version;
 
         public ContentHeader(Catagory category, uint staticKey, string id, int version)
         {
-            this.staticKey = DomainKeyParser.ToHex(staticKey);
+            this.staticKey = staticKey;
             this.id = id;
             this.category = category;
             this.version = version;
@@ -29,6 +32,6 @@ namespace Assets.Scripts.Content
     public sealed class ContentRecord
     {
         public ContentHeader header;
-        public string body;
+        public JsonElement body;
     }
 }
