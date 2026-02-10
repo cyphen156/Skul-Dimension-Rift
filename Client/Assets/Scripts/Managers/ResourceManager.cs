@@ -1,3 +1,4 @@
+using Assets.Scripts.Content;
 using Assets.Scripts.Data;
 using Assets.Scripts.Interface;
 using Assets.Scripts.Utility;
@@ -25,7 +26,7 @@ public class ResourceManager : MonoBehaviour
     public static ResourceManager instance;
 
     public static uint ManifestStaticKey { get; private set; }
-
+    
     [Header("paths")]
     [SerializeField] private string defaultInputActionPath = "Input/InputActions";
     private const string userDataFileName = "UserData.json"; 

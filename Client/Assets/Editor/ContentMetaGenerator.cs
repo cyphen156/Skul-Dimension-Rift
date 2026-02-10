@@ -73,7 +73,7 @@ public static class ContentMetaGenerator
             ContentMeta meta = new ContentMeta();
             meta.version = 1;
             meta.sha256 = hash;
-
+            meta.size = data.Length;
             string metaJson = JsonUtility.ToJson(meta, true);
 
             File.WriteAllText(metaOutputPath, metaJson, Encoding.UTF8);

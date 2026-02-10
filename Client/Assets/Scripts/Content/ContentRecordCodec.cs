@@ -10,7 +10,7 @@ namespace Assets.Scripts.Content
 
         public static readonly JsonSerializerOptions Options = ContentJsonOptions.Options;
 
-        public static ContentRecord Encode<T>(Catagory category, uint staticKey, string id, int version, T body)
+        public static ContentRecord Encode<T>(ContentCategory category, uint staticKey, string id, int version, T body)
         {
             if (string.IsNullOrEmpty(id))
             {
@@ -41,7 +41,7 @@ namespace Assets.Scripts.Content
             return record;
         }
 
-        public static ContentRecord Encode(Catagory category, uint staticKey, string id, int version, string rawJsonBody)
+        public static ContentRecord Encode(ContentCategory category, uint staticKey, string id, int version, string rawJsonBody)
         {
             if (string.IsNullOrEmpty(id))
             {

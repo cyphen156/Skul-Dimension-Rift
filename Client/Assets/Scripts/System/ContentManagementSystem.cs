@@ -106,6 +106,7 @@ public static class ContentManagementSystem
                 return saveResult;
             }
         }
+
         // 로컬 Manifest기준으로 다시 읽어옴 (PersistancePath)
         (IOResult readResult, string localJson) read = await rm.ReadAllTextsAsync(localManifestPath, ct);
         if (!read.readResult.succeed)
@@ -153,118 +154,252 @@ public static class ContentManagementSystem
         return IOResult.Ok();
     }
 
-    /// <summary>
-    /// Content의 Meta를 기준으로 서버와 비교하여 최신 상태인지 아닌지를 판별하여 반환한다.
-    /// </summary>
-    /// <param name="staticKey"></param>
-    /// <returns></returns>
-    private static async Task<ContentVerifyContext> VerifyContentAsync(uint staticKey)
+    private static async Task<ContentVerifyContext> VerifyContentMetaAsync(ContentMeta localMeta, string id, string schema, CancellationToken ct = default)
     {
-        ContentVerifyContext cts = new ContentVerifyContext();
-        
-        ResourceManager rm = ResourceManager.instance;
+        ContentVerifyContext ctx = new ContentVerifyContext();
+        ctx.Bind(id, schema);
 
-        ContentManifest manifest;
-        if (!rm.TryGetAsset(ResourceManager.ManifestStaticKey, out manifest))
+        if (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(schema))
         {
-            cts.result = VerifyResult.Failed;
-            cts.failReason = VerifyFailReason.AccessDenied;
-            return cts;
+            ctx.result = VerifyResult.Failed;
+            ctx.failReason = VerifyFailReason.InvalidPath;
+            return ctx;
         }
 
-        ContentPath.BuildMetaAPIUri(manifest.verifyRoot, manifest.metaApi, )
+        ResourceManager rm = ResourceManager.instance;
+        if (rm == null)
+        {
+            ctx.result = VerifyResult.Failed;
+            ctx.failReason = VerifyFailReason.NotInitialized;
+            return ctx;
+        }
+
+        ContentManifest manifest = null;
+        if (!rm.TryGetAsset<ContentManifest>(ResourceManager.ManifestStaticKey, out manifest))
+        {
+            ctx.result = VerifyResult.Failed;
+            ctx.failReason = VerifyFailReason.NotInitialized;
+            return ctx;
+        }
+
+        string platform = ContentPath.GetPlatformFolder();
+
+        string remoteMetaUri = ContentPath.BuildMetaAPIUri(
+            manifest.verifyRoot,
+            manifest.metaApi,
+            id,
+            schema,
+            platform
+        );
+
+        if (string.IsNullOrEmpty(remoteMetaUri))
+        {
+            ctx.result = VerifyResult.Failed;
+            ctx.failReason = VerifyFailReason.InvalidPath;
+            return ctx;
+        }
+
+        var downloaded = await rm.DownloadBufferAsync(remoteMetaUri, ct);
+        IOResult ioResult = downloaded.result;
+        byte[] buffer = downloaded.data;
+
+        if (ioResult == null || !ioResult.succeed)
+        {
+            ctx.result = VerifyResult.Failed;
+
+            if (ioResult == null)
+            {
+                ctx.failReason = VerifyFailReason.NetworkError;
+                return ctx;
+            }
+
+            switch (ioResult.failReason)
+            {
+                case IOFailReason.Canceled:
+                        ctx.failReason = VerifyFailReason.Canceled;
+                        break;
+                case IOFailReason.InvalidUri:
+                        ctx.failReason = VerifyFailReason.InvalidUri;
+                        break;
+                case IOFailReason.InvalidPath:
+                        ctx.failReason = VerifyFailReason.InvalidPath;
+                        break;
+                case IOFailReason.Unknown:
+                    {
+                        ctx.failReason = VerifyFailReason.InvalidResponse;
+                        break;
+                    }
+                case IOFailReason.DecodeFailed:
+                        ctx.failReason = VerifyFailReason.ParseError;
+                        break;
+                default:
+                        ctx.failReason = VerifyFailReason.NetworkError;
+                        break;
+            }
+
+            return ctx;
+        }
+
+        if (buffer == null || buffer.Length == 0)
+        {
+            ctx.result = VerifyResult.Failed;
+            ctx.failReason = VerifyFailReason.InvalidResponse;
+            return ctx;
+        }
+
+        string json = Encoding.UTF8.GetString(buffer);
+        if (string.IsNullOrEmpty(json))
+        {
+            ctx.result = VerifyResult.Failed;
+            ctx.failReason = VerifyFailReason.InvalidResponse;
+            return ctx;
+        }
+
+        ContentMeta remoteMeta = null;
+
+        try
+        {
+            remoteMeta = JsonUtility.FromJson<ContentMeta>(json);
+        }
+        catch (Exception)
+        {
+            ctx.result = VerifyResult.Failed;
+            ctx.failReason = VerifyFailReason.ParseError;
+            return ctx;
+        }
+
+        if (remoteMeta == null || string.IsNullOrEmpty(remoteMeta.sha256))
+        {
+            ctx.result = VerifyResult.Failed;
+            ctx.failReason = VerifyFailReason.ParseError;
+            return ctx;
+        }
+
+        ctx.remoteMeta = remoteMeta;
+
+        if (localMeta == null || string.IsNullOrEmpty(localMeta.sha256))
+        {
+            ctx.result = VerifyResult.Outdated;
+            return ctx;
+        }
+
+        if (string.Equals(localMeta.sha256, remoteMeta.sha256, StringComparison.Ordinal))
+        {
+            ctx.result = VerifyResult.UpToDate;
+            return ctx;
+        }
+
+        ctx.result = VerifyResult.Outdated;
+        return ctx;
     }
 
-    //private static IEnumerator VerifyContentMeta(ContentMeta localMeta, string id, string schema, ContentVerifyContext ctx)
-    //    {
-    //        if (ctx == null)
-    //        {
-    //            yield break;
-    //        }
+    private static async Task<IOResult> UpdateContent(ContentVerifyContext ctx, ContentCategory category, CancellationToken ct = default)
+    {
+        if (ctx == null)
+        {
+            return IOResult.Fail(IOFailReason.InvalidResponse);
+        }
 
-    //        ctx.Bind(id, schema);
+        if (ctx.result != VerifyResult.Outdated)
+        {
+            return IOResult.Ok();
+        }
 
-    //        string platform = ContentPath.GetPlatformFolder();
+        if (ctx.remoteMeta == null || string.IsNullOrEmpty(ctx.remoteMeta.dataUri))
+        {
+            return IOResult.Fail(IOFailReason.InvalidResponse);
+        }
 
-    //        string remoteMetaUri = ContentPath.BuildMetaUri(
-    //            contentManifest.verifyRoot,
-    //            contentManifest.metaApi,
-    //            id,
-    //            schema,
-    //            platform
-    //        );
+        ResourceManager rm = ResourceManager.instance;
+        if (rm == null)
+        {
+            return IOResult.Fail(IOFailReason.LoadFailed);
+        }
 
-    //        if (string.IsNullOrEmpty(remoteMetaUri))
-    //        {
-    //            ctx.result = VerifyResult.Failed;
-    //            ctx.failReason = VerifyFailReason.InvalidPath;
-    //            yield break;
-    //        }
+        string localPath;
 
-    //        UnityWebRequest webRequest = UnityWebRequest.Get(remoteMetaUri);
-    //        yield return webRequest.SendWebRequest();
+        switch (category)
+        {
+            case ContentCategory.Data:
+                {
+                    localPath = Path.Combine(
+                        Application.persistentDataPath,
+                        "Data",
+                        ctx.targetSchema,
+                        ctx.targetId + ".json"
+                    );
+                    break;
+                }
+            case ContentCategory.Meta:
+                {
+                    localPath = Path.Combine(
+                        Application.persistentDataPath,
+                        "Meta",
+                        ctx.targetSchema,
+                        ctx.targetId + "meta.json"
+                    );
+                    break;
+                }
+            case ContentCategory.Bundle:
+                {
+                    if (string.IsNullOrEmpty(ctx.remoteMeta.sha256))
+                    {
+                        return IOResult.Fail(IOFailReason.InvalidResponse);
+                    }
 
-    //        if (webRequest.result != UnityWebRequest.Result.Success)
-    //        {
-    //            ctx.result = VerifyResult.Failed;
+                    localPath = Path.Combine(
+                        Application.persistentDataPath,
+                        "Bundles",
+                        ctx.targetSchema,
+                        ctx.targetId,
+                        ctx.remoteMeta.sha256 + ".bundle"
+                    );
+                    break;
+                }
+            default:
+                {
+                    return IOResult.Fail(IOFailReason.InvalidResponse);
+                }
+        }
 
-    //            if (webRequest.result == UnityWebRequest.Result.ProtocolError)
-    //            {
-    //                long code = webRequest.responseCode;
-    //                if (code >= 400 && code < 500)
-    //                {
-    //                    ctx.failReason = VerifyFailReason.Http4xx;
-    //                }
-    //                else if (code >= 500 && code < 600)
-    //                {
-    //                    ctx.failReason = VerifyFailReason.Http5xx;
-    //                }
-    //                else
-    //                {
-    //                    ctx.failReason = VerifyFailReason.InvalidResponse;
-    //                }
-    //            }
-    //            else
-    //            {
-    //                ctx.failReason = VerifyFailReason.NetworkError;
-    //            }
+        IOResult r = await rm.DownloadFileAsync(ctx.remoteMeta.dataUri, localPath, ct);
+        if (r == null || !r.succeed)
+        {
+            return r ?? IOResult.Fail(IOFailReason.NetworkError);
+        }
 
-    //            yield break;
-    //        }
+        // 번들은 size 검증
+        if (category == ContentCategory.Bundle)
+        {
+            long expected = ctx.remoteMeta.size;
+            if (expected > 0)
+            {
+                try
+                {
+                    long len = new FileInfo(localPath).Length;
+                    if (len != expected)
+                    {
+                        try
+                        {
+                            File.Delete(localPath);
+                        }
+                        catch
+                        {
+                        }
 
-    //        string json = webRequest.downloadHandler.text;
+                        return IOResult.Fail(IOFailReason.InvalidResponse);
+                    }
+                }
+                catch (Exception e)
+                {
+                    return IOResult.Fail(IOFailReason.InvalidPath, e);
+                }
+            }
+        }
 
-    //        if (string.IsNullOrEmpty(json))
-    //        {
-    //            ctx.result = VerifyResult.Failed;
-    //            ctx.failReason = VerifyFailReason.InvalidResponse;
-    //            yield break;
-    //        }
-
-    //        ContentMeta remoteMeta = JsonUtility.FromJson<ContentMeta>(json);
-    //        if (remoteMeta == null || string.IsNullOrEmpty(remoteMeta.dataUri))
-    //        {
-    //            ctx.result = VerifyResult.Failed;
-    //            ctx.failReason = VerifyFailReason.ParseError;
-    //            yield break;
-    //        }
-
-    //        ctx.remoteMeta = remoteMeta;
-
-    //        if (localMeta == null || string.IsNullOrEmpty(localMeta.sha256))
-    //        {
-    //            ctx.result = VerifyResult.Outdated;
-    //            yield break;
-    //        }
-
-    //        if (string.Equals(localMeta.sha256, remoteMeta.sha256))
-    //        {
-    //            ctx.result = VerifyResult.UpToDate;
-    //            yield break;
-    //        }
-
-    //        ctx.result = VerifyResult.Outdated;
-    //    }
+        ctx.dataUpdateSucceeded = true;
+        return r;
+    }
 
     private static void UpdateContentCatalog(List<IResourceLocator> registers, List<IResourceLocator> unregisters)
     {
@@ -641,340 +776,4 @@ public static class ContentManagementSystem
     //        sceneEntries[staticKey] = scene;
     //    }
     //}
-
-    //    
-
-    //    /// <summary>
-    //    /// 매니페스트  본문 업데이트
-    //    /// </summary>
-    //    private static IEnumerator UpdateContentManifest(ContentVerifyContext ctx)
-    //    {
-    //        if (ctx == null)
-    //        {
-    //            yield break;
-    //        }
-
-    //        ctx.dataUpdateSucceeded = false;
-
-    //        if (ctx.remoteMeta == null || string.IsNullOrEmpty(ctx.remoteMeta.dataUri))
-    //        {
-    //            yield break;
-    //        }
-
-    //        UnityWebRequest req = UnityWebRequest.Get(ctx.remoteMeta.dataUri);
-    //        yield return req.SendWebRequest();
-
-    //        if (req.result != UnityWebRequest.Result.Success)
-    //        {
-    //            ctx.result = VerifyResult.Failed;
-    //            ctx.failReason = VerifyFailReason.NetworkError;
-    //            yield break;
-    //        }
-
-    //        string json = req.downloadHandler.text;
-
-    //        if (string.IsNullOrEmpty(json))
-    //        {
-    //            ctx.result = VerifyResult.Failed;
-    //            ctx.failReason = VerifyFailReason.InvalidResponse;
-    //            yield break;
-    //        }
-
-    //        ContentManifest remoteManifest = JsonUtility.FromJson<ContentManifest>(json);
-
-    //        if (remoteManifest == null)
-    //        {
-    //            ctx.result = VerifyResult.Failed;
-    //            ctx.failReason = VerifyFailReason.ParseError;
-    //            yield break;
-    //        }
-
-    //        contentManifest = remoteManifest;
-    //        ctx.dataUpdateSucceeded = true;
-    //    }
-
-    //    /// <summary>
-    //    /// 카탈로그 본문 다운로드 + 로컬 저장
-    //    /// </summary>
-    //    private static IEnumerator UpdateContentCatalog(ContentVerifyContext ctx)
-    //    {
-    //        if (ctx == null)
-    //        {
-    //            yield break;
-    //        }
-
-    //        ctx.dataUpdateSucceeded = false;
-
-    //        if (ctx.remoteMeta == null || string.IsNullOrEmpty(ctx.remoteMeta.dataUri))
-    //        {
-    //            yield break;
-    //        }
-
-    //        UnityWebRequest req = UnityWebRequest.Get(ctx.remoteMeta.dataUri);
-    //        yield return req.SendWebRequest();
-
-    //        if (req.result != UnityWebRequest.Result.Success)
-    //        {
-    //            ctx.result = VerifyResult.Failed;
-    //            ctx.failReason = VerifyFailReason.NetworkError;
-    //            yield break;
-    //        }
-
-    //        string json = req.downloadHandler.text;
-
-    //        if (string.IsNullOrEmpty(json))
-    //        {
-    //            ctx.result = VerifyResult.Failed;
-    //            ctx.failReason = VerifyFailReason.InvalidResponse;
-    //            yield break;
-    //        }
-
-    //        ContentCatalog remoteCatalog = JsonUtility.FromJson<ContentCatalog>(json);
-    //        if (remoteCatalog == null)
-    //        {
-    //            ctx.result = VerifyResult.Failed;
-    //            ctx.failReason = VerifyFailReason.ParseError;
-    //            yield break;
-    //        }
-
-    //        // payload 저장
-    //        string directory = Path.Combine(
-    //            Application.persistentDataPath,
-    //            "Data",
-    //            ctx.targetSchema
-    //        );
-
-    //        if (Directory.Exists(directory) == false)
-    //        {
-    //            Directory.CreateDirectory(directory);
-    //        }
-
-    //        string payloadPath = Path.Combine(
-    //            directory,
-    //            ctx.targetId + ".json"
-    //        );
-
-    //        string tempPath = payloadPath + ".tmp";
-
-    //        try
-    //        {
-    //            File.WriteAllText(tempPath, json);
-
-    //            if (File.Exists(payloadPath))
-    //            {
-    //                File.Delete(payloadPath);
-    //            }
-
-    //            File.Move(tempPath, payloadPath);
-    //        }
-    //        catch
-    //        {
-    //            ctx.result = VerifyResult.Failed;
-    //            ctx.failReason = VerifyFailReason.InvalidResponse;
-
-    //            try
-    //            {
-    //                if (File.Exists(tempPath))
-    //                {
-    //                    File.Delete(tempPath);
-    //                }
-    //            }
-    //            catch
-    //            {
-    //            }
-
-    //            yield break;
-    //        }
-
-    //        ctx.dataUpdateSucceeded = true;
-    //    }
-
-    //    /// <summary>
-    //    /// 콘텐츠 번들 업데이트
-    //    /// 애셋 번들 바이너리를 관리해야 하기 때문에 함수 분리
-    //    /// </summary>
-    //    private static IEnumerator UpdateContentBundle(ContentVerifyContext ctx, ContentCatalog catalog)
-    //    {
-    //        if (ctx == null)
-    //        {
-    //            yield break;
-    //        }
-
-    //        ctx.dataUpdateSucceeded = false;
-
-    //        if (catalog == null || catalog.bundles == null)
-    //        {
-    //            ctx.result = VerifyResult.Failed;
-    //            ctx.failReason = VerifyFailReason.InvalidResponse;
-    //            yield break;
-    //        }
-
-    //        string bundleRoot = Path.Combine(
-    //            Application.persistentDataPath,
-    //            "Bundles",
-    //            ctx.targetSchema
-    //        );
-
-    //        if (Directory.Exists(bundleRoot) == false)
-    //        {
-    //            Directory.CreateDirectory(bundleRoot);
-    //        }
-
-    //        for (int i = 0; i < catalog.bundles.Count; i++)
-    //        {
-    //            ContentBundleEntry entry = catalog.bundles[i];
-    //            if (entry == null)
-    //            {
-    //                continue;
-    //            }
-
-    //            if (string.IsNullOrEmpty(entry.id) || string.IsNullOrEmpty(entry.dataUri) || string.IsNullOrEmpty(entry.sha256))
-    //            {
-    //                ctx.result = VerifyResult.Failed;
-    //                ctx.failReason = VerifyFailReason.InvalidResponse;
-    //                yield break;
-    //            }
-
-    //            string bundleDir = Path.Combine(bundleRoot, entry.id);
-    //            if (Directory.Exists(bundleDir) == false)
-    //            {
-    //                Directory.CreateDirectory(bundleDir);
-    //            }
-
-    //            string finalPath = Path.Combine(bundleDir, entry.sha256 + ".bundle");
-    //            string tempPath = finalPath + ".tmp";
-
-    //            if (File.Exists(finalPath))
-    //            {
-    //                if (entry.sizeBytes > 0)
-    //                {
-    //                    long len = new FileInfo(finalPath).Length;
-    //                    if (len == entry.sizeBytes)
-    //                    {
-    //                        continue;
-    //                    }
-
-    //                    try
-    //                    {
-    //                        File.Delete(finalPath);
-    //                    }
-    //                    catch
-    //                    {
-    //                        ctx.result = VerifyResult.Failed;
-    //                        ctx.failReason = VerifyFailReason.InvalidResponse;
-    //                        yield break;
-    //                    }
-    //                }
-    //                else
-    //                {
-    //                    continue;
-    //                }
-    //            }
-
-    //            if (File.Exists(tempPath))
-    //            {
-    //                try
-    //                {
-    //                    File.Delete(tempPath);
-    //                }
-    //                catch
-    //                {
-    //                    ctx.result = VerifyResult.Failed;
-    //                    ctx.failReason = VerifyFailReason.InvalidResponse;
-    //                    yield break;
-    //                }
-    //            }
-
-    //            UnityWebRequest req = UnityWebRequest.Get(entry.dataUri);
-    //            yield return req.SendWebRequest();
-
-    //            if (req.result != UnityWebRequest.Result.Success)
-    //            {
-
-    //                ctx.result = VerifyResult.Failed;
-    //                ctx.failReason = VerifyFailReason.NetworkError;
-    //#if UNITY_EDITOR
-    //                long code = req.responseCode;
-    //                Debug.LogWarning(
-    //                    $"[ContentBundle] Download failed\n" +
-    //                    $"Catalog : {ctx.targetId}\n" +
-    //                    $"Bundle  : {entry.id}\n" +
-    //                    $"Uri     : {entry.dataUri}\n" +
-    //                    $"Result  : {req.result}\n" +
-    //                    $"Code    : {code}\n" +
-    //                    $"Error   : {req.error}"
-    //                );
-    //#endif
-    //                yield break;
-    //            }
-
-    //            byte[] data = req.downloadHandler.data;
-    //            if (data == null || data.Length == 0)
-    //            {
-    //                ctx.result = VerifyResult.Failed;
-    //                ctx.failReason = VerifyFailReason.InvalidResponse;
-    //                yield break;
-    //            }
-
-    //            try
-    //            {
-    //                File.WriteAllBytes(tempPath, data);
-
-    //                if (entry.sizeBytes > 0)
-    //                {
-    //                    long len = new FileInfo(tempPath).Length;
-    //                    if (len != entry.sizeBytes)
-    //                    {
-    //#if UNITY_EDITOR || DEVELOPMENT_BUILD
-    //                        Debug.LogWarning(
-    //                            $"[ContentBundle] Size mismatch\n" +
-    //                            $"Catalog : {ctx.targetId}\n" +
-    //                            $"Bundle  : {entry.id}\n" +
-    //                            $"Expect  : {entry.sizeBytes}\n" +
-    //                            $"Actual  : {len}"
-    //                        );
-    //#endif
-    //                        File.Delete(tempPath);
-    //                        ctx.result = VerifyResult.Failed;
-    //                        ctx.failReason = VerifyFailReason.InvalidResponse;
-    //                        yield break;
-    //                    }
-    //                }
-
-    //                if (File.Exists(finalPath))
-    //                {
-    //                    File.Delete(finalPath);
-    //                }
-
-    //                File.Move(tempPath, finalPath);
-    //            }
-    //            catch
-    //            {
-    //                ctx.result = VerifyResult.Failed;
-    //                ctx.failReason = VerifyFailReason.InvalidResponse;
-    //#if UNITY_EDITOR || DEVELOPMENT_BUILD
-    //                Debug.LogError(
-    //                    $"[ContentBundle] File operation failed\n" +
-    //                    $"Catalog : {ctx.targetId}\n" +
-    //                    $"Bundle  : {entry.id}\n" +
-    //                    $"Path    : {finalPath}"
-    //                );
-    //#endif
-    //                try
-    //                {
-    //                    if (File.Exists(tempPath))
-    //                    {
-    //                        File.Delete(tempPath);
-    //                    }
-    //                }
-    //                catch
-    //                {
-    //                }
-
-    //                yield break;
-    //            }
-    //        }
-
-    //        ctx.dataUpdateSucceeded = true;
-    //    }
 }

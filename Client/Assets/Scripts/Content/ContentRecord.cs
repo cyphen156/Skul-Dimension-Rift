@@ -4,10 +4,11 @@ using System.Text.Json.Serialization;
 
 namespace Assets.Scripts.Content
 {
-    public enum Catagory
+    public enum ContentCategory
     {
         Data = 0,
         Meta = 1,
+        Bundle = 2,
     }
 
     [Serializable]
@@ -17,10 +18,10 @@ namespace Assets.Scripts.Content
         public uint staticKey;
 
         public string id;
-        public Catagory category;
+        public ContentCategory category;
         public int version;
 
-        public ContentHeader(Catagory category, uint staticKey, string id, int version)
+        public ContentHeader(ContentCategory category, uint staticKey, string id, int version)
         {
             this.staticKey = staticKey;
             this.id = id;

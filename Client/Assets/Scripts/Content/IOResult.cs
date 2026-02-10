@@ -5,6 +5,7 @@ public enum IOFailReason
     None = 0,
     InvalidUri,
     InvalidPath,
+    InvalidResponse,
     DecodeFailed,
     NotFound,
     AccessDenied,

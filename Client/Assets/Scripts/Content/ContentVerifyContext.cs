@@ -18,6 +18,8 @@
         Timeout,
 
         // 내부/규약
+        Canceled,
+        NotInitialized,
         InvalidPath,
         InvalidResponse,
         AccessDenied,
