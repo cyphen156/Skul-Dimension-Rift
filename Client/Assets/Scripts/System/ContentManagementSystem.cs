@@ -11,6 +11,8 @@ using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.AddressableAssets.ResourceLocators;
+using UnityEngine.Splines.ExtrusionShapes;
+using static Assets.Scripts.Content.ContentPolicy;
 using static ResourceManager;
 
 /// <summary>
@@ -446,6 +448,7 @@ public static class ContentManagementSystem
             Addressables.RemoveResourceLocator(locator);
         }
     }
+
     //    public static IEnumerator CheckContentConsistency(ContentVerifyContext result)
     //    {
     //        if (result == null)
@@ -648,165 +651,170 @@ public static class ContentManagementSystem
     //    }
 
     /// <summary>
-    /// 서버와의 동기화 함수
+    /// staticKey에 해당하는 컨텐츠를 서버를 기준으로 최신화 시도
     /// </summary>
     /// <param name="staticKey"></param>
+    /// <param name="ct"></param>
     /// <returns></returns>
-    //public static async Task<IOResult> SyncContentAsync(uint staticKey, CancellationToken ct = default)
-    //{
-    //    // 1. 로컬 데이터 세팅
-    //    ResourceManager rm = ResourceManager.instance;
+    public static async Task<SyncResult> SyncContentAsync(uint staticKey, CancellationToken ct = default)
+    {
+        // 1. 로컬 데이터 세팅
+        ResourceManager rm = ResourceManager.instance;
 
-    //    if (rm == null)
-    //    {
-    //        return IOResult.Fail(IOFailReason.LoadFailed);
-    //    }
+        if (rm == null)
+        {
+            return SyncResult.Failed;
+        }
 
-    //    rm.TryGetAsset(staticKey, )
-    //    if (manifestVerifyContext == null)
-    //    {
-    //        manifestVerifyContext = new ContentVerifyContext();
-    //    }
+        // staticKey - Path
+        if (rm.domainAddressResolver == null)
+        {
+            return SyncResult.Failed;
+        }
 
-    //    // 2. 서버와 비교 검증
-    //    return VerifyContentMeta(localMeta, contentManifest.id, contentManifest.schema, manifestVerifyContext);
+        rm.domainAddressResolver.TryResolve(staticKey, out string contentLocalPath);
+        string LocalMetaPath = contentLocalPath.;
 
-    //    // 3, 결과 처리
-    //    switch (manifestVerifyContext.result)
-    //    {
-    //        case VerifyResult.None:
-    //            Debug.LogWarning("[ResourceManager] Content verify result is None");
-    //            break;
-    //        case VerifyResult.Failed:
-    //            // 검증 실패
-    //            // 로컬 데이터 사용
-    //            // 멀티플레이 모드 금지 ==> 재검증 요구
-    //            Debug.LogWarning($"[ResourceManager] Content verify failed: {manifestVerifyContext.failReason}");
-    //            //GameManager.instance.ChangeGameMode(Types.GameMode.Single);
-    //            break;
-    //        case VerifyResult.UpToDate:
-    //            // 최신 상태
-    //            break;
-    //        case VerifyResult.Outdated:
-    //            {
-    //                Debug.Log("[ResourceManager] Content is outdated, updating...");
-    //                // 3_1 매니페스트 본문 캐시 업데이트
-    //                yield return UpdateContentManifest(manifestVerifyContext);
+        return SyncResult.Updated;
+    }
 
-    //                if (manifestVerifyContext.dataUpdateSucceeded == false)
-    //                {
-    //                    // 매니페스트 업데이트 실패시 중단
-    //                    // -> 로컬 폴백
-    //                    break;
-    //                }
+//    return VerifyContentMeta(localMeta, contentManifest.id, contentManifest.schema, manifestVerifyContext);
 
-    //                bool isContentConsistent = true;
+//        // 3, 결과 처리
+//        switch (manifestVerifyContext.result)
+//        {
+//            case VerifyResult.None:
+//                Debug.LogWarning("[ResourceManager] Content verify result is None");
+//                break;
+//            case VerifyResult.Failed:
+//                // 검증 실패
+//                // 로컬 데이터 사용
+//                // 멀티플레이 모드 금지 ==> 재검증 요구
+//                Debug.LogWarning($"[ResourceManager] Content verify failed: {manifestVerifyContext.failReason}");
+//                //GameManager.instance.ChangeGameMode(Types.GameMode.Single);
+//                break;
+//            case VerifyResult.UpToDate:
+//                // 최신 상태
+//                break;
+//            case VerifyResult.Outdated:
+//                {
+//                    Debug.Log("[ResourceManager] Content is outdated, updating...");
+//                    // 3_1 매니페스트 본문 캐시 업데이트
+//                    return UpdateContentManifest(manifestVerifyContext);
 
-    //                // 3_2 캐시를 이용하여 카탈로그 업데이트 처리
-    //                foreach (ContentCatalogEntry catalogEntry in contentManifest.contentCatalogs)
-    //                {
-    //                    // 필수 항목이 아닌 경우 스킵 
-    //                    // -> 런타임 시점에 필요시점에 검증 처리(SceenLoad 시점)
-    //                    if (catalogEntry.requiredOnBoot == false)
-    //                    {
-    //                        continue;
-    //                    }
+//                    if (manifestVerifyContext.dataUpdateSucceeded == false)
+//                    {
+//                        // 매니페스트 업데이트 실패시 중단
+//                        // -> 로컬 폴백
+//                        break;
+//                    }
 
-    //                    if (localMeta != null)
-    //                    {
-    //                        localMeta.Clear();
-    //                    }
-    //                    LoadContentMeta(out localMeta, catalogEntry.id, catalogEntry.schema);
+//                    bool isContentConsistent = true;
 
-    //                    ContentVerifyContext ctx = new ContentVerifyContext();
-    //                    yield return VerifyContentMeta(localMeta, catalogEntry.id, catalogEntry.schema, ctx);
+//                    // 3_2 캐시를 이용하여 카탈로그 업데이트 처리
+//                    foreach (ContentCatalogEntry catalogEntry in contentManifest.contentCatalogs)
+//                    {
+//                        // 필수 항목이 아닌 경우 스킵 
+//                        // -> 런타임 시점에 필요시점에 검증 처리(SceenLoad 시점)
+//                        if (catalogEntry.requiredOnBoot == false)
+//                        {
+//                            continue;
+//                        }
 
-    //                    if (ctx.result == VerifyResult.Failed)
-    //                    {
-    //                        isContentConsistent = false;
-    //                        break;
-    //                    }
+//                        if (localMeta != null)
+//                        {
+//                            localMeta.Clear();
+//                        }
+//LoadContentMeta(out localMeta, catalogEntry.id, catalogEntry.schema);
 
-    //                    if (ctx.result == VerifyResult.UpToDate)
-    //                    {
-    //                        // 메타가 최신이면 로컬 payload가 반드시 있어야 함
-    //                        ContentCatalog localCatalog = LoadContentPayload<ContentCatalog>(catalogEntry.id, catalogEntry.schema);
-    //                        if (localCatalog == null)
-    //                        {
-    //                            ctx.result = VerifyResult.Outdated;
-    //                        }
-    //                        else
-    //                        {
-    //                            continue;
-    //                        }
-    //                    }
+//ContentVerifyContext ctx = new ContentVerifyContext();
+//return VerifyContentMeta(localMeta, catalogEntry.id, catalogEntry.schema, ctx);
 
-    //                    if (ctx.result != VerifyResult.Outdated)
-    //                    {
-    //                        isContentConsistent = false;
-    //                        break;
-    //                    }
+//if (ctx.result == VerifyResult.Failed)
+//{
+//    isContentConsistent = false;
+//    break;
+//}
 
-    //                    return UpdateContentCatalog(ctx);
+//if (ctx.result == VerifyResult.UpToDate)
+//{
+//    // 메타가 최신이면 로컬 payload가 반드시 있어야 함
+//    ContentCatalog localCatalog = LoadContentPayload<ContentCatalog>(catalogEntry.id, catalogEntry.schema);
+//    if (localCatalog == null)
+//    {
+//        ctx.result = VerifyResult.Outdated;
+//    }
+//    else
+//    {
+//        continue;
+//    }
+//}
 
-    //                    if (ctx.dataUpdateSucceeded == false)
-    //                    {
-    //                        isContentConsistent = false;
-    //                        break;
-    //                    }
+//if (ctx.result != VerifyResult.Outdated)
+//{
+//    isContentConsistent = false;
+//    break;
+//}
 
-    //                    ContentCatalog catalog = LoadContentPayload<ContentCatalog>(catalogEntry.id, catalogEntry.schema);
-    //                    if (catalog == null)
-    //                    {
-    //                        isContentConsistent = false;
-    //                        break;
-    //                    }
+//return UpdateContentCatalog(ctx);
 
-    //                    return UpdateContentBundle(ctx, catalog);
+//if (ctx.dataUpdateSucceeded == false)
+//{
+//    isContentConsistent = false;
+//    break;
+//}
 
-    //                    if (ctx.dataUpdateSucceeded == false)
-    //                    {
-    //                        isContentConsistent = false;
-    //                        break;
-    //                    }
+//ContentCatalog catalog = LoadContentPayload<ContentCatalog>(catalogEntry.id, catalogEntry.schema);
+//if (catalog == null)
+//{
+//    isContentConsistent = false;
+//    break;
+//}
 
-    //                    SaveContentMeta(ctx);
-    //                }
+//return UpdateContentBundle(ctx, catalog);
 
-    //                // 업데이트 도중에 문제가 발생했다면 중단
-    //                if (isContentConsistent == false)
-    //                {
-    //                    break;
-    //                }
+//if (ctx.dataUpdateSucceeded == false)
+//{
+//    isContentConsistent = false;
+//    break;
+//}
 
-    //                //SaveContentManifest(contentManifest);
-    //                SaveContentMeta(manifestVerifyContext);
+//SaveContentMeta(ctx);
+//                    }
 
-    //                break;
-    //            }
-    //        default:
-    //            Debug.LogWarning("[ResourceManager] Unknown content verify result");
-    //            break;
-    //    }
+//                    // 업데이트 도중에 문제가 발생했다면 중단
+//                    if (isContentConsistent == false)
+//{
+//    break;
+//}
 
-    //    sceneEntries.Clear();
+////SaveContentManifest(contentManifest);
+//SaveContentMeta(manifestVerifyContext);
 
-    //    // 게임 내에서 사용할 수 있는 씬 도메인 엔트리 등록
-    //    for (int i = 0; i < contentManifest.scenes.Count; i++)
-    //    {
-    //        SceneEntry scene = contentManifest.scenes[i];
-    //        if (scene == null)
-    //        {
-    //            continue;
-    //        }
+//break;
+//                }
+//            default:
+//                Debug.LogWarning("[ResourceManager] Unknown content verify result");
+//break;
+//        }
 
-    //        uint staticKey;
-    //        if (DomainKeyParser.TryParseStaticKey(scene.staticKey, out staticKey) == false)
-    //        {
-    //            continue;
-    //        }
+//        sceneEntries.Clear();
 
-    //        sceneEntries[staticKey] = scene;
-    //    }
-    //}
+//// 게임 내에서 사용할 수 있는 씬 도메인 엔트리 등록
+//for (int i = 0; i < contentManifest.scenes.Count; i++)
+//{
+//    SceneEntry scene = contentManifest.scenes[i];
+//    if (scene == null)
+//    {
+//        continue;
+//    }
+
+//    uint staticKey;
+//    if (DomainKeyParser.TryParseStaticKey(scene.staticKey, out staticKey) == false)
+//    {
+//        continue;
+//    }
+
+//    sceneEntries[staticKey] = scene;
+//}
 }
