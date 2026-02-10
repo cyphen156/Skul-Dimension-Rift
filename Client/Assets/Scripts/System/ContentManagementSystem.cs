@@ -293,7 +293,7 @@ public static class ContentManagementSystem
         return ctx;
     }
 
-    private static async Task<IOResult> UpdateContent(ContentVerifyContext ctx, ContentCategory category, CancellationToken ct = default)
+    private static async Task<IOResult> UpdateContentAsync(ContentVerifyContext ctx, ContentCategory category, CancellationToken ct = default)
     {
         if (ctx == null)
         {
@@ -310,56 +310,39 @@ public static class ContentManagementSystem
             return IOResult.Fail(IOFailReason.InvalidResponse);
         }
 
+        if (string.IsNullOrEmpty(ctx.targetId) || string.IsNullOrEmpty(ctx.targetSchema))
+        {
+            return IOResult.Fail(IOFailReason.InvalidPath);
+        }
+
         ResourceManager rm = ResourceManager.instance;
         if (rm == null)
         {
             return IOResult.Fail(IOFailReason.LoadFailed);
         }
 
-        string localPath;
+        string localPath = Path.Combine(
+            Application.persistentDataPath,
+                        category.ToString(),
+                        ctx.targetSchema,
+                        ctx.targetId
+            );
 
         switch (category)
         {
             case ContentCategory.Data:
                 {
-                    localPath = Path.Combine(
-                        Application.persistentDataPath,
-                        "Data",
-                        ctx.targetSchema,
-                        ctx.targetId + ".json"
-                    );
+                    localPath += ".json";
                     break;
                 }
+
             case ContentCategory.Meta:
                 {
-                    localPath = Path.Combine(
-                        Application.persistentDataPath,
-                        "Meta",
-                        ctx.targetSchema,
-                        ctx.targetId + "meta.json"
-                    );
-                    break;
-                }
-            case ContentCategory.Bundle:
-                {
-                    if (string.IsNullOrEmpty(ctx.remoteMeta.sha256))
-                    {
-                        return IOResult.Fail(IOFailReason.InvalidResponse);
-                    }
-
-                    localPath = Path.Combine(
-                        Application.persistentDataPath,
-                        "Bundles",
-                        ctx.targetSchema,
-                        ctx.targetId,
-                        ctx.remoteMeta.sha256 + ".bundle"
-                    );
+                    localPath += ".meta.json";
                     break;
                 }
             default:
-                {
-                    return IOResult.Fail(IOFailReason.InvalidResponse);
-                }
+                return IOResult.Fail(IOFailReason.InvalidResponse);
         }
 
         IOResult r = await rm.DownloadFileAsync(ctx.remoteMeta.dataUri, localPath, ct);
@@ -368,40 +351,90 @@ public static class ContentManagementSystem
             return r ?? IOResult.Fail(IOFailReason.NetworkError);
         }
 
-        // 번들은 size 검증
-        if (category == ContentCategory.Bundle)
-        {
-            long expected = ctx.remoteMeta.size;
-            if (expected > 0)
-            {
-                try
-                {
-                    long len = new FileInfo(localPath).Length;
-                    if (len != expected)
-                    {
-                        try
-                        {
-                            File.Delete(localPath);
-                        }
-                        catch
-                        {
-                        }
-
-                        return IOResult.Fail(IOFailReason.InvalidResponse);
-                    }
-                }
-                catch (Exception e)
-                {
-                    return IOResult.Fail(IOFailReason.InvalidPath, e);
-                }
-            }
-        }
-
         ctx.dataUpdateSucceeded = true;
         return r;
     }
 
-    private static void UpdateContentCatalog(List<IResourceLocator> registers, List<IResourceLocator> unregisters)
+    private static async Task<IOResult> UpdateBundleAsync(string schema, ContentBundleEntry bundle, CancellationToken ct = default)
+    {
+        if (string.IsNullOrEmpty(schema))
+        {
+            return IOResult.Fail(IOFailReason.InvalidPath);
+        }
+
+        if (bundle == null)
+        {
+            return IOResult.Fail(IOFailReason.InvalidResponse);
+        }
+
+        if (string.IsNullOrEmpty(bundle.id) || string.IsNullOrEmpty(bundle.sha256) || string.IsNullOrEmpty(bundle.dataUri))
+        {
+            return IOResult.Fail(IOFailReason.InvalidResponse);
+        }
+
+        ResourceManager rm = ResourceManager.instance;
+        if (rm == null)
+        {
+            return IOResult.Fail(IOFailReason.LoadFailed);
+        }
+
+        string localPath = Path.Combine(
+            Application.persistentDataPath,
+            "Bundle",
+            schema,
+            bundle.id,
+            bundle.sha256 + ".bundle"
+        );
+
+        IOResult ir = rm.TryGetFileInfo(localPath, out FileInfo info);
+
+        if (ir.succeed)
+        {
+            if (bundle.sizeBytes > 0 && info.Length == bundle.sizeBytes)
+            {
+                return IOResult.Ok();
+            }
+        }
+        else
+        {
+            if (ir.failReason != IOFailReason.NotFound)
+            {
+                return ir;
+            }
+        }
+
+        IOResult r = await rm.DownloadFileAsync(bundle.dataUri, localPath, ct);
+        
+        if (r == null || !r.succeed)
+        {
+            return r ?? IOResult.Fail(IOFailReason.NetworkError);
+        }
+
+        if (bundle.sizeBytes > 0)
+        {
+            long len;
+
+            try
+            {
+                len = new FileInfo(localPath).Length;
+            }
+            catch (Exception e)
+            {
+                return IOResult.Fail(IOFailReason.InvalidPath, e);
+            }
+
+            if (len != bundle.sizeBytes)
+            {
+                // 삭제 시도는 실패할 수 잇음
+                await rm.Delete(localPath);
+
+                return IOResult.Fail(IOFailReason.InvalidResponse);
+            }
+        }
+        return IOResult.Ok();
+    }
+
+    private static void ApplyAddressablesLocator(List<IResourceLocator> registers, List<IResourceLocator> unregisters)
     {
         foreach (IResourceLocator locator in registers)
         {

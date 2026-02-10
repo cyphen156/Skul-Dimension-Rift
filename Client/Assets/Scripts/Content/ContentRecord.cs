@@ -8,7 +8,6 @@ namespace Assets.Scripts.Content
     {
         Data = 0,
         Meta = 1,
-        Bundle = 2,
     }
 
     [Serializable]

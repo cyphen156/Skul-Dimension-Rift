@@ -1214,13 +1214,55 @@ public class ResourceManager : MonoBehaviour
         Resources.UnloadUnusedAssets();
     }
 
+    public IOResult TryGetFileInfo(string path, out FileInfo info)
+    {
+        info = null;
+
+        if (string.IsNullOrEmpty(path))
+        {
+            return IOResult.Fail(IOFailReason.InvalidPath);
+        }
+
+        try
+        {
+            if (!File.Exists(path))
+            {
+                return IOResult.Fail(IOFailReason.NotFound);
+            }
+
+            info = new FileInfo(path);
+            return IOResult.Ok();
+        }
+        catch (UnauthorizedAccessException uae)
+        {
+            return IOResult.Fail(IOFailReason.AccessDenied, uae);
+        }
+        catch (Exception e)
+        {
+            return IOResult.Fail(IOFailReason.Unknown, e);
+        }
+    }
+
     public IOResult Exists(string path)
     {
-        if (!File.Exists(path))
+        if (string.IsNullOrEmpty(path))
         {
+            return IOResult.Fail(IOFailReason.InvalidPath);
+        }
+
+        try
+        {
+            if (File.Exists(path))
+            {
+                return IOResult.Ok();
+            }
+
             return IOResult.Fail(IOFailReason.NotFound);
         }
-        return IOResult.Ok();
+        catch (Exception e)
+        {
+            return IOResult.Fail(IOFailReason.Unknown, e);
+        }
     }
 
     internal async Task<IOResult> SaveTextAsync(string path, string text, CancellationToken ct = default)
