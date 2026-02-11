@@ -738,10 +738,26 @@ public static class ContentManagementSystem
                 header.id + ".json");
 
             IOResult payloadIR = rm.Exists(payloadPath);
-            if (!payloadIR.succeed && payloadIR.failReason != IOFailReason.NotFound)
+
+            if (!payloadIR.succeed)
             {
                 verifyCtx.result = VerifyResult.Outdated;
-                verifyCtx.failReason = VerifyFailReason.NotFound;
+
+                switch (payloadIR.failReason)
+                {
+                    case IOFailReason.NotFound:
+                        verifyCtx.failReason = VerifyFailReason.NotFound;
+                        break;
+                    case IOFailReason.InvalidPath:
+                        verifyCtx.failReason = VerifyFailReason.InvalidPath;
+                        break;
+                    case IOFailReason.AccessDenied:
+                        verifyCtx.failReason = VerifyFailReason.AccessDenied;
+                        break;
+                    default:
+                        verifyCtx.failReason = VerifyFailReason.InvalidResponse;
+                        break;
+                }
             }
         }
 
