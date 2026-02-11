@@ -6,8 +6,10 @@ namespace Assets.Scripts.Content
 {
     public enum ContentCategory
     {
-        Data = 0,
-        Meta = 1,
+        None = 0,
+        Data = 1,
+        Meta = 2,
+        Bundle = 3,
     }
 
     [Serializable]
@@ -17,13 +19,15 @@ namespace Assets.Scripts.Content
         public uint staticKey;
 
         public string id;
+        public string schema;
         public ContentCategory category;
         public int version;
 
-        public ContentHeader(ContentCategory category, uint staticKey, string id, int version)
+        public ContentHeader(uint staticKey, string id, string schema, ContentCategory category, int version)
         {
             this.staticKey = staticKey;
             this.id = id;
+            this.schema = schema;
             this.category = category;
             this.version = version;
         }

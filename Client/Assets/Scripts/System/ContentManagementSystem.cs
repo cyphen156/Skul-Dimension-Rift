@@ -11,7 +11,6 @@ using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.AddressableAssets.ResourceLocators;
-using UnityEngine.Splines.ExtrusionShapes;
 using static Assets.Scripts.Content.ContentPolicy;
 using static ResourceManager;
 
@@ -156,10 +155,10 @@ public static class ContentManagementSystem
         return IOResult.Ok();
     }
 
-    private static async Task<ContentVerifyContext> VerifyContentMetaAsync(ContentMeta localMeta, string id, string schema, CancellationToken ct = default)
+    private static async Task<ContentVerifyContext> VerifyContentMetaAsync(ContentMeta localMeta, string id, string schema, ContentCategory category, CancellationToken ct = default)
     {
         ContentVerifyContext ctx = new ContentVerifyContext();
-        ctx.Bind(id, schema);
+        ctx.Bind(id, schema, category);
 
         if (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(schema))
         {
@@ -672,10 +671,122 @@ public static class ContentManagementSystem
             return SyncResult.Failed;
         }
 
-        rm.domainAddressResolver.TryResolve(staticKey, out string contentLocalPath);
-        string LocalMetaPath = contentLocalPath.;
+        // 헤더에는 최소 식별정보가 들어있음 -> 엔트리 맵이 필요함
+        if (!rm.TryGetAsset_Internal(staticKey, AccessMode.Internal, out ContentHeader header))
+        {
+            return SyncResult.Failed;
+        }
 
-        return SyncResult.Updated;
+        if (string.IsNullOrEmpty(header.id) || string.IsNullOrEmpty(header.schema))
+        {
+            return SyncResult.Failed;
+        }
+
+        // 헤더에서 추출한 데이터를 통해 애셋의 로컬경로에 메타가 있는지를 확인함
+        string localMetaPath = Path.Combine(
+            Application.persistentDataPath,
+            ContentCategory.Meta.ToString(),
+            header.schema,
+            header.id + ".meta.json"
+        );
+
+        ContentMeta localMeta = null;
+
+        IOResult existsResult = rm.Exists(localMetaPath);
+
+        if (existsResult.succeed)
+        {
+            var (readResult, metaJson) = await rm.ReadAllTextsAsync(localMetaPath, ct);
+
+            if (readResult != null && readResult.succeed && !string.IsNullOrEmpty(metaJson))
+            {
+                try
+                {
+                    ContentRecord localMetaRecord =
+                        JsonSerializer.Deserialize<ContentRecord>(metaJson, ContentRecordCodec.Options);
+
+                    if (localMetaRecord != null)
+                    {
+                        ContentRecordCodec.TryDecode<ContentMeta>(localMetaRecord, out localMeta);
+                    }
+                }
+                catch
+                {
+                    localMeta = null;
+                }
+            }
+        }
+
+        if (!existsResult.succeed && existsResult.failReason != IOFailReason.NotFound)
+        {
+            return SyncResult.Failed;
+        }
+
+        ContentVerifyContext verifyCtx = await VerifyContentMetaAsync(localMeta, header.id, header.schema, header.category, ct);
+
+        if (verifyCtx == null)
+        {
+            return SyncResult.Failed;
+        }
+
+        if (verifyCtx.result == VerifyResult.UpToDate)
+        {
+            string payloadPath = Path.Combine(
+                Application.persistentDataPath,
+                header.category.ToString(),
+                header.schema,
+                header.id + ".json");
+
+            IOResult payloadIR = rm.Exists(payloadPath);
+            if (!payloadIR.succeed && payloadIR.failReason != IOFailReason.NotFound)
+            {
+                verifyCtx.result = VerifyResult.Outdated;
+                verifyCtx.failReason = VerifyFailReason.NotFound;
+            }
+        }
+
+        SyncResult result;
+
+        switch (verifyCtx.result)
+        {
+            case VerifyResult.UpToDate:
+                {
+                    result = SyncResult.UpToDate;
+                    break;
+                }
+            case VerifyResult.Outdated:
+                {
+                    // 본문 업데이트
+                    IOResult ir = await UpdateContentAsync(verifyCtx, header.category, ct);
+
+                    if (!ir.succeed)
+                    {
+                        result = SyncResult.Failed;
+                        break;
+                    }
+
+                    ContentRecord newMetaRecord = ContentRecordCodec.Encode<ContentMeta>(
+                        staticKey,
+                        header.id,
+                        verifyCtx.remoteMeta.version,
+                        header.schema,
+                        ContentCategory.Meta,
+                        verifyCtx.remoteMeta
+                    );
+
+                    string newMetaJson = JsonSerializer.Serialize(newMetaRecord, ContentRecordCodec.Options);
+                    await rm.SaveTextAsync(localMetaPath, newMetaJson, ct);
+                    result = SyncResult.Updated;
+                    break;
+                }
+            case VerifyResult.Failed:
+                result = SyncResult.Failed;
+                break;
+            default:
+                result = SyncResult.Failed;
+                break;
+        }
+        return result;
     }
 
 //    return VerifyContentMeta(localMeta, contentManifest.id, contentManifest.schema, manifestVerifyContext);

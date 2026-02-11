@@ -20,6 +20,7 @@
         // 내부/규약
         Canceled,
         NotInitialized,
+        NotFound,
         InvalidPath,
         InvalidResponse,
         AccessDenied,
@@ -33,6 +34,7 @@
 
         public string targetId = string.Empty;
         public string targetSchema = string.Empty;
+        public ContentCategory category = ContentCategory.None;
 
         public VerifyResult result = VerifyResult.None;
         public VerifyFailReason failReason = VerifyFailReason.None;
@@ -40,11 +42,12 @@
 
         public ContentMeta remoteMeta;
 
-        public void Bind(string targetId, string targetSchema)
+        public void Bind(string targetId, string targetSchema, ContentCategory category)
         {
             Clear();
             this.targetId = targetId;
             this.targetSchema = targetSchema;
+            this.category = category;
         }
 
         private void Clear()
@@ -53,6 +56,7 @@
 
             targetId = string.Empty;
             targetSchema = string.Empty;
+            category = ContentCategory.None;
 
             result = VerifyResult.None;
             failReason = VerifyFailReason.None;

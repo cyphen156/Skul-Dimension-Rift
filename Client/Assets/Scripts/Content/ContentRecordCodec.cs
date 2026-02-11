@@ -10,7 +10,7 @@ namespace Assets.Scripts.Content
 
         public static readonly JsonSerializerOptions Options = ContentJsonOptions.Options;
 
-        public static ContentRecord Encode<T>(ContentCategory category, uint staticKey, string id, int version, T body)
+        public static ContentRecord Encode<T>(uint staticKey, string id, int version, string schema, ContentCategory category, T body)
         {
             if (string.IsNullOrEmpty(id))
             {
@@ -28,7 +28,7 @@ namespace Assets.Scripts.Content
             }
 
             ContentRecord record = new ContentRecord();
-            record.header = new ContentHeader(category, staticKey, id, version);
+            record.header = new ContentHeader(staticKey, id, schema, category, version);
 
             try
             {
@@ -41,7 +41,7 @@ namespace Assets.Scripts.Content
             return record;
         }
 
-        public static ContentRecord Encode(ContentCategory category, uint staticKey, string id, int version, string rawJsonBody)
+        public static ContentRecord Encode(uint staticKey, string id, string schema, ContentCategory category, int version, string rawJsonBody)
         {
             if (string.IsNullOrEmpty(id))
             {
@@ -59,7 +59,7 @@ namespace Assets.Scripts.Content
             }
 
             ContentRecord record = new ContentRecord();
-            record.header = new ContentHeader(category, staticKey, id, version);
+            record.header = new ContentHeader(staticKey, id, schema, category, version);
             using (JsonDocument doc = JsonDocument.Parse(rawJsonBody))
             {
                 record.body = doc.RootElement.Clone();
