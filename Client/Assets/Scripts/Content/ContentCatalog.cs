@@ -3,13 +3,6 @@ using System.Collections.Generic;
 
 namespace Assets.Scripts.Content
 {
-    public enum CatalogState
-    {
-        None,
-        InProgress,
-        Ready,
-        Failed
-    }
     /// <summary>
     /// 실제 제공되는 콘텐츠 번들 항목 정보
     /// 항상 카탈로그를 통해 최신인지 판단되었다고 가정함

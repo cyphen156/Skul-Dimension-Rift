@@ -1,16 +1,8 @@
-﻿using Assets.Scripts.Content;
-using Assets.Scripts.Interface;
+﻿using Assets.Scripts.Interface;
 using System.Collections.Generic;
 
 namespace Assets.Scripts.Data
 {
-    public struct ResolvedData
-    { 
-        ContentHeader header;
-        string LocalMetaPath;
-        string RemoteMetaUri;
-    }
-
     public sealed class DomainAddressResolver : IResolver<uint, string>
     {
         private readonly Dictionary<uint, string> map = new Dictionary<uint, string>();

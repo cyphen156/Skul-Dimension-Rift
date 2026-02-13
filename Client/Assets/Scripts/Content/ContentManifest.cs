@@ -5,23 +5,16 @@ using System.Text.Json.Serialization;
 namespace Assets.Scripts.Content
 {
     [Serializable]
-    public sealed class ContentCatalogEntry
+    public sealed class ContentCatalogEntry : ContentEntry
     {
-        [JsonConverter(typeof(JsonHexUInt32Converter))]
-        public uint staticKey;
-        public string id;
-        public string schema;
         public bool requiredOnBoot;
     }
 
-    [Serializable] 
-    public sealed class SceneEntry
+    [Serializable]
+    public sealed class SceneEntry : ContentEntry
     {
         [JsonConverter(typeof(JsonHexUInt32Converter))]
-        public uint staticKey;
-        public string id;
-        public string schema;
-        public string ownerCatalogId;
+        public uint ownerStaticKey;
     }
 
     [Serializable]
@@ -29,8 +22,6 @@ namespace Assets.Scripts.Content
     {
         [JsonConverter(typeof(JsonHexUInt32Converter))]
         public uint staticKey;
-        public string id;
-        public string schema;
         public string verifyRoot;
         public string metaApi;
 

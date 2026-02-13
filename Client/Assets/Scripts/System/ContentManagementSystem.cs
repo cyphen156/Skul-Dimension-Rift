@@ -85,8 +85,8 @@ public static class ContentManagementSystem
         string localManifestPath = Path.Combine(
             Application.persistentDataPath,
             defaultManifestRecord.header.category.ToString(),
-            manifest.schema,
-            manifest.id + ".json"
+            defaultManifestRecord.header.schema,
+            defaultManifestRecord.header.id + ".json"
         );
 
         // 이 과정은 실패할 수도 있지만 허용함 다음 게임 실행 또는 파일 최신화 검증과정에서 다시하면 됨
@@ -672,10 +672,12 @@ public static class ContentManagementSystem
         }
 
         // 헤더에는 최소 식별정보가 들어있음 -> 엔트리 맵이 필요함
-        if (!rm.TryGetAsset_Internal(staticKey, AccessMode.Internal, out ContentHeader header))
+        if (!rm.TryGetAsset_Internal(staticKey, AccessMode.Internal, out ContentEntry entry))
         {
             return SyncResult.Failed;
         }
+
+        ContentHeader header = entry.header;
 
         if (string.IsNullOrEmpty(header.id) || string.IsNullOrEmpty(header.schema))
         {
