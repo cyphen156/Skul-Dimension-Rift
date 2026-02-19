@@ -665,14 +665,8 @@ public static class ContentManagementSystem
             return SyncResult.Failed;
         }
 
-        // staticKey - Path
-        if (rm.domainAddressResolver == null)
-        {
-            return SyncResult.Failed;
-        }
-
         // 헤더에는 최소 식별정보가 들어있음 -> 엔트리 맵이 필요함
-        if (!rm.TryGetAsset_Internal(staticKey, AccessMode.Internal, out ContentEntry entry))
+        if (!rm.TryGetContentEntry(staticKey, out ContentEntry entry))
         {
             return SyncResult.Failed;
         }

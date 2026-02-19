@@ -1,3 +1,4 @@
+using Assets.Scripts.Content;
 using Assets.Scripts.Data;
 using Assets.Scripts.Interface;
 using Assets.Scripts.Utility;
@@ -30,6 +31,10 @@ public class ResourceManager : MonoBehaviour
     [SerializeField] private string defaultInputActionPath = "Input/InputActions";
     private const string userDataFileName = "UserData.json"; 
     private string userDataPath;
+
+    [Header("ContentEntries")]
+    private readonly Dictionary<uint, ContentEntry> contentEntries = new Dictionary<uint, ContentEntry>(); /// domainAddressResolver, CMS에 한해 노출 : 외부 접근 금지
+    private readonly object contentEntriesLock = new object();
 
     [Header("DomainProvider")]
     internal DomainAddressResolver domainAddressResolver; /// 리졸버에 한해 CMS에 직접 노출, 외부 접근 금지 ==> 아예 애셋 관리 시스템에서 제외
@@ -1882,9 +1887,45 @@ public class ResourceManager : MonoBehaviour
 
         return result;
     }
-#endregion
+    #endregion
 
     #region Content Access Methods
+    internal void UpsertContentEntry(ContentEntry entry)
+    {
+        if (entry == null)
+        {
+            return;
+        }
+
+        uint key = entry.header.staticKey;
+
+        if (key == 0u)
+        {
+            return;
+        }
+
+        lock (contentEntriesLock)
+        {
+            contentEntries[key] = entry;
+        }
+    }
+
+    internal void RemoveContentEntry(uint staticKey)
+    {
+        lock (contentEntriesLock)
+        {
+            contentEntries.Remove(staticKey);
+        }
+    }
+
+    internal bool TryGetContentEntry(uint staticKey, out ContentEntry entry)
+    {
+        lock (contentEntriesLock)
+        {
+            return contentEntries.TryGetValue(staticKey, out entry);
+        }
+    }
+
     /// <summary>
     /// 게임 시스템이 로딩된 애셋을 가져가는 함수
     /// </summary>

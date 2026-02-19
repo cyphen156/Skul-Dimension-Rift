@@ -1,38 +1,35 @@
-﻿using Assets.Scripts.Interface;
-using System.Collections.Generic;
+﻿using Assets.Scripts.Content;
+using Assets.Scripts.Interface;
 
 namespace Assets.Scripts.Data
 {
     public sealed class DomainAddressResolver : IResolver<uint, string>
     {
-        private readonly Dictionary<uint, string> map = new Dictionary<uint, string>();
-
-        public IReadOnlyDictionary<uint, string> Map
+        public bool TryResolve(uint input, out string output)
         {
-            get
-            {
-                return map;
-            }
-        }
+            output = string.Empty;
 
-        public bool Register(uint staticKey, string address)
-        {
-            if (map.ContainsKey(staticKey))
+            if (ResourceManager.instance == null)
             {
                 return false;
             }
-            map[staticKey] = address;
-            return true;
+
+            //if (!ResourceManager.instance.TryGetAsset<ResolveMap>(input, out ResolveMap asset))
+            //{
+            //    return false;
+            //}
+
+            //if (asset == null)
+            //{
+            //    return false;
+            //}
+
+            return string.IsNullOrEmpty(output) == false;
         }
 
-        public bool TryResolve(uint input, out string output)
+        private string BuildAddress(ContentHeader header)
         {
-            return map.TryGetValue(input, out output);
-        }
-
-        public void Unregister(uint input)
-        {
-            map.Remove(input);
+            return null;
         }
     }
 }
