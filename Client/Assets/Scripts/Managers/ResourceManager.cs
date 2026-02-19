@@ -64,6 +64,7 @@ public class ResourceManager : MonoBehaviour
 
 #if UNITY_EDITOR
     [Header("DEBUG")]
+    [SerializeField] private List<DebugKeyValuePair> debugContentEntries = new List<DebugKeyValuePair>();
     [SerializeField] private List<DebugKeyValuePair> debugAssetMaps = new List<DebugKeyValuePair>();
     [SerializeField] private List<string> prefabKeys = new List<string>();
     [SerializeField] private List<string> bgmKeys = new List<string>();
@@ -1908,6 +1909,9 @@ public class ResourceManager : MonoBehaviour
         {
             contentEntries[key] = entry;
         }
+#if UNITY_EDITOR
+        RefreshDebugContentEntries();
+#endif
     }
 
     internal void RemoveContentEntry(uint staticKey)
@@ -1916,6 +1920,9 @@ public class ResourceManager : MonoBehaviour
         {
             contentEntries.Remove(staticKey);
         }
+#if UNITY_EDITOR
+        RefreshDebugContentEntries();
+#endif
     }
 
     internal bool TryGetContentEntry(uint staticKey, out ContentEntry entry)
@@ -1966,6 +1973,27 @@ public class ResourceManager : MonoBehaviour
 
     #region DebugHelper
 #if UNITY_EDITOR
+    private void RefreshDebugContentEntries()
+    {
+        debugContentEntries.Clear();
+        if (contentEntries == null)
+        {
+            return;
+        }
+        lock (contentEntriesLock)
+        {
+            foreach (KeyValuePair<uint, ContentEntry> kv in contentEntries)
+            {
+                uint k = kv.Key;
+                ContentEntry v = kv.Value;
+                string ks = Formatter.ToDebugString(k);
+                string vs = Formatter.ToDebugString(v);
+                DebugKeyValuePair kvp = new DebugKeyValuePair(ks, vs);
+                debugContentEntries.Add(kvp);
+            }
+        }
+    }
+
     private void RefreshDebugRegisteredAssets()
     {
         debugAssetMaps.Clear();

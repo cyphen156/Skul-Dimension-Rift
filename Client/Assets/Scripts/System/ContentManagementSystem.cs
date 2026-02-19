@@ -11,7 +11,6 @@ using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.AddressableAssets.ResourceLocators;
-using static Assets.Scripts.Content.ContentPolicy;
 using static ResourceManager;
 
 /// <summary>
@@ -19,6 +18,23 @@ using static ResourceManager;
 /// </summary>
 public static class ContentManagementSystem
 {
+    /// <summary>
+    /// 부팅시 게임 아이덴티티 적용: 매니페스트와 카탈로그를 로드하여 ResourceManager에 등록, 필요한 카탈로그는 서버와 동기화 시도
+    /// 다만 매니페스트 그 자체는 아직 최신화를 시도하지 않음  
+    /// -> 매니페스트가 최신이 아닐 경우 카탈로그나 씬 정보가 누락될 수 있지만, 
+    /// 일단은 로컬 매니페스트를 기준으로 필요한 카탈로그를 동기화 시도하고, 
+    /// 이후 게임 실행 중에 필요할 경우 매니페스트 최신화 및 카탈로그/씬 정보 최신화 시도를 하는 방향으로 설계
+    /// 
+    /// ***부연설명***
+    /// 게임 자체는 싱글로 항상 돌아가야 하지만 
+    /// 멀티플레이 모드에서는 
+    /// 매니페스트나 카탈로그가 최신이 아닐 경우 
+    /// 게임 모드를 싱글로 강제 전환하는 등의 정책을 적용할 수 있음
+    /// </summary>
+    /// <param name="path"></param>
+    /// <param name="caller"></param>
+    /// <param name="ct"></param>
+    /// <returns></returns>
     public static async Task<IOResult> ApplyGameIdentityAsync(string path, Type caller, CancellationToken ct = default)
     {
         // 1. 허용되지 않은 호출자면 거부
@@ -142,6 +158,7 @@ public static class ContentManagementSystem
 
         manifest = localManifest;
 
+        // AssetMap에 Manifest 등록
         if (!rm.Register(manifest.staticKey, manifest, AccessMode.Public))
         {
             return IOResult.Fail(IOFailReason.RegistrationFailed);
@@ -152,34 +169,95 @@ public static class ContentManagementSystem
             return IOResult.Fail(IOFailReason.RegistrationFailed);
         }
 
+        ContentManifestEntry manifestEntry = new ContentManifestEntry();
+        manifestEntry.header = localRecord.header;
+        rm.UpsertContentEntry(manifestEntry);
+
+        if (manifest.contentCatalogs != null)
+        {
+            List<Task<ContentSyncContext>> robTasks = new List<Task<ContentSyncContext>>();
+
+            for (int i = 0; i < manifest.contentCatalogs.Count; i++)
+            {
+                ContentCatalogEntry catalog = manifest.contentCatalogs[i];
+                rm.UpsertContentEntry(catalog);
+
+                if (catalog.requiredOnBoot)
+                {
+                    robTasks.Add(SyncContentAsync(catalog.header.staticKey, ct));
+                }
+            }
+
+            ContentSyncContext[] robResults = await Task.WhenAll(robTasks);
+
+            for (int i = 0; i < robResults.Length; i++)
+            {
+                ContentSyncContext r = robResults[i];
+
+                switch (r.syncResult)
+                {
+                    case SyncResult.UpToDate:
+                        {
+                            break;
+                        }
+                    case SyncResult.Updated:
+                        {
+                            Debug.Log($"[Content Sync] Catalog {r.targetId} has been updated.");
+
+                            break;
+                        }
+                    case SyncResult.Failed:
+                        {
+                            Debug.LogError($"[Content Sync] Catalog {r.targetId} failed to sync. reason={r.failReason}");
+                            return IOResult.Fail(IOFailReason.LoadFailed);
+                        }
+                    default:
+                        {
+                            Debug.LogWarning($"[Content Sync] Unknown sync result for Catalog {r.targetId}: {r.syncResult}");
+                            return IOResult.Fail(IOFailReason.LoadFailed);
+                        }
+                }
+            }
+        }
+
+        if (manifest.scenes != null)
+        {
+            for (int i = 0; i < manifest.scenes.Count; i++)
+            {
+                SceneEntry scene = manifest.scenes[i];
+                rm.UpsertContentEntry(scene);
+            }
+        }
         return IOResult.Ok();
     }
 
-    private static async Task<ContentVerifyContext> VerifyContentMetaAsync(ContentMeta localMeta, string id, string schema, ContentCategory category, CancellationToken ct = default)
+    private static async Task<ContentSyncContext> VerifyContentMetaAsync(ContentMeta localMeta, ContentSyncContext ctx, CancellationToken ct = default)
     {
-        ContentVerifyContext ctx = new ContentVerifyContext();
-        ctx.Bind(id, schema, category);
-
-        if (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(schema))
+        if (ctx == null)
         {
-            ctx.result = VerifyResult.Failed;
-            ctx.failReason = VerifyFailReason.InvalidPath;
+            return null;
+        }
+
+        if (string.IsNullOrEmpty(ctx.targetId) || string.IsNullOrEmpty(ctx.targetSchema))
+        {
+            ctx.verifyResult = VerifyResult.Failed;
+            ctx.failReason = SyncFailReason.InvalidPath;
             return ctx;
         }
 
         ResourceManager rm = ResourceManager.instance;
         if (rm == null)
         {
-            ctx.result = VerifyResult.Failed;
-            ctx.failReason = VerifyFailReason.NotInitialized;
+            ctx.verifyResult = VerifyResult.Failed;
+            ctx.failReason = SyncFailReason.NotInitialized;
             return ctx;
         }
 
         ContentManifest manifest = null;
         if (!rm.TryGetAsset<ContentManifest>(ResourceManager.ManifestStaticKey, out manifest))
         {
-            ctx.result = VerifyResult.Failed;
-            ctx.failReason = VerifyFailReason.NotInitialized;
+            ctx.verifyResult = VerifyResult.Failed;
+            ctx.failReason = SyncFailReason.NotInitialized;
             return ctx;
         }
 
@@ -188,15 +266,15 @@ public static class ContentManagementSystem
         string remoteMetaUri = ContentPath.BuildMetaAPIUri(
             manifest.verifyRoot,
             manifest.metaApi,
-            id,
-            schema,
+            ctx.targetId,
+            ctx.targetSchema,
             platform
         );
 
         if (string.IsNullOrEmpty(remoteMetaUri))
         {
-            ctx.result = VerifyResult.Failed;
-            ctx.failReason = VerifyFailReason.InvalidPath;
+            ctx.verifyResult = VerifyResult.Failed;
+            ctx.failReason = SyncFailReason.InvalidPath;
             return ctx;
         }
 
@@ -206,35 +284,35 @@ public static class ContentManagementSystem
 
         if (ioResult == null || !ioResult.succeed)
         {
-            ctx.result = VerifyResult.Failed;
+            ctx.verifyResult = VerifyResult.Failed;
 
             if (ioResult == null)
             {
-                ctx.failReason = VerifyFailReason.NetworkError;
+                ctx.failReason = SyncFailReason.NetworkError;
                 return ctx;
             }
 
             switch (ioResult.failReason)
             {
                 case IOFailReason.Canceled:
-                        ctx.failReason = VerifyFailReason.Canceled;
+                        ctx.failReason = SyncFailReason.Canceled;
                         break;
                 case IOFailReason.InvalidUri:
-                        ctx.failReason = VerifyFailReason.InvalidUri;
+                        ctx.failReason = SyncFailReason.InvalidUri;
                         break;
                 case IOFailReason.InvalidPath:
-                        ctx.failReason = VerifyFailReason.InvalidPath;
+                        ctx.failReason = SyncFailReason.InvalidPath;
                         break;
                 case IOFailReason.Unknown:
                     {
-                        ctx.failReason = VerifyFailReason.InvalidResponse;
+                        ctx.failReason = SyncFailReason.InvalidResponse;
                         break;
                     }
                 case IOFailReason.DecodeFailed:
-                        ctx.failReason = VerifyFailReason.ParseError;
+                        ctx.failReason = SyncFailReason.ParseError;
                         break;
                 default:
-                        ctx.failReason = VerifyFailReason.NetworkError;
+                        ctx.failReason = SyncFailReason.NetworkError;
                         break;
             }
 
@@ -243,16 +321,16 @@ public static class ContentManagementSystem
 
         if (buffer == null || buffer.Length == 0)
         {
-            ctx.result = VerifyResult.Failed;
-            ctx.failReason = VerifyFailReason.InvalidResponse;
+            ctx.verifyResult = VerifyResult.Failed;
+            ctx.failReason = SyncFailReason.InvalidResponse;
             return ctx;
         }
 
         string json = Encoding.UTF8.GetString(buffer);
         if (string.IsNullOrEmpty(json))
         {
-            ctx.result = VerifyResult.Failed;
-            ctx.failReason = VerifyFailReason.InvalidResponse;
+            ctx.verifyResult = VerifyResult.Failed;
+            ctx.failReason = SyncFailReason.InvalidResponse;
             return ctx;
         }
 
@@ -264,15 +342,15 @@ public static class ContentManagementSystem
         }
         catch (Exception)
         {
-            ctx.result = VerifyResult.Failed;
-            ctx.failReason = VerifyFailReason.ParseError;
+            ctx.verifyResult = VerifyResult.Failed;
+            ctx.failReason = SyncFailReason.ParseError;
             return ctx;
         }
 
         if (remoteMeta == null || string.IsNullOrEmpty(remoteMeta.sha256))
         {
-            ctx.result = VerifyResult.Failed;
-            ctx.failReason = VerifyFailReason.ParseError;
+            ctx.verifyResult = VerifyResult.Failed;
+            ctx.failReason = SyncFailReason.ParseError;
             return ctx;
         }
 
@@ -280,28 +358,28 @@ public static class ContentManagementSystem
 
         if (localMeta == null || string.IsNullOrEmpty(localMeta.sha256))
         {
-            ctx.result = VerifyResult.Outdated;
+            ctx.verifyResult = VerifyResult.Outdated;
             return ctx;
         }
 
         if (string.Equals(localMeta.sha256, remoteMeta.sha256, StringComparison.Ordinal))
         {
-            ctx.result = VerifyResult.UpToDate;
+            ctx.verifyResult = VerifyResult.UpToDate;
             return ctx;
         }
 
-        ctx.result = VerifyResult.Outdated;
+        ctx.verifyResult = VerifyResult.Outdated;
         return ctx;
     }
 
-    private static async Task<IOResult> UpdateContentAsync(ContentVerifyContext ctx, ContentCategory category, CancellationToken ct = default)
+    private static async Task<IOResult> UpdateContentAsync(ContentSyncContext ctx, CancellationToken ct = default)
     {
         if (ctx == null)
         {
             return IOResult.Fail(IOFailReason.InvalidResponse);
         }
 
-        if (ctx.result != VerifyResult.Outdated)
+        if (ctx.verifyResult != VerifyResult.Outdated)
         {
             return IOResult.Ok();
         }
@@ -324,12 +402,12 @@ public static class ContentManagementSystem
 
         string localPath = Path.Combine(
             Application.persistentDataPath,
-                        category.ToString(),
+                        ctx.category.ToString(),
                         ctx.targetSchema,
                         ctx.targetId
             );
 
-        switch (category)
+        switch (ctx.category)
         {
             case ContentCategory.Data:
                 {
@@ -655,27 +733,37 @@ public static class ContentManagementSystem
     /// <param name="staticKey"></param>
     /// <param name="ct"></param>
     /// <returns></returns>
-    public static async Task<SyncResult> SyncContentAsync(uint staticKey, CancellationToken ct = default)
+    public static async Task<ContentSyncContext> SyncContentAsync(uint staticKey, CancellationToken ct = default)
     {
         // 1. 로컬 데이터 세팅
         ResourceManager rm = ResourceManager.instance;
 
+        ContentSyncContext ctx = new ContentSyncContext();
+        ctx.Bind(staticKey, string.Empty, string.Empty, ContentCategory.None);
+
         if (rm == null)
         {
-            return SyncResult.Failed;
+            ctx.syncResult = SyncResult.Failed;
+            ctx.failReason = SyncFailReason.NotInitialized;
+            return ctx;
         }
 
         // 헤더에는 최소 식별정보가 들어있음 -> 엔트리 맵이 필요함
         if (!rm.TryGetContentEntry(staticKey, out ContentEntry entry))
         {
-            return SyncResult.Failed;
+            ctx.syncResult = SyncResult.Failed;
+            ctx.failReason = SyncFailReason.NotFound;
+            return ctx;
         }
 
         ContentHeader header = entry.header;
+        ctx.Bind(staticKey, header.id, header.schema, header.category);
 
         if (string.IsNullOrEmpty(header.id) || string.IsNullOrEmpty(header.schema))
         {
-            return SyncResult.Failed;
+            ctx.syncResult = SyncResult.Failed;
+            ctx.failReason = SyncFailReason.InvalidPath;
+            return ctx;
         }
 
         // 헤더에서 추출한 데이터를 통해 애셋의 로컬경로에 메타가 있는지를 확인함
@@ -715,17 +803,14 @@ public static class ContentManagementSystem
 
         if (!existsResult.succeed && existsResult.failReason != IOFailReason.NotFound)
         {
-            return SyncResult.Failed;
+            ctx.syncResult = SyncResult.Failed;
+            ctx.failReason = SyncFailReason.InvalidResponse;
+            return ctx;
         }
 
-        ContentVerifyContext verifyCtx = await VerifyContentMetaAsync(localMeta, header.id, header.schema, header.category, ct);
+        await VerifyContentMetaAsync(localMeta, ctx, ct);
 
-        if (verifyCtx == null)
-        {
-            return SyncResult.Failed;
-        }
-
-        if (verifyCtx.result == VerifyResult.UpToDate)
+        if (ctx.verifyResult == VerifyResult.UpToDate)
         {
             string payloadPath = Path.Combine(
                 Application.persistentDataPath,
@@ -737,68 +822,66 @@ public static class ContentManagementSystem
 
             if (!payloadIR.succeed)
             {
-                verifyCtx.result = VerifyResult.Outdated;
+                ctx.verifyResult = VerifyResult.Outdated;
 
                 switch (payloadIR.failReason)
                 {
                     case IOFailReason.NotFound:
-                        verifyCtx.failReason = VerifyFailReason.NotFound;
+                        ctx.failReason = SyncFailReason.NotFound;
                         break;
                     case IOFailReason.InvalidPath:
-                        verifyCtx.failReason = VerifyFailReason.InvalidPath;
+                        ctx.failReason = SyncFailReason.InvalidPath;
                         break;
                     case IOFailReason.AccessDenied:
-                        verifyCtx.failReason = VerifyFailReason.AccessDenied;
+                        ctx.failReason = SyncFailReason.AccessDenied;
                         break;
                     default:
-                        verifyCtx.failReason = VerifyFailReason.InvalidResponse;
+                        ctx.failReason = SyncFailReason.InvalidResponse;
                         break;
                 }
             }
         }
 
-        SyncResult result;
-
-        switch (verifyCtx.result)
+        switch (ctx.verifyResult)
         {
             case VerifyResult.UpToDate:
                 {
-                    result = SyncResult.UpToDate;
+                    ctx.syncResult = SyncResult.UpToDate;
                     break;
                 }
             case VerifyResult.Outdated:
                 {
                     // 본문 업데이트
-                    IOResult ir = await UpdateContentAsync(verifyCtx, header.category, ct);
+                    IOResult ir = await UpdateContentAsync(ctx, ct);
 
                     if (!ir.succeed)
                     {
-                        result = SyncResult.Failed;
+                        ctx.syncResult = SyncResult.Failed;
                         break;
                     }
 
                     ContentRecord newMetaRecord = ContentRecordCodec.Encode<ContentMeta>(
                         staticKey,
                         header.id,
-                        verifyCtx.remoteMeta.version,
+                        ctx.remoteMeta.version,
                         header.schema,
                         ContentCategory.Meta,
-                        verifyCtx.remoteMeta
+                        ctx.remoteMeta
                     );
 
                     string newMetaJson = JsonSerializer.Serialize(newMetaRecord, ContentRecordCodec.Options);
                     await rm.SaveTextAsync(localMetaPath, newMetaJson, ct);
-                    result = SyncResult.Updated;
+                    ctx.syncResult = SyncResult.Updated;
                     break;
                 }
             case VerifyResult.Failed:
-                result = SyncResult.Failed;
+                ctx.syncResult = SyncResult.Failed;
                 break;
             default:
-                result = SyncResult.Failed;
+                ctx.syncResult = SyncResult.Failed;
                 break;
         }
-        return result;
+        return ctx;
     }
 
 //    return VerifyContentMeta(localMeta, contentManifest.id, contentManifest.schema, manifestVerifyContext);
