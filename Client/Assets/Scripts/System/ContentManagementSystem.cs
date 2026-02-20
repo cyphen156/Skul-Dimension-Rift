@@ -164,59 +164,36 @@ public static class ContentManagementSystem
             return IOResult.Fail(IOFailReason.RegistrationFailed);
         }
 
-        if(!ResourceManager.InitializeManifestStaticKey(manifest.staticKey))
+        if (!ResourceManager.InitializeManifestStaticKey(manifest.staticKey))
         {
             return IOResult.Fail(IOFailReason.RegistrationFailed);
         }
 
+        // 엔트리 등록
         ContentManifestEntry manifestEntry = new ContentManifestEntry();
         manifestEntry.header = localRecord.header;
         rm.UpsertContentEntry(manifestEntry);
 
         if (manifest.contentCatalogs != null)
         {
-            List<Task<ContentSyncContext>> robTasks = new List<Task<ContentSyncContext>>();
-
-            for (int i = 0; i < manifest.contentCatalogs.Count; i++)
+            foreach (ContentCatalogEntry catalog in manifest.contentCatalogs)
             {
-                ContentCatalogEntry catalog = manifest.contentCatalogs[i];
-                rm.UpsertContentEntry(catalog);
-
                 if (catalog.requiredOnBoot)
                 {
-                    robTasks.Add(SyncContentAsync(catalog.header.staticKey, ct));
+                    string catalogPath = Path.Combine(
+                        Application.persistentDataPath,
+                        catalog.header.category.ToString(),
+                        catalog.header.schema,
+                        catalog.header.id + ".json"
+                    );
+
+                    IOResult isExists = rm.Exists(catalogPath);
+                    if (!isExists.succeed)
+                    {
+                        return isExists;
+                    }
                 }
-            }
-
-            ContentSyncContext[] robResults = await Task.WhenAll(robTasks);
-
-            for (int i = 0; i < robResults.Length; i++)
-            {
-                ContentSyncContext r = robResults[i];
-
-                switch (r.syncResult)
-                {
-                    case SyncResult.UpToDate:
-                        {
-                            break;
-                        }
-                    case SyncResult.Updated:
-                        {
-                            Debug.Log($"[Content Sync] Catalog {r.targetId} has been updated.");
-
-                            break;
-                        }
-                    case SyncResult.Failed:
-                        {
-                            Debug.LogError($"[Content Sync] Catalog {r.targetId} failed to sync. reason={r.failReason}");
-                            return IOResult.Fail(IOFailReason.LoadFailed);
-                        }
-                    default:
-                        {
-                            Debug.LogWarning($"[Content Sync] Unknown sync result for Catalog {r.targetId}: {r.syncResult}");
-                            return IOResult.Fail(IOFailReason.LoadFailed);
-                        }
-                }
+                rm.UpsertContentEntry(catalog);
             }
         }
 
@@ -231,6 +208,63 @@ public static class ContentManagementSystem
         return IOResult.Ok();
     }
 
+    #region tempSection
+    //private void Temp()
+    //{
+    //    // 1. 매니페스트 메타 인증
+    //    //ContentMeta localMeta;
+    //    //LoadContentMeta(out localMeta, contentManifest.id, contentManifest.schema);
+    //    //ContentVerifyContext manifestVerifyContext = new ContentVerifyContext();
+    //    //yield return VerifyContentMeta(localMeta, contentManifest.id, contentManifest.schema, manifestVerifyContext);
+    //    if (manifest.contentCatalogs != null)
+    //    {
+    //        List<Task<ContentSyncContext>> robTasks = new List<Task<ContentSyncContext>>();
+
+    //        for (int i = 0; i < manifest.contentCatalogs.Count; i++)
+    //        {
+    //            ContentCatalogEntry catalog = manifest.contentCatalogs[i];
+    //            rm.UpsertContentEntry(catalog);
+
+    //            if (catalog.requiredOnBoot)
+    //            {
+    //                robTasks.Add(SyncContentAsync(catalog.header.staticKey, ct));
+    //            }
+    //        }
+
+    //        ContentSyncContext[] robResults = await Task.WhenAll(robTasks);
+
+    //        for (int i = 0; i < robResults.Length; i++)
+    //        {
+    //            ContentSyncContext r = robResults[i];
+
+    //            switch (r.syncResult)
+    //            {
+    //                case SyncResult.UpToDate:
+    //                    {
+    //                        break;
+    //                    }
+    //                case SyncResult.Updated:
+    //                    {
+    //                        Debug.Log($"[Content Sync] Catalog {r.targetId} has been updated.");
+    //                        // 업데이트된 카탈로그의 엔트리를 다시 읽어서 ResourceManager에 등록
+
+    //                        break;
+    //                    }
+    //                case SyncResult.Failed:
+    //                    {
+    //                        Debug.LogError($"[Content Sync] Catalog {r.targetId} failed to sync. reason={r.failReason}");
+    //                        return IOResult.Fail(IOFailReason.LoadFailed);
+    //                    }
+    //                default:
+    //                    {
+    //                        Debug.LogWarning($"[Content Sync] Unknown sync result for Catalog {r.targetId}: {r.syncResult}");
+    //                        return IOResult.Fail(IOFailReason.LoadFailed);
+    //                    }
+    //            }
+    //        }
+    //    }
+    //}
+    #endregion
     private static async Task<ContentSyncContext> VerifyContentMetaAsync(ContentMeta localMeta, ContentSyncContext ctx, CancellationToken ct = default)
     {
         if (ctx == null)

@@ -1,5 +1,7 @@
+using Assets.Scripts.Content;
 using Assets.Scripts.Utility;
 using System.Collections;
+using System.Threading;
 using System.Threading.Tasks;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
@@ -88,25 +90,6 @@ public class BootStrap : MonoBehaviour
             yield return null;
         }
 
-        if (applyGameIdentityTask.IsFaulted || !applyGameIdentityTask.Result.succeed)
-        {
-            Notifier.NotifyError(
-                "치명적 오류",
-                "부트스트랩 초기화에 실패했습니다.\n필수 매니페스트를 준비할 수 없습니다.\n앱을 종료합니다.",
-                NotifyChannel.Native,
-                () =>
-                {
-#if UNITY_EDITOR
-                    UnityEditor.EditorApplication.isPlaying = false;
-#else
-            Application.Quit();
-#endif
-                }
-            );
-
-            yield break;
-        }
-
         // 3. PoolManager 초기화
         PromoteOrCreate<PoolManager>("PoolManager");
         // 4. GraphicManager 초기화
@@ -125,6 +108,37 @@ public class BootStrap : MonoBehaviour
         PromoteOrCreate<StageManager>("StageManager");
         // 11. GameManager 초기화
         PromoteOrCreate<GameManager>("GameManager");
+        
+        if (applyGameIdentityTask.IsFaulted || !applyGameIdentityTask.Result.succeed)
+        {
+            // 유저에게 업데이트를 수행할 것을 요구해야함
+            CancellationTokenSource cts = new CancellationTokenSource();
+            Task<ContentSyncContext> syncTask = ContentManagementSystem.SyncContentAsync(
+                ResourceManager.ManifestStaticKey, cts.Token);
+
+            while (!syncTask.IsCompleted)
+            {
+                yield return null;
+            }
+
+            // 업데이트마저 실패했을 경우
+            Notifier.NotifyError(
+                "치명적 오류",
+                "부트스트랩 초기화에 실패했습니다.\n필수 매니페스트를 준비할 수 없습니다.\n앱을 종료합니다.",
+                NotifyChannel.Native,
+                () =>
+                {
+#if UNITY_EDITOR
+                    UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
+                }
+            );
+
+            yield break;
+        }
+
 #if UNITY_EDITOR
         Debug.Log("[BootStrap] All Managers Initialized.");
 #endif
