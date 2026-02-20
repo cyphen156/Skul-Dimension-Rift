@@ -19,7 +19,7 @@
           "category": "Data",
           "version": 1
         },
-        "requiredOnBoot": true
+        "requiredOnBoot": false
       },
       {
         "header": {
