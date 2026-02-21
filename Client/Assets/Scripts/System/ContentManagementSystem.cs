@@ -400,19 +400,14 @@ public static class ContentManagementSystem
         return r;
     }
 
-    private static async Task<IOResult> UpdateBundleAsync(string schema, ContentBundleEntry bundle, CancellationToken ct = default)
+    private static async Task<IOResult> UpdateBundleAsync(ContentBundleEntry bundle, CancellationToken ct = default)
     {
-        if (string.IsNullOrEmpty(schema))
-        {
-            return IOResult.Fail(IOFailReason.InvalidPath);
-        }
-
         if (bundle == null)
         {
             return IOResult.Fail(IOFailReason.InvalidResponse);
         }
 
-        if (string.IsNullOrEmpty(bundle.id) || string.IsNullOrEmpty(bundle.sha256) || string.IsNullOrEmpty(bundle.dataUri))
+        if (string.IsNullOrEmpty(bundle.sha256) || string.IsNullOrEmpty(bundle.dataUri))
         {
             return IOResult.Fail(IOFailReason.InvalidResponse);
         }
@@ -425,9 +420,9 @@ public static class ContentManagementSystem
 
         string localPath = Path.Combine(
             Application.persistentDataPath,
-            "Bundle",
-            schema,
-            bundle.id,
+            bundle.header.category.ToString(),
+            bundle.header.schema,
+            bundle.header.id,
             bundle.sha256 + ".bundle"
         );
 
@@ -868,206 +863,4 @@ public static class ContentManagementSystem
             }
         }
     }
-
-    //    public static IEnumerator CheckContentConsistency(ContentVerifyContext result)
-    //    {
-    //        if (result == null)
-    //        {
-    //            yield break;
-    //        }
-
-    //        // 1) Manifest meta 인증
-
-    //        ContentManifest manifest = ResourceManager.instance.ContentManifest;
-    //        ContentMeta manifestMeta;
-    //        ResourceManager.instance.LoadContentMeta(out manifestMeta, manifest.id, manifest.schema);
-
-    //        yield return VerifyContentMeta(manifestMeta, manifest.id, manifest.schema, result);
-
-    //        if (result.result != VerifyResult.UpToDate)
-    //        {
-    //            yield break;
-    //        }
-
-    //        // 2) Manifest payload hash -> meta 검증
-    //        {
-    //            string manifestPayloadPath = Path.Combine(
-    //                Application.persistentDataPath,
-    //                "Data",
-    //                manifest.schema,
-    //                manifest.id + ".json"
-    //            );
-
-    //            StreamContainer manifestStream = ResourceManager.instance.GetStreamContainer(manifestPayloadPath);
-
-    //            //if (hashCts != null)
-    //            //{
-    //            //    hashCts.Cancel();
-    //            //    hashCts.Dispose();
-    //            //    hashCts = null;
-    //            //}
-
-    //            //hashCts = new CancellationTokenSource();
-
-    //            //Task<string> t = Sha256StreamTask.ComputeHexAsync(
-    //            //    manifestPayloadPath,
-    //            //    256 * 1024,
-    //            //    hashCts.Token
-    //            //);
-
-    //            //while (t.IsCompleted == false)
-    //            //{
-    //            //    yield return null;
-    //            //}
-
-    //            //string payloadHex = t.Result;
-
-    //            //if (string.Equals(payloadHex, result.remoteMeta.sha256, StringComparison.OrdinalIgnoreCase) == false)
-    //            //{
-    //            //    result.result = VerifyResult.Failed;
-    //            //    result.failReason = VerifyFailReason.InvalidResponse;
-    //            //    yield break;
-    //            //}
-    //        }
-
-    //        // 3) Catalog 반복
-    //        for (int i = 0; i < contentManifest.contentCatalogs.Count; i++)
-    //        {
-    //            ContentCatalogEntry entry = contentManifest.contentCatalogs[i];
-    //            if (entry == null)
-    //            {
-    //                continue;
-    //            }
-
-    //            ContentVerifyContext ctx = new ContentVerifyContext();
-
-    //            // 3-1) Catalog meta 인증
-    //            ContentMeta catalogMeta;
-    //            LoadContentMeta(out catalogMeta, entry.id, entry.schema);
-
-    //            yield return VerifyContentMeta(
-    //                catalogMeta,
-    //                entry.id,
-    //                entry.schema,
-    //                ctx
-    //            );
-
-    //            if (ctx.result != VerifyResult.UpToDate)
-    //            {
-    //                result.result = ctx.result;
-    //                result.failReason = ctx.failReason;
-    //                yield break;
-    //            }
-
-    //            // 3-2) Catalog payload hash -> meta 검증
-    //            {
-    //                string catalogPayloadPath = Path.Combine(
-    //                    Application.persistentDataPath,
-    //                    "Data",
-    //                    entry.schema,
-    //                    entry.id + ".json"
-    //                );
-
-    //                //if (hashCts != null)
-    //                //{
-    //                //    hashCts.Cancel();
-    //                //    hashCts.Dispose();
-    //                //    hashCts = null;
-    //                //}
-
-    //                //hashCts = new CancellationTokenSource();
-
-    //                //Task<string> t = Sha256StreamTask.ComputeFileHexAsync(
-    //                //    catalogPayloadPath,
-    //                //    256 * 1024,
-    //                //    hashCts.Token
-    //                //);
-
-    //                //while (t.IsCompleted == false)
-    //                //{
-    //                //    yield return null;
-    //                //}
-
-    //                //string payloadHex = t.Result;
-
-    //                //if (string.Equals(payloadHex, ctx.remoteMeta.sha256, StringComparison.OrdinalIgnoreCase) == false)
-    //                //{
-    //                //    result.result = VerifyResult.Failed;
-    //                //    result.failReason = VerifyFailReason.InvalidResponse;
-    //                //    yield break;
-    //                //}
-    //            }
-
-    //            // 3-3) Catalog 본문 로드 (이 시점에 null이면 바로 실패)
-    //            ContentCatalog catalog = LoadContentPayload<ContentCatalog>(entry.id, entry.schema);
-    //            if (catalog == null)
-    //            {
-    //                result.result = VerifyResult.Failed;
-    //                result.failReason = VerifyFailReason.InvalidResponse;
-    //                yield break;
-    //            }
-
-    //            // 4) Bundle 반복: "파일 hash -> entry.sha256 검증"
-    //            if (catalog.bundles == null)
-    //            {
-    //                continue;
-    //            }
-
-    //            for (int b = 0; b < catalog.bundles.Count; b++)
-    //            {
-    //                ContentBundleEntry bundle = catalog.bundles[b];
-    //                if (bundle == null)
-    //                {
-    //                    continue;
-    //                }
-
-    //                if (string.IsNullOrEmpty(bundle.id) || string.IsNullOrEmpty(bundle.sha256))
-    //                {
-    //                    result.result = VerifyResult.Failed;
-    //                    result.failReason = VerifyFailReason.InvalidResponse;
-    //                    yield break;
-    //                }
-
-    //                string bundlePath = Path.Combine(
-    //                    Application.persistentDataPath,
-    //                    "Bundles",
-    //                    entry.schema,
-    //                    bundle.id,
-    //                    bundle.sha256 + ".bundle"
-    //                );
-
-
-    //            }
-    //        }
-
-    //        result.result = VerifyResult.UpToDate;//if (hashCts != null)
-    //                                              //{
-    //                                              //    hashCts.Cancel();
-    //                                              //    hashCts.Dispose();
-    //                                              //    hashCts = null;
-    //                                              //}
-
-    //        //hashCts = new CancellationTokenSource();
-
-    //        //Task<string> t = Sha256StreamTask.ComputeFileHexAsync(
-    //        //    bundlePath,
-    //        //    256 * 1024,
-    //        //    hashCts.Token
-    //        //);
-
-    //        //while (t.IsCompleted == false)
-    //        //{
-    //        //    yield return null;
-    //        //}
-
-    //        //string actualHex = t.Result;
-
-    //        //if (string.Equals(actualHex, bundle.sha256, StringComparison.OrdinalIgnoreCase) == false)
-    //        //{
-    //        //    result.result = VerifyResult.Failed;
-    //        //    result.failReason = VerifyFailReason.InvalidResponse;
-    //        //    yield break;
-    //        //}
-    //    }
-
 }

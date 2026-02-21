@@ -108,7 +108,7 @@ public class BootStrap : MonoBehaviour
         PromoteOrCreate<StageManager>("StageManager");
         // 11. GameManager 초기화
         PromoteOrCreate<GameManager>("GameManager");
-        
+
         if (applyGameIdentityTask.IsFaulted || !applyGameIdentityTask.Result.succeed)
         {
             // 유저에게 업데이트를 수행할 것을 요구해야함
@@ -121,24 +121,30 @@ public class BootStrap : MonoBehaviour
                 yield return null;
             }
 
-            // 업데이트마저 실패했을 경우
-            Notifier.NotifyError(
-                "치명적 오류",
-                "부트스트랩 초기화에 실패했습니다.\n필수 매니페스트를 준비할 수 없습니다.\n앱을 종료합니다.",
-                NotifyChannel.Native,
-                () =>
-                {
-#if UNITY_EDITOR
-                    UnityEditor.EditorApplication.isPlaying = false;
-#else
-            Application.Quit();
-#endif
-                }
-            );
+            string message = null;
+            string reason = syncTask.IsFaulted ? syncTask.Exception?.GetBaseException().Message : syncTask.Result.failReason.ToString();    
 
-            yield break;
+            if (syncTask.IsFaulted)
+            {
+                message = $"필수 구성 요소 업데이트 중 오류가 발생했습니다.\n앱을 종료합니다.\n 사유 : {reason}.";
+         
+                Notifier.NotifyError(
+                    "CriticalError",
+                    message,
+                    NotifyChannel.Native,
+                    () =>
+                    {
+    #if UNITY_EDITOR
+                        UnityEditor.EditorApplication.isPlaying = false;
+    #else
+                Application.Quit();
+    #endif
+                    }
+                );
+
+                yield break;
+            }
         }
-
 #if UNITY_EDITOR
         Debug.Log("[BootStrap] All Managers Initialized.");
 #endif

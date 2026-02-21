@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿using Assets.Scripts.Content;
+using System.IO;
+using UnityEngine;
 
 namespace Assets.Scripts.Utility
 {
@@ -48,6 +50,39 @@ namespace Assets.Scripts.Utility
             }
 
             return root + "/" + rel;
+        }
+
+        public static string GetContentLocalPath(ContentEntry entry)
+        {
+            if (!ContentPolicy.TryGetLocalPathParts(
+                   entry,
+                   out string categoryDir,
+                   out string schemaDir,
+                   out string optionalSubDir,
+                   out string fileBaseName,
+                   out string extension
+               ))
+            {
+                return string.Empty;
+            }
+
+            if (string.IsNullOrEmpty(optionalSubDir))
+            {
+                return Path.Combine(
+                    Application.persistentDataPath,
+                    categoryDir,
+                    schemaDir,
+                    fileBaseName + extension
+                );
+            }
+
+            return Path.Combine(
+                Application.persistentDataPath,
+                categoryDir,
+                schemaDir,
+                optionalSubDir,
+                fileBaseName + extension
+            );
         }
 
         public static string NormalizeServerRoot(string serverRoot)

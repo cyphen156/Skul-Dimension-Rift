@@ -8,9 +8,8 @@ namespace Assets.Scripts.Content
     /// 항상 카탈로그를 통해 최신인지 판단되었다고 가정함
     /// </summary>
     [Serializable]
-    public sealed class ContentBundleEntry
+    public sealed class ContentBundleEntry : ContentEntry
     {
-        public string id;
         public string dataUri;
         public string sha256;
         public long sizeBytes;
@@ -23,9 +22,8 @@ namespace Assets.Scripts.Content
     /// 각 데이터셋 항목에 대한 해석 방식을 별도로 정의해야 함
     /// </summary>
     [Serializable]
-    public sealed class ContentDataSetEntry
+    public sealed class ContentDataSetEntry : ContentEntry
     {
-        public string id;
         public string dataUri;
     }
 

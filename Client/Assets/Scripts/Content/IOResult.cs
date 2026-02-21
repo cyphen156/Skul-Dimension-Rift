@@ -11,6 +11,7 @@ public enum IOFailReason
     AccessDenied,
     LoadFailed,
     RegistrationFailed,
+    NotRegistered,
     NetworkError,
     SaveFailed,
     Canceled,
