@@ -109,6 +109,8 @@ public class BootStrap : MonoBehaviour
         // 11. GameManager 초기화
         PromoteOrCreate<GameManager>("GameManager");
 
+        GameManager.instance.InitializeGame(this.GetType());
+
         if (applyGameIdentityTask.IsFaulted || !applyGameIdentityTask.Result.succeed)
         {
             // 유저에게 업데이트를 수행할 것을 요구해야함

@@ -170,12 +170,7 @@ public static class ContentManagementSystem
             {
                 if (catalog.requiredOnBoot)
                 {
-                    string catalogPath = Path.Combine(
-                        Application.persistentDataPath,
-                        catalog.header.category.ToString(),
-                        catalog.header.schema,
-                        catalog.header.id + ".json"
-                    );
+                    string catalogPath = ContentPath.GetContentLocalPath(catalog);
 
                     IOResult isExists = rm.Exists(catalogPath);
                     if (!isExists.succeed)

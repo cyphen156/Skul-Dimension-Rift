@@ -1933,6 +1933,26 @@ public class ResourceManager : MonoBehaviour
         }
     }
 
+    public bool TryGetSceneEntry(string sceneName, out SceneEntry entry)
+    {
+        lock (contentEntriesLock) 
+        {
+            foreach (KeyValuePair<uint, ContentEntry> kv in contentEntries)
+            {
+                if (kv.Value is SceneEntry sceneEntry)
+                {
+                    if (sceneEntry.header.id == sceneName)
+                    {
+                        entry = sceneEntry;
+                        return true;
+                    }
+                }
+            }
+        }
+        entry = null;
+        return false;
+    }   
+
     /// <summary>
     /// 게임 시스템이 로딩된 애셋을 가져가는 함수
     /// </summary>

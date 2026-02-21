@@ -1,11 +1,13 @@
+using Assets.Scripts.Content;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using WebSocketSharp;
 using static Types;
 
+using Random = UnityEngine.Random;
 /// <summary>
 /// 게임 매니저 싱글톤 클래스
 /// </summary>
@@ -40,16 +42,30 @@ public class GameManager : NetworkBehaviour
         }
     }
 
-    private void Start()
+    public void InitializeGame(Type caller)
     {
-        InitializeGame();
-    }
+        // 1. 허용되지 않은 호출자면 거부
+        if (caller == null || caller != typeof(BootStrap))
+        {
+            UnityEngine.Debug.LogError(
+                $"[Access Denied] {(caller == null ? "null" : caller.Name)}은 이 함수를 호출할 권한이 없습니다."
+            );
+            return;
+        }
 
-    private void InitializeGame()
-    {
         playerPrefab = ResourceManager.instance.GetGameObject("Player");
 
         ResetGame();
+
+        // 타이틀 씬 재진입 -> 매니저 객체를 유지한 채로 씬만 다시 로드
+        // 기대 효과 : TitleScene에 있는 Intro 스크립트가 게임 난이도에 따라 다른 배경과 BGM을 보여주는 기능이 정상 작동
+        ResourceManager.instance.TryGetSceneEntry("TitleScene", out SceneEntry entry);
+        if (entry == null)
+        {
+            Debug.LogError("TitleScene entry not found in ContentManifest.");
+            return;
+        }
+        RequestChangeScene(entry.header.staticKey);
     }
 
     public override void OnNetworkSpawn()
