@@ -163,11 +163,16 @@ public class GameManager : NetworkBehaviour
         }
 
         currentState = state;
+        Debug.Log($"GameStateChanged : {state.ToString()}");
+
+        if (state != GameState.Loading)
+        {
+            UIManager.instance.Hide("Loading");
+        }
 
         switch (state)
         {
             case GameState.Ready:
-                UIManager.instance.Hide("Loading");
                 if (StageManager.instance.GetCurrentSceneName() == "TitleScene")
                 {
                     UIManager.instance.Show("Press Any Key");

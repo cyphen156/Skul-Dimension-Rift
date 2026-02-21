@@ -603,6 +603,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 71396405073105026, guid: 153d60b3614d3f84daec88c96bdb8f6b, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -1
+      objectReference: {fileID: 0}
     - target: {fileID: 6498808078614005487, guid: 153d60b3614d3f84daec88c96bdb8f6b, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -646,6 +650,10 @@ PrefabInstance:
     - target: {fileID: 7389930744988607421, guid: 153d60b3614d3f84daec88c96bdb8f6b, type: 3}
       propertyPath: m_Name
       value: StageTitle_0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8518927504453384573, guid: 153d60b3614d3f84daec88c96bdb8f6b, type: 3}
+      propertyPath: m_ColliderPaths.Array.size
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
