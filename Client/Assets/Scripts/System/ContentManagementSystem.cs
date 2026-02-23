@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.AddressableAssets.ResourceLocators;
+using UnityEngine.ResourceManagement.AsyncOperations;
 using static ResourceManager;
 
 /// <summary>
@@ -168,17 +169,16 @@ public static class ContentManagementSystem
         {
             foreach (ContentCatalogEntry catalog in manifest.contentCatalogs)
             {
+                rm.UpsertContentEntry(catalog);
+                
                 if (catalog.requiredOnBoot)
                 {
-                    string catalogPath = ContentPath.GetContentLocalPath(catalog);
-
-                    IOResult isExists = rm.Exists(catalogPath);
-                    if (!isExists.succeed)
+                    IOResult rob = await PrepareContentAsync(catalog.header.staticKey, ct);
+                    if (!rob.succeed)
                     {
-                        return isExists;
+                        return rob;
                     }
                 }
-                rm.UpsertContentEntry(catalog);
             }
         }
 
@@ -193,6 +193,17 @@ public static class ContentManagementSystem
         return IOResult.Ok();
     }
 
+    /// <summary>
+    /// 특정 staticKey에 해당하는 컨텐츠를 사용할 수 있도록 준비하는 과정
+    /// 엔트리 유형에 따라 준비 과정이 달라질 수 있음
+    /// Ex) 
+    /// 1. 본문이 존재하는 데이터 유형의 경우, Codec을 통한 본문 해석 과정이 포함
+    /// 2. Bundle 유형의 경우 해당 번들에 존재 여부 확인
+    /// 3. 씬 엔트리의 경우, 소유한 카탈로그 엔트리의 준비 과정을 재귀적으로 호출
+    /// </summary>
+    /// <param name="staticKey"></param>
+    /// <param name="ct"></param>
+    /// <returns></returns>
     public static async Task<IOResult> PrepareContentAsync(uint staticKey, CancellationToken ct = default)
     {
         ResourceManager rm = ResourceManager.instance;
@@ -207,69 +218,114 @@ public static class ContentManagementSystem
             return IOResult.Fail(IOFailReason.NotRegistered);
         }
 
-        // 엔트리 유형에 따른 준비 과정이 달라질 수 있음
+        // 1. 해석이 필요하지 않은 유형의 경우
         switch (entry)
         {
+            // 씬 엔트리
             case SceneEntry sceneEntry:
+                return await PrepareContentAsync(sceneEntry.ownerStaticKey, ct);
+
+            // 번들 엔트리
+            case ContentBundleEntry bundleEntry:
+                return rm.Exists(ContentPath.GetContentLocalPath(bundleEntry));
+
+            // Addressables 카탈로그 엔트리
+            case AddressablesCatalogEntry addressablesCatalog:
                 {
-                    await PrepareContentAsync(sceneEntry.ownerStaticKey, ct);
-                    break;
+                    IOResult exists = rm.Exists(ContentPath.GetContentLocalPath(addressablesCatalog));
+
+                    if (!exists.succeed)
+                    {
+                        return exists;
+                    }
+                    string addressablesCatalogPath = ContentPath.GetContentLocalPath(addressablesCatalog);
+
+                    AsyncOperationHandle<IResourceLocator> handle = Addressables.LoadContentCatalogAsync(addressablesCatalogPath);
+                    var tcs = new TaskCompletionSource<IResourceLocator>();
+
+                    handle.Completed += op =>
+                    {
+                        if (op.Status == AsyncOperationStatus.Succeeded)
+                        {
+                            tcs.SetResult(op.Result);
+                        }
+                        else
+                        {
+                            tcs.SetException(new Exception($"Failed: {addressablesCatalogPath}"));
+                        }
+                    };
+
+                    IResourceLocator locator = await tcs.Task;
+                    rm.Register<IResourceLocator>(addressablesCatalog.header.staticKey, handle.Result, AccessMode.Internal);
+                    return IOResult.Ok();
                 }
-            case ContentCatalogEntry catalogEntry:
+            default:
+                break;
+        }
+
+        // 2. 본문 해석이 필요한 유형의 경우
+        // 2_1. 레코드식 데이터 읽어오기
+        var read = await rm.ReadAllTextsAsync(ContentPath.GetContentLocalPath(entry), ct);
+
+        if (!read.result.succeed || string.IsNullOrEmpty(read.data))
+        {
+            return read.result;
+        }
+
+        // 2_2. 레코드식 데이터 -> 본문으로 디코딩
+        ContentRecord catalogRecord;
+        try
+        {
+            catalogRecord = JsonSerializer.Deserialize<ContentRecord>(read.data, ContentRecordCodec.Options);
+        }
+        catch (Exception e)
+        {
+            return IOResult.Fail(IOFailReason.DecodeFailed, e);
+        }
+
+        ContentRecordCodec.TryDecode(catalogRecord, out var catalogBody);
+
+        switch (catalogBody)
+        {
+            case ContentCatalog catalog:
                 {
                     // 콘텐츠 카탈로그의 경우, DLC 패키지와 같은 개념으로 설계되었음
-                    // 따라서 Addressables 카탈로그로 등록하는 과정을 포함함
+                    if (rm.TryGetAsset<ContentCatalog>(catalog.staticKey, out _))
+                    {
+                        return IOResult.Ok();
+                    }
                     
-                    // 1. 레코드식 데이터 읽어오기
-                    var read = await rm.ReadAllTextsAsync(ContentPath.GetContentLocalPath(catalogEntry), ct);
+                    // 2_2_1_a. Addressables 카탈로그로 등록
+                    AddressablesCatalogEntry addressablesCatalog = catalog.addressablesCatalog;
+                    rm.UpsertContentEntry(addressablesCatalog);
+                    uint acKey = addressablesCatalog.header.staticKey;
+                    await PrepareContentAsync(acKey, ct);
 
-                    if (!read.result.succeed || string.IsNullOrEmpty(read.data))
+                    if (!rm.TryGetAsset_Internal<IResourceLocator>(acKey, AccessMode.Internal, out IResourceLocator locator))
                     {
-                        return read.result;
+                        return IOResult.Fail(IOFailReason.NotRegistered);
                     }
 
-                    // 2. 레코드식 데이터 -> 본문으로 디코딩
-                    ContentRecord catalogRecord;
-                    try
-                    {
-                        catalogRecord = JsonSerializer.Deserialize<ContentRecord>(read.data, ContentRecordCodec.Options);
-                    }
-                    catch (Exception e)
-                    {
-                        return IOResult.Fail(IOFailReason.DecodeFailed, e);
-                    }
+                    Addressables.AddResourceLocator(locator);
 
-                    ContentRecordCodec.TryDecode(catalogRecord, out var catalogBody);
-
-                    if (catalogBody is not ContentCatalog catalog)
-                    {
-                        return IOResult.Fail(IOFailReason.DecodeFailed);
-                    }
-
-                    // 3. Addressables 카탈로그로 등록
-
-                    // 4. 콘텐츠 카탈로그 본문에 대한 처리
+                    // 2_2_1_b. 콘텐츠 카탈로그가 소유한 번들 세트 엔트리에 대한 처리
                     foreach (ContentBundleEntry bundle in catalog.bundles)
                     {
                         rm.UpsertContentEntry(bundle);
+                        IOResult bundleResult = await UpdateBundleAsync(bundle, ct);
+                        if (!bundleResult.succeed)
+                        {
+                            return bundleResult;
+                        }
                     }
-                    
+
+                    // 2_2_1_c. 콘텐츠 카탈로그가 소유한 데이터 세트 엔트리에 대한 처리
                     foreach (ContentDataSetEntry dateSet in catalog.dataSets)
                     {
                         rm.UpsertContentEntry(dateSet);
                     }
 
                     rm.Register<ContentCatalog>(catalog.staticKey, catalog, AccessMode.Public);
-                    break;
-                }
-            case  ContentBundleEntry bundleEntry:
-                {
-                    // 번들 엔트리의 경우, 해당 번들을 다운로드하여 로컬에 저장하는 과정을 포함할 수 있음
-                    IOResult r = await UpdateBundleAsync(bundleEntry, ct);
-                    if (!r.succeed)
-                    {
-                        return r;
-                    }
                     break;
                 }
             // 유니티 에셋인경우

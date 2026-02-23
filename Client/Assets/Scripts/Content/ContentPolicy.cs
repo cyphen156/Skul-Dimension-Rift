@@ -18,6 +18,10 @@
                     {
                         return ".bundle";
                     }
+                case ContentCategory.AddressablesCatalog:
+                {
+                    return ".catalog.json";
+                }
                 default:
                     {
                         return string.Empty;
@@ -78,6 +82,18 @@
 
                 optionalSubDir = entry.header.id;
                 fileBaseName = bundle.sha256;
+                return true;
+            }
+
+            if (entry is AddressablesCatalogEntry addressablesCatalog)
+            {
+                if (string.IsNullOrEmpty(addressablesCatalog.sha256))
+                {
+                    return false;
+                }
+
+                optionalSubDir = entry.header.id;
+                fileBaseName = addressablesCatalog.sha256;
                 return true;
             }
 

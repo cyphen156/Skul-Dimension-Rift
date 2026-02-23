@@ -3,6 +3,12 @@ using System.Collections.Generic;
 
 namespace Assets.Scripts.Content
 {
+    [Serializable]
+    public sealed class AddressablesCatalogEntry : ContentEntry
+    {
+        public string dataUri;
+        public string sha256;
+    }
     /// <summary>
     /// 실제 제공되는 콘텐츠 번들 항목 정보
     /// 항상 카탈로그를 통해 최신인지 판단되었다고 가정함
@@ -42,6 +48,8 @@ namespace Assets.Scripts.Content
     public sealed class ContentCatalog
     {
         public uint staticKey;
+
+        public AddressablesCatalogEntry addressablesCatalog;
         public List<ContentBundleEntry> bundles = new List<ContentBundleEntry>();
         public List<ContentDataSetEntry> dataSets = new List<ContentDataSetEntry>();
     }

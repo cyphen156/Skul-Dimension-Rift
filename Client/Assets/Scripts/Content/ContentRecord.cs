@@ -10,6 +10,7 @@ namespace Assets.Scripts.Content
         Data = 1,
         Meta = 2,
         Bundle = 3,
+        AddressablesCatalog = 4,
     }
 
     [Serializable]
