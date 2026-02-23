@@ -12,6 +12,7 @@ public enum IOFailReason
     LoadFailed,
     RegistrationFailed,
     NotRegistered,
+    NotInitialized,
     NetworkError,
     SaveFailed,
     Canceled,

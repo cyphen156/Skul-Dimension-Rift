@@ -41,11 +41,7 @@ namespace Assets.Scripts.Content
     [Serializable]
     public sealed class ContentCatalog
     {
-        public int version = 1;
-
-        public string id;
-        public string schema;
-
+        public uint staticKey;
         public List<ContentBundleEntry> bundles = new List<ContentBundleEntry>();
         public List<ContentDataSetEntry> dataSets = new List<ContentDataSetEntry>();
     }

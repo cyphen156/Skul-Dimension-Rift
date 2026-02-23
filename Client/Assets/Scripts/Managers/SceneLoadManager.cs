@@ -1,6 +1,8 @@
 using Assets.Scripts.Content;
 using Assets.Scripts.Interface;
 using System.Collections;
+using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -48,47 +50,85 @@ public class SceneLoadManager : MonoBehaviour
 
         instance.StartCoroutine(instance.C_LoadScene(sceneStaticKey));
     }
- 
+
     private IEnumerator C_LoadScene(uint sceneStaticKey)
     {
-        if (ResourceManager.instance == null)
+        ResourceManager rm = ResourceManager.instance;
+
+        if (rm == null)
         {
             Debug.LogError("[SceneLoadManager] ResourceManager is null.");
             yield break;
-            //yield return StartCoroutine(ResourceManager.instance.C_PrepareScene(sceneStaticKey));
         }
 
-        if (!ResourceManager.instance.TryGetContentEntry(sceneStaticKey, out ContentEntry entry))
+        if (!rm.TryGetContentEntry(sceneStaticKey, out ContentEntry e) || e == null)
         {
-            Debug.LogError($"[SceneLoadManager] Scene entry not found. staticKey=0x{sceneStaticKey:X8}");
+            Debug.LogError($"[SceneLoadManager] ContentEntry not found. key={sceneStaticKey}");
             yield break;
         }
 
-        if (entry is not SceneEntry sceneEntry)
+        SceneEntry sceneEntry = e as SceneEntry;
+
+        if (sceneEntry == null)
         {
-            Debug.LogError($"[SceneLoadManager] Entry is not SceneEntry. staticKey=0x{sceneStaticKey:X8}, type={entry.GetType().Name}");
+            Debug.LogError($"[SceneLoadManager] Entry is not SceneEntry. key={sceneStaticKey}, type={e.GetType().Name}");
             yield break;
         }
 
-        if (string.IsNullOrEmpty(sceneEntry.header.id))
+        CancellationTokenSource cts = new CancellationTokenSource();
+        Task<IOResult> prepareTask = ContentManagementSystem.PrepareContentAsync(sceneStaticKey, cts.Token);
+
+        while (!prepareTask.IsCompleted)
         {
-            Debug.LogError($"[SceneLoadManager] Scene name is empty. staticKey=0x{sceneStaticKey:X8}");
+            if (cts.IsCancellationRequested)
+            {
+                cts.Dispose();
+                yield break;
+            }
+            //UIManager.instance.RefreshUI("LoadingScreen", sceneStaticKey.ToString());
+            yield return null;
+        }
+
+        if (prepareTask.IsFaulted)
+        {
+            Debug.LogException(prepareTask.Exception);
+            cts.Dispose();
             yield break;
         }
+
+        IOResult r = prepareTask.Result;
+
+        if (r == null || !r.succeed)
+        {
+            Debug.LogError($"[SceneLoadManager] Prepare failed. key={sceneStaticKey}, reason={(r == null ? "null" : r.failReason.ToString())}");
+            cts.Dispose();
+            yield break;
+        }
+
+        // 불필요한 자원 해제 요청
+
 
         currentSceneKey = sceneStaticKey;
 
         AsyncOperation op = SceneManager.LoadSceneAsync(sceneEntry.header.id, LoadSceneMode.Single);
+
         if (op == null)
         {
             Debug.LogError($"[SceneLoadManager] LoadSceneAsync failed. sceneName={sceneEntry.header.id}");
+            cts.Dispose();
             yield break;
         }
 
         while (!op.isDone)
         {
+            if (cts.IsCancellationRequested)
+            {
+                cts.Dispose();
+                yield break;
+            }
             yield return null;
         }
+        cts.Dispose();
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)

@@ -193,6 +193,98 @@ public static class ContentManagementSystem
         return IOResult.Ok();
     }
 
+    public static async Task<IOResult> PrepareContentAsync(uint staticKey, CancellationToken ct = default)
+    {
+        ResourceManager rm = ResourceManager.instance;
+
+        if (rm == null)
+        {
+            return IOResult.Fail(IOFailReason.NotInitialized);
+        }
+
+        if (!rm.TryGetContentEntry(staticKey, out ContentEntry entry) || entry == null)
+        {
+            return IOResult.Fail(IOFailReason.NotRegistered);
+        }
+
+        // 엔트리 유형에 따른 준비 과정이 달라질 수 있음
+        switch (entry)
+        {
+            case SceneEntry sceneEntry:
+                {
+                    await PrepareContentAsync(sceneEntry.ownerStaticKey, ct);
+                    break;
+                }
+            case ContentCatalogEntry catalogEntry:
+                {
+                    // 콘텐츠 카탈로그의 경우, DLC 패키지와 같은 개념으로 설계되었음
+                    // 따라서 Addressables 카탈로그로 등록하는 과정을 포함함
+                    
+                    // 1. 레코드식 데이터 읽어오기
+                    var read = await rm.ReadAllTextsAsync(ContentPath.GetContentLocalPath(catalogEntry), ct);
+
+                    if (!read.result.succeed || string.IsNullOrEmpty(read.data))
+                    {
+                        return read.result;
+                    }
+
+                    // 2. 레코드식 데이터 -> 본문으로 디코딩
+                    ContentRecord catalogRecord;
+                    try
+                    {
+                        catalogRecord = JsonSerializer.Deserialize<ContentRecord>(read.data, ContentRecordCodec.Options);
+                    }
+                    catch (Exception e)
+                    {
+                        return IOResult.Fail(IOFailReason.DecodeFailed, e);
+                    }
+
+                    ContentRecordCodec.TryDecode(catalogRecord, out var catalogBody);
+
+                    if (catalogBody is not ContentCatalog catalog)
+                    {
+                        return IOResult.Fail(IOFailReason.DecodeFailed);
+                    }
+
+                    // 3. Addressables 카탈로그로 등록
+
+                    // 4. 콘텐츠 카탈로그 본문에 대한 처리
+                    foreach (ContentBundleEntry bundle in catalog.bundles)
+                    {
+                        rm.UpsertContentEntry(bundle);
+                    }
+                    
+                    foreach (ContentDataSetEntry dateSet in catalog.dataSets)
+                    {
+                        rm.UpsertContentEntry(dateSet);
+                    }
+
+                    rm.Register<ContentCatalog>(catalog.staticKey, catalog, AccessMode.Public);
+                    break;
+                }
+            case  ContentBundleEntry bundleEntry:
+                {
+                    // 번들 엔트리의 경우, 해당 번들을 다운로드하여 로컬에 저장하는 과정을 포함할 수 있음
+                    IOResult r = await UpdateBundleAsync(bundleEntry, ct);
+                    if (!r.succeed)
+                    {
+                        return r;
+                    }
+                    break;
+                }
+            // 유니티 에셋인경우
+            
+            // 추후 다른 유형의 엔트리가 추가될 수 있으며, 각 유형에 따른 준비 과정이 정의될 수 있음
+            default:
+                {
+                    // 시스템이 해석할 수 없는 유형의 경우
+                    return IOResult.Fail(IOFailReason.InvalidResponse);
+                }
+        }
+
+        return IOResult.Ok();
+    }
+
     private static async Task VerifyContentMetaAsync(ContentMeta localMeta, ContentSyncContext ctx, CancellationToken ct = default)
     {
         if (ctx == null)
@@ -373,12 +465,6 @@ public static class ContentManagementSystem
             case ContentCategory.Data:
                 {
                     localPath += ".json";
-                    break;
-                }
-
-            case ContentCategory.Meta:
-                {
-                    localPath += ".meta.json";
                     break;
                 }
             default:
