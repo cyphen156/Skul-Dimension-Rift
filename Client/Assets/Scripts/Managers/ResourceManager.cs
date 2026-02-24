@@ -12,6 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
+using UnityEngine.AddressableAssets.ResourceLocators;
 using UnityEngine.InputSystem;
 using UnityEngine.Networking;
 using UnityEngine.ResourceManagement.AsyncOperations;
@@ -1198,6 +1199,130 @@ public class ResourceManager : MonoBehaviour
         }
         finally
         {
+            tcs.TrySetResult(result);
+
+            lock (internalContainer.LockObj)
+            {
+                if (TryGetAsset_Internal<Task<IOResult>>(staticKey, AccessMode.Internal, out var currentTail))
+                {
+                    if (object.ReferenceEquals(currentTail, enqueuedTask))
+                    {
+                        UnRegister<Task<IOResult>>(staticKey, AccessMode.Internal);
+                    }
+                }
+            }
+        }
+    }
+
+    internal async Task<IOResult> LoadAddressablesCatalogAsync(uint staticKey, string path)
+    {
+        if (staticKey == 0u)
+        {
+            return IOResult.Fail(IOFailReason.InvalidResponse);
+        }
+        
+        TypeMapContainer internalContainer = assetContainers[(int)AccessMode.Internal];
+        if (internalContainer == null)
+        {
+            return IOResult.Fail(IOFailReason.NotInitialized);
+        }
+
+        Task<IOResult> previousTask = null;
+
+        TaskCompletionSource<IOResult> tcs =
+            new TaskCompletionSource<IOResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Task<IOResult> enqueuedTask = tcs.Task;
+
+        lock (internalContainer.LockObj)
+        {
+            TryGetAsset_Internal<Task<IOResult>>(staticKey, AccessMode.Internal, out previousTask);
+            Register<Task<IOResult>>(staticKey, enqueuedTask, AccessMode.Internal);
+        }
+
+        if (previousTask != null)
+        {
+            try
+            {
+                await previousTask;
+            }
+            catch
+            {
+            }
+        }
+
+        IOResult result = IOResult.Ok();
+        AsyncOperationHandle<IResourceLocator> typedHandle = default;
+        bool isOwner = false;
+
+        try
+        {
+            IResourceLocator existingLocator = null;
+
+            if (TryGetAsset_Internal<IResourceLocator>(staticKey, AccessMode.Internal, out existingLocator))
+            {
+                if (existingLocator != null)
+                {
+                    result = IOResult.Ok();
+                    return result;
+                }
+            }
+
+            typedHandle = Addressables.LoadContentCatalogAsync(path, false);
+            isOwner = true;
+
+            await typedHandle.Task;
+
+            if (typedHandle.Status != AsyncOperationStatus.Succeeded)
+            {
+                result = IOResult.Fail(IOFailReason.LoadFailed);
+                return result;
+            }
+
+            IResourceLocator locator = typedHandle.Result;
+            if (locator == null)
+            {
+                result = IOResult.Fail(IOFailReason.LoadFailed);
+                return result;
+            }
+
+            AsyncOperationHandle existingHandle = default;
+
+            if (TryGetAsset_Internal<AsyncOperationHandle>(staticKey, AccessMode.Internal, out existingHandle))
+            {
+                UnRegister<AsyncOperationHandle>(staticKey, AccessMode.Internal);
+
+                if (existingHandle.IsValid())
+                {
+                    Addressables.Release(existingHandle);
+                }
+            }
+
+            if (TryGetAsset_Internal<IResourceLocator>(staticKey, AccessMode.Internal, out existingLocator))
+            {
+                UnRegister<IResourceLocator>(staticKey, AccessMode.Internal);
+            }
+
+            AsyncOperationHandle boxedHandle = typedHandle;
+
+            Register<AsyncOperationHandle>(staticKey, boxedHandle, AccessMode.Internal);
+            Register<IResourceLocator>(staticKey, locator, AccessMode.Internal);
+
+            result = IOResult.Ok();
+            return result;
+        }
+        catch (Exception e)
+        {
+            result = IOResult.Fail(IOFailReason.Unknown, e);
+            return result;
+        }
+        finally
+        {
+            if (isOwner && typedHandle.IsValid() && result.succeed == false)
+            {
+                Addressables.Release(typedHandle);
+            }
+
             tcs.TrySetResult(result);
 
             lock (internalContainer.LockObj)

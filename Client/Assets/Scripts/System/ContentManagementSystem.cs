@@ -2,7 +2,6 @@ using Assets.Scripts.Content;
 using Assets.Scripts.Data;
 using Assets.Scripts.Utility;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Text.Json;
@@ -11,7 +10,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.AddressableAssets.ResourceLocators;
-using UnityEngine.ResourceManagement.AsyncOperations;
+using UnityEngine.ResourceManagement.ResourceLocations;
 using static ResourceManager;
 
 /// <summary>
@@ -238,25 +237,17 @@ public static class ContentManagementSystem
                     {
                         return exists;
                     }
+
+                    // 경로 계산
                     string addressablesCatalogPath = ContentPath.GetContentLocalPath(addressablesCatalog);
 
-                    AsyncOperationHandle<IResourceLocator> handle = Addressables.LoadContentCatalogAsync(addressablesCatalogPath);
-                    var tcs = new TaskCompletionSource<IResourceLocator>();
-
-                    handle.Completed += op =>
+                    // 로드
+                    IOResult loadResult = await rm.LoadAddressablesCatalogAsync(staticKey, addressablesCatalogPath);
+                    if (!loadResult.succeed)
                     {
-                        if (op.Status == AsyncOperationStatus.Succeeded)
-                        {
-                            tcs.SetResult(op.Result);
-                        }
-                        else
-                        {
-                            tcs.SetException(new Exception($"Failed: {addressablesCatalogPath}"));
-                        }
-                    };
+                        return loadResult;
+                    }
 
-                    IResourceLocator locator = await tcs.Task;
-                    rm.Register<IResourceLocator>(addressablesCatalog.header.staticKey, handle.Result, AccessMode.Internal);
                     return IOResult.Ok();
                 }
             default:
@@ -282,9 +273,12 @@ public static class ContentManagementSystem
         {
             return IOResult.Fail(IOFailReason.DecodeFailed, e);
         }
-
-        ContentRecordCodec.TryDecode(catalogRecord, out var catalogBody);
-
+        
+        if (!ContentRecordCodec.TryDecode(catalogRecord, out var catalogBody))
+        {
+            return IOResult.Fail(IOFailReason.DecodeFailed);
+        }
+        
         switch (catalogBody)
         {
             case ContentCatalog catalog:
@@ -295,28 +289,41 @@ public static class ContentManagementSystem
                         return IOResult.Ok();
                     }
                     
-                    // 2_2_1_a. Addressables 카탈로그로 등록
+                    // 2_2_1_a. 콘텐츠 카탈로그가 소유한 번들 세트 엔트리에 대한 처리
+                    foreach (ContentBundleEntry bundle in catalog.bundles)
+                    {
+                        rm.UpsertContentEntry(bundle);
+                    }
+                    
+                    // 2_2_1_b. Addressables 카탈로그로 등록
                     AddressablesCatalogEntry addressablesCatalog = catalog.addressablesCatalog;
                     rm.UpsertContentEntry(addressablesCatalog);
                     uint acKey = addressablesCatalog.header.staticKey;
-                    await PrepareContentAsync(acKey, ct);
+                    IOResult acResult = await PrepareContentAsync(acKey, ct);
 
-                    if (!rm.TryGetAsset_Internal<IResourceLocator>(acKey, AccessMode.Internal, out IResourceLocator locator))
+                    if (!rm.TryGetAsset_Internal<IResourceLocator>(staticKey, AccessMode.Internal, out IResourceLocator locator))
                     {
                         return IOResult.Fail(IOFailReason.NotRegistered);
                     }
 
+                    // 이미 등록된 로케이터인지 확인
+                    foreach (IResourceLocator l in Addressables.ResourceLocators)
+                    {
+                        if (l.LocatorId.Equals(locator.LocatorId))
+                        {
+                            return IOResult.Ok();
+                        }
+                    }
+
+                    // 번들 엔트리에 대한 경로 변환
+
+
+                    // 로케이터 등록
                     Addressables.AddResourceLocator(locator);
 
-                    // 2_2_1_b. 콘텐츠 카탈로그가 소유한 번들 세트 엔트리에 대한 처리
-                    foreach (ContentBundleEntry bundle in catalog.bundles)
+                    if (!acResult.succeed)
                     {
-                        rm.UpsertContentEntry(bundle);
-                        IOResult bundleResult = await UpdateBundleAsync(bundle, ct);
-                        if (!bundleResult.succeed)
-                        {
-                            return bundleResult;
-                        }
+                        return acResult;
                     }
 
                     // 2_2_1_c. 콘텐츠 카탈로그가 소유한 데이터 세트 엔트리에 대한 처리
@@ -589,41 +596,21 @@ public static class ContentManagementSystem
 
         if (bundle.sizeBytes > 0)
         {
-            long len;
-
-            try
+            IOResult fileInfoResult = rm.TryGetFileInfo(localPath, out FileInfo downloadedInfo);
+            if (!fileInfoResult.succeed)
             {
-                len = new FileInfo(localPath).Length;
-            }
-            catch (Exception e)
-            {
-                return IOResult.Fail(IOFailReason.InvalidPath, e);
+                return IOResult.Fail(IOFailReason.InvalidPath);
             }
 
-            if (len != bundle.sizeBytes)
+            if (downloadedInfo.Length != bundle.sizeBytes)
             {
-                // 삭제 시도는 실패할 수 잇음
                 await rm.Delete(localPath);
-
                 return IOResult.Fail(IOFailReason.InvalidResponse);
             }
         }
         return IOResult.Ok();
     }
 
-    private static void ApplyAddressablesLocator(List<IResourceLocator> registers, List<IResourceLocator> unregisters)
-    {
-        foreach (IResourceLocator locator in registers)
-        {
-            Addressables.AddResourceLocator(locator);
-        }
-
-        foreach (IResourceLocator locator in unregisters)
-        {
-            Addressables.RemoveResourceLocator(locator);
-        }
-    }
-    
     /// <summary>
     /// staticKey에 해당하는 컨텐츠를 서버를 기준으로 최신화 시도
     /// </summary>
