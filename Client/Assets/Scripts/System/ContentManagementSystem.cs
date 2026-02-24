@@ -1,7 +1,9 @@
 using Assets.Scripts.Content;
 using Assets.Scripts.Data;
 using Assets.Scripts.Utility;
+using NUnit.Framework;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Text.Json;
@@ -231,15 +233,15 @@ public static class ContentManagementSystem
             // Addressables 카탈로그 엔트리
             case AddressablesCatalogEntry addressablesCatalog:
                 {
-                    IOResult exists = rm.Exists(ContentPath.GetContentLocalPath(addressablesCatalog));
-
-                    if (!exists.succeed)
-                    {
-                        return exists;
-                    }
-
                     // 경로 계산
                     string addressablesCatalogPath = ContentPath.GetContentLocalPath(addressablesCatalog);
+
+                    //IOResult exists = rm.Exists(addressablesCatalogPath);
+
+                    //if (!exists.succeed)
+                    //{
+                    //    return exists;
+                    //}
 
                     // 로드
                     IOResult loadResult = await rm.LoadAddressablesCatalogAsync(staticKey, addressablesCatalogPath);
@@ -247,6 +249,41 @@ public static class ContentManagementSystem
                     {
                         return loadResult;
                     }
+
+                    if (!rm.TryGetAsset_Internal<IResourceLocator>(staticKey, AccessMode.Internal, out IResourceLocator locator))
+                    {
+                        return IOResult.Fail(IOFailReason.NotRegistered);
+                    }
+
+                    // 이미 등록된 로케이터인지 확인
+                    foreach (IResourceLocator l in Addressables.ResourceLocators)
+                    {
+                        if (l.LocatorId.Equals(locator.LocatorId))
+                        {
+                            return IOResult.Ok();
+                        }
+                    }
+
+                    // 번들 엔트리에 대한 경로 변환
+                    if(!rm.TryGetAsset<ContentCatalog>(addressablesCatalog.ownerStatickey, out ContentCatalog ownerCatalog))
+                    {
+                        return IOResult.Fail(IOFailReason.NotRegistered);
+                    }
+
+                    foreach (ContentBundleEntry bundleEntry in ownerCatalog.bundles)
+                    {
+                        if (string.IsNullOrEmpty(bundleEntry.sha256))
+                        {
+                            continue;
+                        }
+
+                        string localBundlePath = ContentPath.GetContentLocalPath(bundleEntry);
+                    }
+
+                    Addressables.ResourceManager.InternalIdTransformFunc = rm.domainAddressResolver.TransformInternalId;
+
+                    // 로케이터 등록
+                    Addressables.AddResourceLocator(locator);
 
                     return IOResult.Ok();
                 }
@@ -300,26 +337,6 @@ public static class ContentManagementSystem
                     rm.UpsertContentEntry(addressablesCatalog);
                     uint acKey = addressablesCatalog.header.staticKey;
                     IOResult acResult = await PrepareContentAsync(acKey, ct);
-
-                    if (!rm.TryGetAsset_Internal<IResourceLocator>(staticKey, AccessMode.Internal, out IResourceLocator locator))
-                    {
-                        return IOResult.Fail(IOFailReason.NotRegistered);
-                    }
-
-                    // 이미 등록된 로케이터인지 확인
-                    foreach (IResourceLocator l in Addressables.ResourceLocators)
-                    {
-                        if (l.LocatorId.Equals(locator.LocatorId))
-                        {
-                            return IOResult.Ok();
-                        }
-                    }
-
-                    // 번들 엔트리에 대한 경로 변환
-
-
-                    // 로케이터 등록
-                    Addressables.AddResourceLocator(locator);
 
                     if (!acResult.succeed)
                     {

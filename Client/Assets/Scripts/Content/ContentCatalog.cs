@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace Assets.Scripts.Content
 {
     [Serializable]
     public sealed class AddressablesCatalogEntry : ContentEntry
     {
+        [JsonConverter(typeof(JsonHexUInt32Converter))]
+        public uint ownerStatickey;
         public string dataUri;
         public string sha256;
     }
@@ -47,6 +50,7 @@ namespace Assets.Scripts.Content
     [Serializable]
     public sealed class ContentCatalog
     {
+        [JsonConverter(typeof(JsonHexUInt32Converter))]
         public uint staticKey;
 
         public AddressablesCatalogEntry addressablesCatalog;
