@@ -1,5 +1,4 @@
-﻿using Assets.Scripts.Content;
-using Assets.Scripts.Interface;
+﻿using Assets.Scripts.Interface;
 
 namespace Assets.Scripts.Data
 {
@@ -25,11 +24,6 @@ namespace Assets.Scripts.Data
             //}
 
             return string.IsNullOrEmpty(output) == false;
-        }
-
-        private string BuildAddress(ContentHeader header)
-        {
-            return null;
         }
     }
 }

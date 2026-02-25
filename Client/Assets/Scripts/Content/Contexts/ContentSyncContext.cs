@@ -21,6 +21,7 @@
         None,
 
         // 검증 실패
+        TypeMismatch,
         HashMismatch,
 
         // 네트워크 계층 에러

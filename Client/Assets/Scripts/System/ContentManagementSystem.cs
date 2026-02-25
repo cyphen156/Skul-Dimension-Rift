@@ -1,9 +1,7 @@
 using Assets.Scripts.Content;
 using Assets.Scripts.Data;
 using Assets.Scripts.Utility;
-using NUnit.Framework;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Text.Json;
@@ -12,7 +10,6 @@ using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.AddressableAssets.ResourceLocators;
-using UnityEngine.ResourceManagement.ResourceLocations;
 using static ResourceManager;
 
 /// <summary>
@@ -236,13 +233,6 @@ public static class ContentManagementSystem
                     // 경로 계산
                     string addressablesCatalogPath = ContentPath.GetContentLocalPath(addressablesCatalog);
 
-                    //IOResult exists = rm.Exists(addressablesCatalogPath);
-
-                    //if (!exists.succeed)
-                    //{
-                    //    return exists;
-                    //}
-
                     // 로드
                     IOResult loadResult = await rm.LoadAddressablesCatalogAsync(staticKey, addressablesCatalogPath);
                     if (!loadResult.succeed)
@@ -263,24 +253,6 @@ public static class ContentManagementSystem
                             return IOResult.Ok();
                         }
                     }
-
-                    // 번들 엔트리에 대한 경로 변환
-                    if(!rm.TryGetAsset<ContentCatalog>(addressablesCatalog.ownerStatickey, out ContentCatalog ownerCatalog))
-                    {
-                        return IOResult.Fail(IOFailReason.NotRegistered);
-                    }
-
-                    foreach (ContentBundleEntry bundleEntry in ownerCatalog.bundles)
-                    {
-                        if (string.IsNullOrEmpty(bundleEntry.sha256))
-                        {
-                            continue;
-                        }
-
-                        string localBundlePath = ContentPath.GetContentLocalPath(bundleEntry);
-                    }
-
-                    Addressables.ResourceManager.InternalIdTransformFunc = rm.domainAddressResolver.TransformInternalId;
 
                     // 로케이터 등록
                     Addressables.AddResourceLocator(locator);
@@ -650,6 +622,7 @@ public static class ContentManagementSystem
         }
 
         // 헤더에는 최소 식별정보가 들어있음 -> 엔트리 맵이 필요함
+        // 여기서 실패한다는 것은 엔트리구성정보가 잘못되어 있다는 것을 의미하니 동기화 실패로 폴백
         if (!rm.TryGetContentEntry(staticKey, out ContentEntry entry))
         {
             ctx.syncResult = SyncResult.Failed;
@@ -668,6 +641,8 @@ public static class ContentManagementSystem
         }
 
         // 헤더에서 추출한 데이터를 통해 애셋의 로컬경로에 메타가 있는지를 확인함
+        // 메타는 있어도 되고 없어도 됨
+        // 단, 메타가 없다면 본문이 최신이 아니라는것을 의미한다고 고정함
         string localMetaPath = Path.Combine(
             Application.persistentDataPath,
             ContentCategory.Meta.ToString(),
@@ -711,13 +686,10 @@ public static class ContentManagementSystem
 
         await VerifyContentMetaAsync(localMeta, ctx, ct);
 
+        // 검증 결과 메타가 최신인데 본문이 없다는 것정도는 체크를 해줘야함
         if (ctx.verifyResult == VerifyResult.UpToDate)
         {
-            string payloadPath = Path.Combine(
-                Application.persistentDataPath,
-                header.category.ToString(),
-                header.schema,
-                header.id + ".json");
+            string payloadPath = ContentPath.GetContentLocalPath(entry);
 
             IOResult payloadIR = rm.Exists(payloadPath);
 
@@ -739,6 +711,41 @@ public static class ContentManagementSystem
                     default:
                         ctx.failReason = SyncFailReason.InvalidResponse;
                         break;
+                }
+            }
+
+            // 번들의 경우 특수하게 사이즈까지 체크해줌
+            if (entry.header.category == ContentCategory.Bundle)
+            {
+                ContentBundleEntry bundleEntry = entry as ContentBundleEntry;
+                if (bundleEntry == null)
+                {
+                    ctx.verifyResult = VerifyResult.Failed;
+                    ctx.failReason = SyncFailReason.TypeMismatch;
+                    return ctx;
+                }
+
+                IOResult bundleIR = rm.TryGetFileInfo(payloadPath, out FileInfo bundleInfo);
+
+                if (!bundleIR.succeed || bundleInfo == null)
+                {
+                    ctx.verifyResult = VerifyResult.Outdated;
+                }
+
+                // sizeBytes는 엔트리 규약상 반드시 유효값이어야 한다는 전제
+                if (bundleEntry.sizeBytes <= 0)
+                {
+                    ctx.verifyResult = VerifyResult.Failed;
+                    ctx.failReason = SyncFailReason.InvalidResponse;
+                    return ctx;
+                }
+
+                // 번들 크기가 다르면 다운로드 중단/손상 가능성이 있으니 Outdated로 강등
+                if (bundleInfo.Length != bundleEntry.sizeBytes)
+                {
+                    ctx.verifyResult = VerifyResult.Outdated;
+                    ctx.failReason = SyncFailReason.None;
+                    return ctx;
                 }
             }
         }

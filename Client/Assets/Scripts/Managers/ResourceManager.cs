@@ -16,6 +16,8 @@ using UnityEngine.AddressableAssets.ResourceLocators;
 using UnityEngine.InputSystem;
 using UnityEngine.Networking;
 using UnityEngine.ResourceManagement.AsyncOperations;
+using UnityEngine.ResourceManagement.ResourceLocations;
+using UnityEngine.ResourceManagement.ResourceProviders;
 
 /// <summary>
 /// 리소스 관리를 위한 매니저 클래스
@@ -25,6 +27,32 @@ using UnityEngine.ResourceManagement.AsyncOperations;
 public class ResourceManager : MonoBehaviour
 {
     public static ResourceManager instance;
+
+    private sealed class AddressablesAdapter
+    {
+        internal static string TransformInternalId(IResourceLocation location)
+        {
+            if (location == null)
+            {
+                return string.Empty;
+            }
+
+            if (location.ResourceType != typeof(IAssetBundleResource))
+            {
+                return location.InternalId;
+            }
+
+            string internalId = location.InternalId;
+            if (string.IsNullOrEmpty(internalId))
+            {
+                return internalId;
+            }
+
+            // 로드 경로중 애플리케이션 persistancePath는 항상 런타임 플랫폼에 종속되므로 preFix해줘야함
+            // 기준은 로드 패스를 빌드 스크립트가 상대경로만 준다고 만듬
+            return Path.Combine(Application.persistentDataPath, internalId);
+        }
+    }
 
     public static uint ManifestStaticKey { get; private set; }
     
@@ -183,6 +211,12 @@ public class ResourceManager : MonoBehaviour
         {
             assetContainers[(int)mode] = new TypeMapContainer(mode);
         }
+
+        // 어드레서블 시스템 진입 전 초기화
+        Addressables.InternalIdTransformFunc = AddressablesAdapter.TransformInternalId;
+
+        var handle = Addressables.InitializeAsync();
+        handle.WaitForCompletion();
     }
 
     internal static bool InitializeManifestStaticKey(uint staticKey)
