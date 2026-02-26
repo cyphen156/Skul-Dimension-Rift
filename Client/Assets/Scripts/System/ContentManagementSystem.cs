@@ -747,11 +747,20 @@ public static class ContentManagementSystem
     }
     private static async Task<ContentSyncContext> SyncAddressableCatalogAsync(AddressablesCatalogEntry addrEntry, ContentSyncContext ctx, CancellationToken ct = default)
     {
+        ResourceManager rm = ResourceManager.instance;
+
+        if (rm == null)
+        {
+            ctx.verifyResult = VerifyResult.Failed;
+            ctx.failReason = SyncFailReason.NotInitialized;
+            ctx.syncResult = SyncResult.Failed;
+            return ctx;
+        }
+
         string payloadPath = ContentPath.GetContentLocalPath(addrEntry);
-        // 기본적으로 엔트리가 최신이라고 가정함
+
         ctx.verifyResult = VerifyResult.UpToDate;
 
-        // 엔트리 규약상 오너 키가 반드시 유효값이어야 한다는 전제
         if (addrEntry.ownerStatickey == 0)
         {
             ctx.verifyResult = VerifyResult.Failed;
@@ -760,17 +769,29 @@ public static class ContentManagementSystem
             return ctx;
         }
 
-        IOResult exitstsIR = ResourceManager.instance.Exists(payloadPath);
+        IOResult existsIR = rm.Exists(payloadPath);
 
-        // 번들의 경우 사이즈까지 체크해줌
-        if (!exitstsIR.succeed)
+        if (!existsIR.succeed)
         {
-            ctx.verifyResult = VerifyResult.Outdated;
-            if (exitstsIR.failReason == IOFailReason.Unknown)
+            ctx.verifyResult = VerifyResult.Failed;
+
+            switch (existsIR.failReason)
             {
-                ctx.verifyResult = VerifyResult.Failed;
+                case IOFailReason.NotFound:
+                    ctx.verifyResult = VerifyResult.Outdated;
+                    break;
+                case IOFailReason.InvalidPath:
+                    ctx.failReason = SyncFailReason.InvalidPath;
+                    break;
+                case IOFailReason.AccessDenied:
+                    ctx.failReason = SyncFailReason.AccessDenied;
+                    break;
+                default:
+                    ctx.failReason = SyncFailReason.InvalidResponse;
+                    break;
             }
         }
+
 
         switch (ctx.verifyResult)
         {
@@ -779,13 +800,22 @@ public static class ContentManagementSystem
                 break;
             case VerifyResult.Outdated:
                 {
-                    IOResult ir = await UpdateContentAsync(addrEntry, ctx, ct);
+                    if (string.IsNullOrEmpty(addrEntry.dataUri))
+                    {
+                        ctx.verifyResult = VerifyResult.Failed;
+                        ctx.failReason = SyncFailReason.InvalidResponse;
+                        ctx.syncResult = SyncResult.Failed;
+                        return ctx;
+                    }
 
-                    if (!ir.succeed)
+                    IOResult ir = await ResourceManager.instance.DownloadFileAsync(addrEntry.dataUri, payloadPath, ct);
+
+                    if (ir == null || !ir.succeed)
                     {
                         ctx.syncResult = SyncResult.Failed;
-                        break;
+                        return ctx;
                     }
+
                     ctx.syncResult = SyncResult.Updated;
                     break;
                 }
@@ -803,9 +833,6 @@ public static class ContentManagementSystem
     {
         string payloadPath = ContentPath.GetContentLocalPath(bundleEntry);
 
-        // 기본적으로 엔트리가 최신이라고 가정함
-        ctx.verifyResult = VerifyResult.UpToDate;
-
         // sizeBytes는 엔트리 규약상 반드시 유효값이어야 한다는 전제
         if (bundleEntry.sizeBytes <= 0)
         {
@@ -817,8 +844,41 @@ public static class ContentManagementSystem
 
         IOResult bundleIR = ResourceManager.instance.TryGetFileInfo(payloadPath, out FileInfo bundleInfo);
 
-        // 번들의 경우 사이즈까지 체크해줌
-        if (!bundleIR.succeed || bundleInfo == null || bundleInfo.Length != bundleEntry.sizeBytes)
+        ctx.verifyResult = VerifyResult.UpToDate;
+        ctx.failReason = SyncFailReason.None;
+
+        if (!bundleIR.succeed)
+        {
+            switch (bundleIR.failReason)
+            {
+                case IOFailReason.NotFound:
+                    ctx.verifyResult = VerifyResult.Outdated;
+                    break;
+
+                case IOFailReason.InvalidPath:
+                    ctx.verifyResult = VerifyResult.Failed;
+                    ctx.failReason = SyncFailReason.InvalidPath;
+                    break;
+
+                case IOFailReason.AccessDenied:
+                    ctx.verifyResult = VerifyResult.Failed;
+                    ctx.failReason = SyncFailReason.AccessDenied;
+                    break;
+
+                default:
+                    ctx.verifyResult = VerifyResult.Failed;
+                    ctx.failReason = SyncFailReason.InvalidResponse;
+                    break;
+            }
+        }
+
+        if (bundleIR.succeed && bundleInfo == null)
+        {
+            ctx.verifyResult = VerifyResult.Failed;
+            ctx.failReason = SyncFailReason.InvalidResponse;
+        }
+
+        if (bundleIR.succeed && bundleInfo != null && bundleInfo.Length != bundleEntry.sizeBytes)
         {
             ctx.verifyResult = VerifyResult.Outdated;
         }
