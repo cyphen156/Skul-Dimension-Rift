@@ -337,6 +337,14 @@ public static class ContentManagementSystem
         return IOResult.Ok();
     }
 
+    /// <summary>
+    /// 메타를 가진 컨텐츠 본문에 대한 검증
+    /// 번들은 메타가 엔트리이기에 Verify로직을 타지 않음
+    /// </summary>
+    /// <param name="localMeta"></param>
+    /// <param name="ctx"></param>
+    /// <param name="ct"></param>
+    /// <returns></returns>
     private static async Task VerifyContentMetaAsync(ContentMeta localMeta, ContentSyncContext ctx, CancellationToken ct = default)
     {
         if (ctx == null)
@@ -477,7 +485,7 @@ public static class ContentManagementSystem
         return;
     }
 
-    private static async Task<IOResult> UpdateContentAsync(ContentSyncContext ctx, CancellationToken ct = default)
+    private static async Task<IOResult> UpdateContentAsync(ContentEntry entry, ContentSyncContext ctx, CancellationToken ct = default)
     {
         if (ctx == null)
         {
@@ -505,23 +513,7 @@ public static class ContentManagementSystem
             return IOResult.Fail(IOFailReason.LoadFailed);
         }
 
-        string localPath = Path.Combine(
-            Application.persistentDataPath,
-                        ctx.category.ToString(),
-                        ctx.targetSchema,
-                        ctx.targetId
-            );
-
-        switch (ctx.category)
-        {
-            case ContentCategory.Data:
-                {
-                    localPath += ".json";
-                    break;
-                }
-            default:
-                return IOResult.Fail(IOFailReason.InvalidResponse);
-        }
+        string localPath = ContentPath.GetContentLocalPath(entry);
 
         IOResult r = await rm.DownloadFileAsync(ctx.remoteMeta.dataUri, localPath, ct);
         if (r == null || !r.succeed)
@@ -551,13 +543,7 @@ public static class ContentManagementSystem
             return IOResult.Fail(IOFailReason.LoadFailed);
         }
 
-        string localPath = Path.Combine(
-            Application.persistentDataPath,
-            bundle.header.category.ToString(),
-            bundle.header.schema,
-            bundle.header.id,
-            bundle.sha256 + ".bundle"
-        );
+        string localPath = ContentPath.GetContentLocalPath(bundle);
 
         IOResult ir = rm.TryGetFileInfo(localPath, out FileInfo info);
 
@@ -640,6 +626,18 @@ public static class ContentManagementSystem
             return ctx;
         }
 
+        // 번들일 경우 대리 호출
+        switch (entry)
+        {
+            case ContentBundleEntry bundleEntry:
+                return await SyncBundleAsync(bundleEntry, ctx, ct);
+            case AddressablesCatalogEntry addrEntry:
+                return await SyncAddressableCatalogAsync(addrEntry, ctx, ct);
+            default:
+                break;
+        }
+
+
         // 헤더에서 추출한 데이터를 통해 애셋의 로컬경로에 메타가 있는지를 확인함
         // 메타는 있어도 되고 없어도 됨
         // 단, 메타가 없다면 본문이 최신이 아니라는것을 의미한다고 고정함
@@ -677,10 +675,12 @@ public static class ContentManagementSystem
             }
         }
 
-        if (!existsResult.succeed && existsResult.failReason != IOFailReason.NotFound)
+        // 메타가 없는게 아니라 알수 없는 이유로 읽어오는데 실패했을 경우
+        // 동기화를 진행했을 때 게임이 아닌 다른 외부 이유라고 가정함
+        if (!existsResult.succeed && existsResult.failReason == IOFailReason.Unknown)
         {
             ctx.syncResult = SyncResult.Failed;
-            ctx.failReason = SyncFailReason.InvalidResponse;
+            ctx.failReason = SyncFailReason.Unknown;
             return ctx;
         }
 
@@ -713,41 +713,6 @@ public static class ContentManagementSystem
                         break;
                 }
             }
-
-            // 번들의 경우 특수하게 사이즈까지 체크해줌
-            if (entry.header.category == ContentCategory.Bundle)
-            {
-                ContentBundleEntry bundleEntry = entry as ContentBundleEntry;
-                if (bundleEntry == null)
-                {
-                    ctx.verifyResult = VerifyResult.Failed;
-                    ctx.failReason = SyncFailReason.TypeMismatch;
-                    return ctx;
-                }
-
-                IOResult bundleIR = rm.TryGetFileInfo(payloadPath, out FileInfo bundleInfo);
-
-                if (!bundleIR.succeed || bundleInfo == null)
-                {
-                    ctx.verifyResult = VerifyResult.Outdated;
-                }
-
-                // sizeBytes는 엔트리 규약상 반드시 유효값이어야 한다는 전제
-                if (bundleEntry.sizeBytes <= 0)
-                {
-                    ctx.verifyResult = VerifyResult.Failed;
-                    ctx.failReason = SyncFailReason.InvalidResponse;
-                    return ctx;
-                }
-
-                // 번들 크기가 다르면 다운로드 중단/손상 가능성이 있으니 Outdated로 강등
-                if (bundleInfo.Length != bundleEntry.sizeBytes)
-                {
-                    ctx.verifyResult = VerifyResult.Outdated;
-                    ctx.failReason = SyncFailReason.None;
-                    return ctx;
-                }
-            }
         }
 
         switch (ctx.verifyResult)
@@ -760,7 +725,7 @@ public static class ContentManagementSystem
             case VerifyResult.Outdated:
                 {
                     // 본문 업데이트
-                    IOResult ir = await UpdateContentAsync(ctx, ct);
+                    IOResult ir = await UpdateContentAsync(entry, ctx, ct);
 
                     if (!ir.succeed)
                     {
@@ -768,17 +733,6 @@ public static class ContentManagementSystem
                         break;
                     }
 
-                    ContentRecord newMetaRecord = ContentRecordCodec.Encode<ContentMeta>(
-                        staticKey,
-                        header.id,
-                        ctx.remoteMeta.version,
-                        header.schema,
-                        ContentCategory.Meta,
-                        ctx.remoteMeta
-                    );
-
-                    string newMetaJson = JsonSerializer.Serialize(newMetaRecord, ContentRecordCodec.Options);
-                    await rm.SaveTextAsync(localMetaPath, newMetaJson, ct);
                     ctx.syncResult = SyncResult.Updated;
                     break;
                 }
@@ -788,6 +742,110 @@ public static class ContentManagementSystem
             default:
                 ctx.syncResult = SyncResult.Failed;
                 break;
+        }
+        return ctx;
+    }
+    private static async Task<ContentSyncContext> SyncAddressableCatalogAsync(AddressablesCatalogEntry addrEntry, ContentSyncContext ctx, CancellationToken ct = default)
+    {
+        string payloadPath = ContentPath.GetContentLocalPath(addrEntry);
+        // 기본적으로 엔트리가 최신이라고 가정함
+        ctx.verifyResult = VerifyResult.UpToDate;
+
+        // 엔트리 규약상 오너 키가 반드시 유효값이어야 한다는 전제
+        if (addrEntry.ownerStatickey == 0)
+        {
+            ctx.verifyResult = VerifyResult.Failed;
+            ctx.failReason = SyncFailReason.InvalidResponse;
+            ctx.syncResult = SyncResult.Failed;
+            return ctx;
+        }
+
+        IOResult exitstsIR = ResourceManager.instance.Exists(payloadPath);
+
+        // 번들의 경우 사이즈까지 체크해줌
+        if (!exitstsIR.succeed)
+        {
+            ctx.verifyResult = VerifyResult.Outdated;
+            if (exitstsIR.failReason == IOFailReason.Unknown)
+            {
+                ctx.verifyResult = VerifyResult.Failed;
+            }
+        }
+
+        switch (ctx.verifyResult)
+        {
+            case VerifyResult.UpToDate:
+                ctx.syncResult = SyncResult.UpToDate;
+                break;
+            case VerifyResult.Outdated:
+                {
+                    IOResult ir = await UpdateContentAsync(addrEntry, ctx, ct);
+
+                    if (!ir.succeed)
+                    {
+                        ctx.syncResult = SyncResult.Failed;
+                        break;
+                    }
+                    ctx.syncResult = SyncResult.Updated;
+                    break;
+                }
+            case VerifyResult.Failed:
+                ctx.syncResult = SyncResult.Failed;
+                break;
+            default:
+                ctx.syncResult = SyncResult.Failed;
+                break;
+        }
+        return ctx;
+    }
+
+    private static async Task<ContentSyncContext> SyncBundleAsync(ContentBundleEntry bundleEntry, ContentSyncContext ctx, CancellationToken ct = default)
+    {
+        string payloadPath = ContentPath.GetContentLocalPath(bundleEntry);
+
+        // 기본적으로 엔트리가 최신이라고 가정함
+        ctx.verifyResult = VerifyResult.UpToDate;
+
+        // sizeBytes는 엔트리 규약상 반드시 유효값이어야 한다는 전제
+        if (bundleEntry.sizeBytes <= 0)
+        {
+            ctx.verifyResult = VerifyResult.Failed;
+            ctx.failReason = SyncFailReason.InvalidResponse;
+            ctx.syncResult = SyncResult.Failed;
+            return ctx;
+        }
+
+        IOResult bundleIR = ResourceManager.instance.TryGetFileInfo(payloadPath, out FileInfo bundleInfo);
+
+        // 번들의 경우 사이즈까지 체크해줌
+        if (!bundleIR.succeed || bundleInfo == null || bundleInfo.Length != bundleEntry.sizeBytes)
+        {
+            ctx.verifyResult = VerifyResult.Outdated;
+        }
+
+        switch (ctx.verifyResult)
+        {
+            case VerifyResult.UpToDate:
+                ctx.syncResult = SyncResult.UpToDate;
+                break;
+            case VerifyResult.Outdated:
+                {
+                    IOResult ir = await UpdateBundleAsync(bundleEntry, ct);
+
+                    if (!ir.succeed)
+                    {
+                        ctx.syncResult = SyncResult.Failed;
+                        break;
+                    }
+                    ctx.syncResult = SyncResult.Updated;
+                    break;
+                }
+        case VerifyResult.Failed:
+            ctx.syncResult = SyncResult.Failed;
+            break;
+        default:
+            ctx.syncResult = SyncResult.Failed;
+            break;
         }
         return ctx;
     }
@@ -836,74 +894,94 @@ public static class ContentManagementSystem
             return ctx;
         }
 
-        // 헤더에서 추출한 데이터를 통해 애셋의 로컬경로에 메타가 있는지를 확인함
-        string localMetaPath = Path.Combine(
-            Application.persistentDataPath,
-            ContentCategory.Meta.ToString(),
-            header.schema,
-            header.id + ".meta.json"
-        );
-
-        // 정합성 검증에서는 LocalMeta가 없거나 해시값이 비어있는 경우는 검증 실패로 간주함
+        string correctHash = string.Empty;
         ContentMeta localMeta = null;
 
-        // 로컬 메타 읽어오기 시도
-        var (readResult, metaJson) = await rm.ReadAllTextsAsync(localMetaPath, ct);
-
-        if (!readResult.succeed || string.IsNullOrEmpty(metaJson))
+        switch (entry)
         {
-            switch (readResult.failReason)
-            {
-                case IOFailReason.NotFound:
-                    ctx.failReason = SyncFailReason.NotFound;
-                    break;
-                case IOFailReason.InvalidPath:
-                    ctx.failReason = SyncFailReason.InvalidPath;
-                    break;
-                case IOFailReason.AccessDenied:
-                    ctx.failReason = SyncFailReason.AccessDenied;
-                    break;
-                default:
-                    ctx.failReason = SyncFailReason.InvalidResponse;
-                    break;
-            }
+            case AddressablesCatalogEntry addrEntry:
+                correctHash = addrEntry.sha256;
+                break;
+            case ContentBundleEntry bundleEntry:
+                correctHash = bundleEntry.sha256;
+                break;
+            default:
+                {
+                    // 헤더에서 추출한 데이터를 통해 애셋의 로컬경로에 메타가 있는지를 확인함
+                    string localMetaPath = Path.Combine(
+                        Application.persistentDataPath,
+                        ContentCategory.Meta.ToString(),
+                        header.schema,
+                        header.id + ".meta.json"
+                    );
 
+                    // 정합성 검증에서는 LocalMeta가 없거나 해시값이 비어있는 경우는 검증 실패로 간주함
+
+                    // 로컬 메타 읽어오기 시도
+                    var (readResult, metaJson) = await rm.ReadAllTextsAsync(localMetaPath, ct);
+
+                    if (!readResult.succeed || string.IsNullOrEmpty(metaJson))
+                    {
+                        switch (readResult.failReason)
+                        {
+                            case IOFailReason.NotFound:
+                                ctx.failReason = SyncFailReason.NotFound;
+                                break;
+                            case IOFailReason.InvalidPath:
+                                ctx.failReason = SyncFailReason.InvalidPath;
+                                break;
+                            case IOFailReason.AccessDenied:
+                                ctx.failReason = SyncFailReason.AccessDenied;
+                                break;
+                            default:
+                                ctx.failReason = SyncFailReason.InvalidResponse;
+                                break;
+                        }
+
+                        ctx.syncResult = SyncResult.Failed;
+                        return ctx;
+                    }
+
+                    // 메타가 존재하지만 파싱에 실패하는 경우도 검증 실패로 간주함
+                    try
+                    {
+                        ContentRecord localMetaRecord =
+                            JsonSerializer.Deserialize<ContentRecord>(metaJson, ContentRecordCodec.Options);
+
+                        if (localMetaRecord != null)
+                        {
+                            ContentRecordCodec.TryDecode<ContentMeta>(localMetaRecord, out localMeta);
+                        }
+                    }
+                    catch
+                    {
+                        localMeta = null;
+                        ctx.failReason = SyncFailReason.ParseError;
+                        return ctx;
+                    }
+
+                    await VerifyContentMetaAsync(localMeta, ctx, ct);
+
+                    if (ctx.verifyResult != VerifyResult.UpToDate)
+                    {
+                        ctx.syncResult = SyncResult.Failed;
+                        return ctx;
+                    }
+                    correctHash = localMeta.sha256;
+                }
+                break;
+        }
+
+        if (string.IsNullOrEmpty(correctHash))
+        {
+            ctx.verifyResult = VerifyResult.Failed;
+            ctx.failReason = SyncFailReason.InvalidResponse;
             ctx.syncResult = SyncResult.Failed;
             return ctx;
         }
 
-        // 메타가 존재하지만 파싱에 실패하는 경우도 검증 실패로 간주함
-        try
-        {
-            ContentRecord localMetaRecord =
-                JsonSerializer.Deserialize<ContentRecord>(metaJson, ContentRecordCodec.Options);
-
-            if (localMetaRecord != null)
-            {
-                ContentRecordCodec.TryDecode<ContentMeta>(localMetaRecord, out localMeta);
-            }
-        }
-        catch
-        {
-            localMeta = null;
-            ctx.failReason = SyncFailReason.ParseError;
-            return ctx;
-        }
-
-        await VerifyContentMetaAsync(localMeta, ctx, ct);
-
-        if (ctx.verifyResult != VerifyResult.UpToDate)
-        {
-            ctx.syncResult = SyncResult.Failed;
-            return ctx;
-        }
-
-        // 메타가 유효하다고 판단된 경우, 메타에 기재된 해시값과 로컬 파일의 본문 해시 계산값이 일치하는지를 검증함
-        string payloadPath = Path.Combine(
-            Application.persistentDataPath,
-            header.category.ToString(),
-            header.schema,
-            header.id + ".json");
+        // 본문이 있는지를 확인하고 해시 계산을 준비
+        string payloadPath = ContentPath.GetContentLocalPath(entry);
 
         IOResult payloadIR = rm.Exists(payloadPath);
         if (!payloadIR.succeed)
@@ -969,18 +1047,12 @@ public static class ContentManagementSystem
                 ctx.syncResult = SyncResult.Failed;
                 return ctx;
             }
-
-            if (localMeta == null || string.IsNullOrEmpty(localMeta.sha256))
+            
+            if (!string.Equals(computedHash, correctHash, StringComparison.OrdinalIgnoreCase))
             {
-                ctx.failReason = SyncFailReason.InvalidResponse;
-                ctx.syncResult = SyncResult.Failed;
-                return ctx;
-            }
-
-            if (!string.Equals(computedHash, localMeta.sha256, StringComparison.OrdinalIgnoreCase))
-            {
-                // “메타는 UpToDate인데 payload가 다름”이면 정합성 깨짐
+                // 본문 해시 계산값과 메타 또는 엔트리에 적힌 해시값과 다름
                 ctx.verifyResult = VerifyResult.Outdated;
+                ctx.failReason = SyncFailReason.HashMismatch; 
                 ctx.syncResult = SyncResult.Failed;
                 return ctx;
             }
@@ -1012,3 +1084,17 @@ public static class ContentManagementSystem
         }
     }
 }
+
+// 메타는 외부에서 동기화 결과를 커밋할때 작업하도록 다시 고민중
+// -->> 문제가 되는 상황 : 하위 엔트리 업데이트실패 & 로컬 폴백 업데이트 경로를 다르게 줄수는 없음 
+//ContentRecord newMetaRecord = ContentRecordCodec.Encode<ContentMeta>(
+//    staticKey,
+//    header.id,
+//    ctx.remoteMeta.version,
+//    header.schema,
+//    ContentCategory.Meta,
+//    ctx.remoteMeta
+//);
+
+//string newMetaJson = JsonSerializer.Serialize(newMetaRecord, ContentRecordCodec.Options);
+//await rm.SaveTextAsync(localMetaPath, newMetaJson, ct);

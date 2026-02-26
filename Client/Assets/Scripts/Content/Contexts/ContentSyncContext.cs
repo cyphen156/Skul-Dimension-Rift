@@ -37,7 +37,10 @@
         InvalidResponse,
         AccessDenied,
         SaveFailed,
-        ParseError
+        ParseError,
+
+        // 원인 불명
+        Unknown
     }
 
     public sealed class ContentSyncContext
