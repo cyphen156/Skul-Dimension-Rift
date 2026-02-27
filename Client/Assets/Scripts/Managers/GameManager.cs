@@ -65,7 +65,7 @@ public class GameManager : NetworkBehaviour
             Debug.LogError("TitleScene entry not found in ContentManifest.");
             return;
         }
-        RequestChangeScene(entry.header.staticKey);
+        StartCoroutine(C_RequestChangeScene(entry.header.staticKey));
     }
 
     public override void OnNetworkSpawn()
@@ -358,14 +358,14 @@ public class GameManager : NetworkBehaviour
     }
     #endregion
 
-    public void RequestChangeScene(uint sceneKey)
+    public IEnumerator C_RequestChangeScene(uint sceneKey)
     {
         // 싱글 플레이 모드
         if (gameMode == GameMode.Single)
         {
             ChangeGameState(GameState.Loading);
             SceneLoadManager.LoadScene(sceneKey);
-            return;
+            yield break;
         }
 
         // 멀티 플레이 모드
@@ -378,6 +378,7 @@ public class GameManager : NetworkBehaviour
         {
             RequestChangeSceneServerRpc(sceneKey);
         }
+        yield return null;
     }
 
 
