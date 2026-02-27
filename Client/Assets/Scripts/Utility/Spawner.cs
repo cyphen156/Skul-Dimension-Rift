@@ -1,4 +1,3 @@
-using Assets.Scripts.Interface;
 using UnityEngine;
 
 public static class Spawner

@@ -394,6 +394,9 @@ public static class ContentManagementSystem
 
         var downloaded = await rm.DownloadBufferAsync(remoteMetaUri, ct);
         IOResult ioResult = downloaded.result;
+        
+        ctx.httpResponseCode = ioResult.httpResponseCode;
+
         byte[] buffer = downloaded.data;
 
         if (ioResult == null || !ioResult.succeed)

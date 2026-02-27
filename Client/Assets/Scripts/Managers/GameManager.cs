@@ -17,6 +17,7 @@ public class GameManager : NetworkBehaviour
 
     [Header("NetworkSettings")]
     [SerializeField] private GameMode gameMode;
+    [SerializeField] private bool canMultiplay;
     [SerializeField] private bool isCoopMode;
     private Dictionary<ulong, PlayerController> connectedPlayers = new Dictionary<ulong, PlayerController>();
 
@@ -40,6 +41,7 @@ public class GameManager : NetworkBehaviour
         {
             Destroy(gameObject);
         }
+        canMultiplay = false;
     }
 
     public void InitializeGame(Type caller)
@@ -65,7 +67,7 @@ public class GameManager : NetworkBehaviour
             Debug.LogError("TitleScene entry not found in ContentManifest.");
             return;
         }
-        StartCoroutine(C_RequestChangeScene(entry.header.staticKey));
+        StartCoroutine(C_RequestChangeStage(entry.header.staticKey));
     }
 
     public override void OnNetworkSpawn()
@@ -357,14 +359,33 @@ public class GameManager : NetworkBehaviour
         ResourceManager.instance.SaveUserData();
     }
     #endregion
-
-    public IEnumerator C_RequestChangeScene(uint sceneKey)
+    public void SetPlayerReady(ulong player)
     {
+
+    }
+
+    /// <summary>
+    /// 씬 교체를 요청하는 함수
+    /// 게임 상태 변화를 주관
+    /// </summary>
+    /// <param name="sceneKey"></param>
+    /// <returns></returns>
+    public IEnumerator C_RequestChangeStage(uint sceneKey)
+    {
+        // 네트워킹이 불가능한 상태
+        if (Application.internetReachability == NetworkReachability.NotReachable)
+        {
+            ChangeGameState(GameState.Loading);
+
+            yield return SceneLoadManager.instance.C_LoadScene(sceneKey);
+
+            yield break;
+        }
+
+        // 네트워킹이 가능한 상태
         // 싱글 플레이 모드
         if (gameMode == GameMode.Single)
         {
-            ChangeGameState(GameState.Loading);
-            SceneLoadManager.LoadScene(sceneKey);
             yield break;
         }
 
@@ -372,11 +393,7 @@ public class GameManager : NetworkBehaviour
         if (IsServer == true)
         {
             ChangeGameState(GameState.Loading);
-            SceneLoadManager.LoadScene(sceneKey);
-        }
-        else
-        {
-            RequestChangeSceneServerRpc(sceneKey);
+            SceneLoadManager.instance.C_LoadScene(sceneKey);
         }
         yield return null;
     }
@@ -445,13 +462,6 @@ public class GameManager : NetworkBehaviour
     private void SpawnPlayerServerRpc(Vector3 spawnPosition)
     {
         SpawnPlayerInternal(OwnerClientId, spawnPosition);
-    }
-
-    [Rpc(SendTo.Server)]
-    private void RequestChangeSceneServerRpc(uint sceneKey)
-    {
-        ChangeGameState(GameState.Loading);
-        SceneLoadManager.LoadScene(sceneKey);
     }
 #endregion
 }

@@ -36,22 +36,7 @@ public class SceneLoadManager : MonoBehaviour
         SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
-    /// <summary>
-    /// 외부에서 호출하는 진입점.
-    /// 실제 코루틴 실행은 내부 인스턴스가 담당.
-    /// </summary>
-    public static void LoadScene(uint sceneStaticKey)
-    {
-        if (instance == null)
-        {
-            Debug.LogWarning("[SceneLoadManager] instance is null.");
-            return;
-        }
-
-        instance.StartCoroutine(instance.C_LoadScene(sceneStaticKey));
-    }
-
-    private IEnumerator C_LoadScene(uint sceneStaticKey)
+    public IEnumerator C_LoadScene(uint sceneStaticKey)
     {
         ResourceManager rm = ResourceManager.instance;
 
