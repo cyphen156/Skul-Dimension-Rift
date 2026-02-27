@@ -1,0 +1,58 @@
+{
+  "header": {
+    "staticKey": "0x00001000",
+    "id": "Skul-Dimension_Rift",
+    "schema": "ContentManifest",
+    "category": "Data",
+    "version": 1
+  },
+  "body": {
+    "staticKey": "0x00001000",
+    "verifyRoot": "http://127.0.0.1:5001",
+    "metaApi": "api/meta?id={Id}&schema={Schema}&platform={Platform}",
+    "contentCatalogs": [
+      {
+        "header": {
+          "staticKey": "0x71000000",
+          "id": "Common",
+          "schema": "ContentCatalog",
+          "category": "Data",
+          "version": 1
+        },
+        "requiredOnBoot": false
+      },
+      {
+        "header": {
+          "staticKey": "0x71010000",
+          "id": "Stage0",
+          "schema": "ContentCatalog",
+          "category": "Data",
+          "version": 1
+        },
+        "requiredOnBoot": false
+      }
+    ],
+    "scenes": [
+      {
+        "header": {
+          "staticKey": "0x72000000",
+          "id": "TitleScene",
+          "schema": "SceneEntry",
+          "category": "Data",
+          "version": 1
+        },
+        "ownerCatalogId": "Common"
+      },
+      {
+        "header": {
+          "staticKey": "0x72010000",
+          "id": "Stage0Scene",
+          "schema": "SceneEntry",
+          "category": "Data",
+          "version": 1
+        },
+        "ownerCatalogId": "Stage0"
+      }
+    ]
+  }
+}

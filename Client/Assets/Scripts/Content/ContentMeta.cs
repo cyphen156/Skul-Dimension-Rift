@@ -7,5 +7,6 @@ namespace Assets.Scripts.Content
     {
         public int version;
         public string sha256;
+        public string dataUri;
     }
 }

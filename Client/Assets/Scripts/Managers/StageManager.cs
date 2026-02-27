@@ -118,7 +118,7 @@ public class StageManager : MonoBehaviour
 
     private uint MakeStageStaticId(byte dlcIndex, int mainIndex, int subIndex)
     {
-        byte clazz = ClassCodec.Pack((byte)mainIndex, (byte)subIndex);
+        byte clazz = NibblePacker.Pack((byte)mainIndex, (byte)subIndex);
 
         return DomainKey.GetStaticId(
             DomainKey.Make(Domain.Scene, dlcIndex, (byte)SceneRole.StageData, clazz, 0)

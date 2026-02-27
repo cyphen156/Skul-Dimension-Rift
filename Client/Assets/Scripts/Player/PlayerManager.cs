@@ -19,7 +19,7 @@ public class PlayerManager : MonoBehaviour
     private Dictionary<string, float> clipDurations = new Dictionary<string, float>();
 
 #if UNITY_EDITOR
-    [SerializeField] private List<SerializableKeyValuePair> currentStates = new List<SerializableKeyValuePair>();
+    [SerializeField] private List<DebugKeyValuePair> currentStates = new List<DebugKeyValuePair>();
 #endif
     private void Awake()
     {
@@ -32,7 +32,7 @@ public class PlayerManager : MonoBehaviour
     private void Update()
     {
         // Debugging code can be placed here
-        currentStates = Serializer.ToDebugList(stateMachine.GetAllCurrentStates());
+        currentStates = DebugUtility.ToDebugList(stateMachine.GetAllCurrentStates());
     }
 #endif
 

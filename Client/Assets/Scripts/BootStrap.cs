@@ -1,4 +1,8 @@
+using Assets.Scripts.Content;
+using Assets.Scripts.Utility;
 using System.Collections;
+using System.Threading;
+using System.Threading.Tasks;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
 using UnityEngine;
@@ -22,8 +26,9 @@ public class BootStrap : MonoBehaviour
 {
     private static BootStrap instance;
 
-    #region Unity Methods
+    private const string defaultManifestPath = "Data/ContentManifest/";
 
+    #region Unity Methods
     private void Awake()
     {
         if (instance == null)
@@ -76,7 +81,15 @@ public class BootStrap : MonoBehaviour
         ResourceManager rm = PromoteOrCreate<ResourceManager>("ResourceManager");
         yield return null; // 한 프레임 대기
 
-        yield return rm.C_VerifyContentMeta();
+        string applicationName = Application.productName.Replace(" : ", "-").Replace(" ", "_");
+        // 2_1 시스템 데이터 등록
+        Task<IOResult> applyGameIdentityTask = ContentManagementSystem.ApplyGameIdentityAsync(defaultManifestPath + applicationName, this.GetType());
+
+        while (applyGameIdentityTask.IsCompleted == false)
+        {
+            yield return null;
+        }
+
         // 3. PoolManager 초기화
         PromoteOrCreate<PoolManager>("PoolManager");
         // 4. GraphicManager 초기화
@@ -95,12 +108,55 @@ public class BootStrap : MonoBehaviour
         PromoteOrCreate<StageManager>("StageManager");
         // 11. GameManager 초기화
         PromoteOrCreate<GameManager>("GameManager");
+
+        GameManager.instance.InitializeGame(this.GetType());
+
+        if (applyGameIdentityTask.IsFaulted || !applyGameIdentityTask.Result.succeed)
+        {
+            // 유저에게 업데이트를 수행할 것을 요구해야함
+            CancellationTokenSource cts = new CancellationTokenSource();
+            Task<ContentSyncContext> syncTask = ContentManagementSystem.SyncContentAsync(
+                ResourceManager.ManifestStaticKey, cts.Token);
+
+            while (!syncTask.IsCompleted)
+            {
+                yield return null;
+            }
+
+            string message = null;
+            string reason = syncTask.IsFaulted ? syncTask.Exception?.GetBaseException().Message : syncTask.Result.failReason.ToString();    
+
+            if (syncTask.IsFaulted)
+            {
+                message = $"필수 구성 요소 업데이트 중 오류가 발생했습니다.\n앱을 종료합니다.\n 사유 : {reason}.";
+         
+                Notifier.NotifyError(
+                    "CriticalError",
+                    message,
+                    NotifyChannel.Native,
+                    () =>
+                    {
+    #if UNITY_EDITOR
+                        UnityEditor.EditorApplication.isPlaying = false;
+    #else
+                Application.Quit();
+    #endif
+                    }
+                );
+
+                yield break;
+            }
+        }
+#if UNITY_EDITOR
+        Debug.Log("[BootStrap] All Managers Initialized.");
+#endif
     }
    private T PromoteOrCreate<T>(string goName) where T : Component
     {
         T existing = FindFirstObjectByType<T>(FindObjectsInactive.Include);
         if (existing != null)
         {
+            existing.gameObject.SetActive(true);
             return existing;
         }
 
@@ -109,6 +165,5 @@ public class BootStrap : MonoBehaviour
         return go.AddComponent<T>();
     }
  
-
-    #endregion Custom Methods
+#endregion Custom Methods
 }

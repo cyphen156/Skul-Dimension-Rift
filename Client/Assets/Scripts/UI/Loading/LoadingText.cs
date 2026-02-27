@@ -3,31 +3,68 @@ using TMPro;
 using System.Collections;
 
 public class LoadingText : MonoBehaviour
-{    
-    private const string defaultText = "불러오는 중";
+{
+    [SerializeField] private TMP_Text dotsText;
+    private Coroutine _running;
+
+    private static readonly string[] Dots =
+    {
+        "",
+        ".",
+        "..",
+        "..."
+    };
+
+    private void Awake()
+    {
+        if (dotsText == null)
+        {
+            dotsText = GetComponent<TMP_Text>();
+        }
+    }
 
     private void OnEnable()
     {
-        StartCoroutine(SetLaodingText());
+        if (_running != null)
+        {
+            StopCoroutine(_running);
+        }
+
+        _running = StartCoroutine(C_Animate());
     }
 
-    IEnumerator SetLaodingText()
+    private void OnDisable()
     {
-        int count = 0;
+        if (_running != null)
+        {
+            StopCoroutine(_running);
+            _running = null;
+        }
+
+        if (dotsText != null)
+        {
+            dotsText.text = "";
+        }
+    }
+
+    private IEnumerator C_Animate()
+    {
+        int index = 0;
 
         while (true)
         {
-            count++;
-            if (count > 3)
+            if (dotsText != null)
             {
-                count = 0;
+                dotsText.text = Dots[index];
             }
-            string text = defaultText;
-            for (int i = 0; i < count; ++i)
+
+            index++;
+
+            if (index >= Dots.Length)
             {
-                text += ".";
+                index = 0;
             }
-            GetComponent<TMP_Text>().text = text;
+
             yield return new WaitForSeconds(0.3f);
         }
     }

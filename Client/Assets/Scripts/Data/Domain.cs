@@ -35,7 +35,11 @@ namespace Assets.Scripts.Data
     /// </summary>
     public enum Domain : byte
     {
-        None = 0x0,
+        /// <summary>
+        /// 시스템 전용 도메인.
+        /// 리졸브맵, 어드레서블 카탈로그 등 CMS 관련 리소스 식별에 사용.
+        /// </summary>
+        System = 0x0,
 
         /// <summary>
         /// 인벤토리/필드 드랍/장비 등 모든 아이템 계열.
@@ -75,7 +79,8 @@ namespace Assets.Scripts.Data
         /// </summary>
         Scene = 0x7, // 씬/레벨/맵 도메인
 
-        // 0x8 ~ 0xF : 예약 (추가 도메인 확장용)
+        // 0x9 ~ 0xF : 예약 (추가 도메인 확장용)
+        DataSet = 0x8, // 데이터셋 
     }
 
     // -------------------------------------------------------------------------
@@ -113,6 +118,16 @@ namespace Assets.Scripts.Data
     /// Item 도메인 내부 역할(타입) 정의.
     /// Domain.Item 과 함께 사용된다.
     /// </summary>
+    /// 
+
+    // SystemRole
+    public enum SystemRole : byte
+    {
+        ContentManifest = 0x0,
+        ContentCatalog = 0x1,
+        ContentMeta = 0x2,
+    }
+
     public enum ItemRole : byte
     {
         None = 0x0,

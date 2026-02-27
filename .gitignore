@@ -96,6 +96,8 @@ InitTestScene*.unity*
 **/[Dd]ownload[Aa]ssets/
 
 # Client 무시
+Client/Assembly-CSharp*.csproj
+Client/*.sln
 /Client/[Ll]ibrary/
 /Client/[Tt]emp/
 /Client/[Oo]bj/
@@ -106,9 +108,9 @@ InitTestScene*.unity*
 /Client/Assets/RemoteDatas/
 /Client/Assets/RemoteDatas.meta
 
-# DatabaseServer 무시
-/DatabaseServer/[Bb]in/
-/DatabaseServer/[Oo]bj/
+# ApiServer 무시
+/ApiServer/[Bb]in/
+/ApiServer/[Oo]bj/
 
 # GameServer 무시
 /GameServer/[Bb]in/

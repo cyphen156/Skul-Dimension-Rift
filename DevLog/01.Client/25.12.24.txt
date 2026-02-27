@@ -1,0 +1,52 @@
+Branch #10 리소스 로드 시스템 어드레서블 개편
+
+Commit 3299f09
+    [Feat] Content.meta.json Client - Server 인증 완성
+
+변경 요약
+
+    클라이언트 - 서버간의 본문 파일에 대한 
+    Meta 기반 인증 로직이 완성되었습니다.
+    클라이언트는 서버가 제공하는 Meta 정보를 기준으로 로컬 콘텐츠 상태를 검증하고,
+    ContentVerifyContext에 기록된 결과에 따라 본문 파일과 Meta 파일을 최신화하며
+    카탈로그 업데이트 여부를 결정합니다
+    
+
+상세 변경 내용
+
+    1. ContentMeta 기반 인증 플로우 완성 (Client)
+        콘텐츠 검증의 기준을 본문 파일이 아닌 Meta 파일로 고정
+        서버는 Meta JSON만 제공하며,
+        업데이트 판단과 실행 책임은 전적으로 클라이언트에 귀속
+        클라이언트 인증 플로우 확정
+
+        로컬 Meta 로드
+            → 서버 Meta 요청
+            → sha256 비교
+            → UpToDate / Outdated / Failed 판정
+
+    2. ContentVerifyContext 중심 상태 전달 구조 확정
+        Meta 검증 결과를 단일 컨텍스트 객체로 통합
+        검증 대상(Key), 검증 결과, 실패 사유, 서버 Meta 응답을 함께 관리
+        인증 결과에 따른 후속 처리 분기 기준을 Context 단위로 고정
+
+    3. 본문(Data) 및 Meta 갱신 규칙 확정
+        Meta가 Outdated일 경우에만 본문 파일 다운로드 수행
+        본문 다운로드 성공 시에만 Meta 파일을 로컬에 저장
+        본문 다운로드 실패 시 Meta 갱신을 차단하여
+        로컬 데이터 불일치 상태 방지
+
+    4. ContentManifest 인증 흐름 포함
+        ContentManifest 자체를 인증 대상에 포함
+        Manifest Meta 역시 일반 콘텐츠와 동일한 규칙으로 검증
+        Manifest 검증 결과를 기준으로 이후 Catalog 갱신 여부 판단 가능
+
+    5. 서버–클라이언트 책임 분리 확정
+
+        서버 역할
+            Meta JSON 제공
+
+        클라이언트 역할
+            Meta 비교 및 상태 판정
+            본문 다운로드 여부 결정
+            로컬 콘텐츠 및 Meta 최신화

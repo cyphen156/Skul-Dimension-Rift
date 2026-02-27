@@ -1,32 +1,75 @@
 using Assets.Scripts.Content;
 using Assets.Scripts.Data;
+using Assets.Scripts.Interface;
 using Assets.Scripts.Utility;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
+using UnityEngine.AddressableAssets.ResourceLocators;
 using UnityEngine.InputSystem;
-using static Types;
-using Object = UnityEngine.Object;
+using UnityEngine.Networking;
+using UnityEngine.ResourceManagement.AsyncOperations;
+using UnityEngine.ResourceManagement.ResourceLocations;
+using UnityEngine.ResourceManagement.ResourceProviders;
 
 /// <summary>
-/// 어드레서블 리소스 관리를 위한 매니저 클래스
-/// 씬 단위로 로드되는 리소스들을 관리
+/// 리소스 관리를 위한 매니저 클래스
+///  - Get을 통해 적재된 리소스 반환
+///  - Load / Unload는 CMS가 호출하고 RM이 수행
 /// </summary>
 public class ResourceManager : MonoBehaviour
 {
     public static ResourceManager instance;
 
-    [Header("Paths")]
-    [SerializeField] private string defaultInputActionPath = "Input/InputActions";
-    
-    [SerializeField] private string contentManifestPath = "Data/ContentManifest";
-    private const string contentManifestFileName = "ContentManifest.json";
+    private sealed class AddressablesAdapter
+    {
+        internal static string TransformInternalId(IResourceLocation location)
+        {
+            if (location == null)
+            {
+                return string.Empty;
+            }
 
+            if (location.ResourceType != typeof(IAssetBundleResource))
+            {
+                return location.InternalId;
+            }
+
+            string internalId = location.InternalId;
+            if (string.IsNullOrEmpty(internalId))
+            {
+                return internalId;
+            }
+
+            // 로드 경로중 애플리케이션 persistancePath는 항상 런타임 플랫폼에 종속되므로 preFix해줘야함
+            // 기준은 로드 패스를 빌드 스크립트가 상대경로만 준다고 만듬
+            return Path.Combine(Application.persistentDataPath, internalId);
+        }
+    }
+
+    public static uint ManifestStaticKey { get; private set; }
+    
+    [Header("paths")]
+    [SerializeField] private string defaultInputActionPath = "Input/InputActions";
     private const string userDataFileName = "UserData.json"; 
     private string userDataPath;
-    private string contentManifestPersistentPath;
+
+    [Header("ContentEntries")]
+    private readonly Dictionary<uint, ContentEntry> contentEntries = new Dictionary<uint, ContentEntry>(); /// domainAddressResolver, CMS에 한해 노출 : 외부 접근 금지
+    private readonly object contentEntriesLock = new object();
+
+    [Header("DomainProvider")]
+    internal DomainAddressResolver domainAddressResolver; /// 리졸버에 한해 CMS에 직접 노출, 외부 접근 금지 ==> 아예 애셋 관리 시스템에서 제외
+
+    [Header("Content Asset Storage")]
+    internal TypeMapContainer[] assetContainers = new TypeMapContainer[Enum.GetValues(typeof(AccessMode)).Length];
 
     private readonly Dictionary<string, string> controlPaths = new()
     {
@@ -37,21 +80,6 @@ public class ResourceManager : MonoBehaviour
         { "Gamepad_PS",     "Control/GamePad/PlayStation" },
         { "Gamepad_Switch", "Control/GamePad/NintendoSwitch" },
     };
-
-    [Header("ContentPacks")]
-    private ContentManifest contentManifest;
-    private ContentMeta localMeta;
-    private ContentVerifyState verifyState;
-    private Dictionary<string, string> catalogPaths;
-    
-    [Header("DomainProvider")]
-    [SerializeField] private DomainAddressResolver domainAddressResolver;
-#if UNITY_EDITOR
-    [SerializeField]
-    private List<SerializableKeyValuePair> domainResolverDebugList
-        = new List<SerializableKeyValuePair>();
-#endif
-    [Header("Resources")]
     private Dictionary<string, GameObject> prefabs = new Dictionary<string, GameObject>();
     private Dictionary<string, AudioClip> bgmClips = new Dictionary<string, AudioClip>();
     private Dictionary<string, AudioClip> sfxClips = new Dictionary<string, AudioClip>();
@@ -59,18 +87,14 @@ public class ResourceManager : MonoBehaviour
     private readonly Dictionary<string, string> controlBindings = new Dictionary<string, string>();
     private readonly Dictionary<string, Sprite> controlSprites = new Dictionary<string, Sprite>();
     private Sprite placeHolderSprite;
-
-    // ObjectKey 기반 스프라이트 캐시
-    private readonly Dictionary<uint, Sprite> itemSprites = new Dictionary<uint, Sprite>();
-    private readonly Dictionary<uint, Sprite> monsterSprites = new Dictionary<uint, Sprite>();
-    private readonly Dictionary<uint, Sprite> worldObjectSprites = new Dictionary<uint, Sprite>();
-
     [Header("UserDatas")]
     [SerializeField] private UserData userData;
     [SerializeField] private InputActionAsset userInputAsset;
 
 #if UNITY_EDITOR
     [Header("DEBUG")]
+    [SerializeField] private List<DebugKeyValuePair> debugContentEntries = new List<DebugKeyValuePair>();
+    [SerializeField] private List<DebugKeyValuePair> debugAssetMaps = new List<DebugKeyValuePair>();
     [SerializeField] private List<string> prefabKeys = new List<string>();
     [SerializeField] private List<string> bgmKeys = new List<string>();
     [SerializeField] private List<string> sfxKeys = new List<string>();
@@ -93,31 +117,8 @@ public class ResourceManager : MonoBehaviour
             return;
         }
         userDataPath = Path.Combine(Application.persistentDataPath, userDataFileName);
-        contentManifestPersistentPath =
-                Path.Combine(
-                    Application.persistentDataPath,
-                    contentManifestPath,
-                    contentManifestFileName
-                );
         Initialize();
-        
-        domainAddressResolver = new DomainAddressResolver();
-        uint titleStaticKey = DomainKey.GetStaticId(
-            DomainKey.Make(
-                Domain.Scene,
-                0,
-                (byte)SceneRole.StagePrefab,
-                ClassCodec.Pack(0, 0),
-                0
-            )
-        );
-
-        domainAddressResolver.Register(titleStaticKey, "Prefab/StageTitle_0");
-#if UNITY_EDITOR
-        domainResolverDebugList = Serializer.ToDebugList<uint, string>(domainAddressResolver.Map);
-#endif
     }
-
     #endregion Unity Methods
 
     #region Initialization
@@ -204,113 +205,44 @@ public class ResourceManager : MonoBehaviour
 
         // 컨트롤 이미지 불러오기
         controlSprites.Clear();
-        // 콘텐츠 매니페스트 로드
-        if (!LoadContentManifest(out contentManifest))
+
+        // 애셋 컨테이너 초기화
+        foreach (AccessMode mode in Enum.GetValues(typeof(AccessMode)))
         {
-            Debug.LogError("Error : ContentManifest Not Exists!");
-            UnityEditor.EditorApplication.isPlaying = false;
-            return;
+            assetContainers[(int)mode] = new TypeMapContainer(mode);
         }
+
+        // 어드레서블 시스템 진입 전 초기화
+        Addressables.InternalIdTransformFunc = AddressablesAdapter.TransformInternalId;
+
+        var handle = Addressables.InitializeAsync();
+        handle.WaitForCompletion();
     }
 
-    public IEnumerator C_VerifyContentMeta()
+    internal static bool InitializeManifestStaticKey(uint staticKey)
     {
-        if (verifyState == null)
+        if (staticKey == default)
         {
-            verifyState = new ContentVerifyState();
+            return false;
         }
 
-        if (contentManifest == null ||
-            contentManifest.verify == null ||
-            string.IsNullOrEmpty(contentManifest.serverRoot) == true ||
-            string.IsNullOrEmpty(contentManifest.verify.metaApi) == true)
+        if (ManifestStaticKey != default)
         {
-            yield break;
+            return false;
         }
-        string key = "ContentManifest";
-        string remoteMetaUri = ContentPath.BuildMetaUri(
-        contentManifest.serverRoot,
-        contentManifest.verify.metaApi,
-        key
-        );
-
-        if (string.IsNullOrEmpty(remoteMetaUri) == true)
-        {
-            yield break;
-        }
-
-        string localMetaPath = ContentPath.BuildLocalMetaPath(
-            Application.persistentDataPath,
-            key
-        );
-
-        localMeta = null;
-
-        if (File.Exists(localMetaPath) == true)
-        {
-            string json = File.ReadAllText(localMetaPath);
-
-            if (string.IsNullOrEmpty(json) == false)
-            {
-                localMeta = JsonUtility.FromJson<ContentMeta>(json);
-            }
-        }
-
-        yield return ContentVerifier.VerifyMeta(
-            remoteMetaUri,
-            localMeta,
-            verifyState
-        );
-
-        if (verifyState.result == ContentVerifyResult.Failed)
-        {
-            yield break;
-        }
-        if (verifyState.result == ContentVerifyResult.Outdated)
-        {
-            yield break;
-        }
-        if (verifyState.result != ContentVerifyResult.UpToDate)
-        {
-            yield break;
-        }
+        ManifestStaticKey = staticKey;
+        return true;
     }
 
-    public IEnumerator C_UpdateContent()
-    {
-        yield return null;
-    }
     #endregion
 
-    #region Resource Accessors
+    #region Regacy Resource Accessors 
+
     public StageData GetStageData(uint stageDataKey)
     {
         StageData data = null;
         stageDatas.TryGetValue(stageDataKey, out data);
         return data;
-    }
-
-    public GameObject GetDomainObject(uint staticKey)
-    {
-        if (staticKey == default)
-        {
-            return null;
-        }
-        return null;
-    }
-
-    public T GetResource<T>(string resourceName) where T : Object
-    {
-        // how to Resource??
-        if (string.IsNullOrEmpty(resourceName))
-        {
-            return null;
-        }
-        else
-        {
-            // return caching data in ResourceManager
-            return (T)Resources.Load<T>(resourceName);
-        }
     }
 
     public InputActionAsset GetUserInputActions()
@@ -334,119 +266,7 @@ public class ResourceManager : MonoBehaviour
 
         return gameObject;
     }
-
-    public Sprite GetSprite(uint objectKey)
-    {
-        if (objectKey == 0u)
-        {
-            return null;
-        }
-
-        Domain domain = DomainKey.GetDomain(objectKey);
-
-        switch (domain)
-        {
-            case Domain.Item:
-                {
-                    return GetItemSprite(objectKey);
-                }
-            case Domain.Monster:
-                {
-                    return GetMonsterSprite(objectKey);
-                }
-            case Domain.WorldObject:
-                {
-                    return GetWorldObjectSprite(objectKey);
-                }
-            default:
-                {
-                    return placeHolderSprite;
-                }
-        }
-    }
-
-    private Sprite GetItemSprite(uint objectKey)
-    {
-        Sprite sprite;
-
-        if (itemSprites.TryGetValue(objectKey, out sprite) == true)
-        {
-            return sprite;
-        }
-
-        string hex = DomainKey.ToHex8(objectKey);
-        string path = "Sprite/Item/Item_" + hex;
-
-        sprite = Resources.Load<Sprite>(path);
-
-        if (sprite != null)
-        {
-            itemSprites[objectKey] = sprite;
-        }
-#if UNITY_EDITOR
-        else
-        {
-            Debug.LogWarning("[ResourceManager] Item sprite not found at path: " + path + " (key: " + hex + ")");
-        }
-#endif
-        return sprite;
-    }
-
-    private Sprite GetMonsterSprite(uint objectKey)
-    {
-        Sprite sprite;
-
-        if (monsterSprites.TryGetValue(objectKey, out sprite) == true)
-        {
-            return sprite;
-        }
-
-        string hex = DomainKey.ToHex8(objectKey);
-        string path = "Sprite/Monster/Monster_" + hex;
-
-        sprite = Resources.Load<Sprite>(path);
-
-        if (sprite != null)
-        {
-            monsterSprites[objectKey] = sprite;
-        }
-#if UNITY_EDITOR
-        else
-        {
-            Debug.LogWarning("[ResourceManager] Monster sprite not found at path: " + path + " (key: " + hex + ")");
-        }
-#endif
-        return sprite;
-    }
-
-    private Sprite GetWorldObjectSprite(uint objectKey)
-    {
-        Sprite sprite;
-
-        if (worldObjectSprites.TryGetValue(objectKey, out sprite) == true)
-        {
-            return sprite;
-        }
-
-        // 예) Sprite/WorldObject/WorldObject_FF000001
-        string hex = DomainKey.ToHex8(objectKey);
-        string path = "Sprite/WorldObject/WorldObject_" + hex;
-
-        sprite = Resources.Load<Sprite>(path);
-
-        if (sprite != null)
-        {
-            worldObjectSprites[objectKey] = sprite;
-        }
-#if UNITY_EDITOR
-        else
-        {
-            Debug.LogWarning("[ResourceManager] WorldObject sprite not found at path: " + path + " (key: " + hex + ")");
-        }
-#endif
-        return sprite;
-    }
-
+    
     public Sprite GetControlSprite(string controlName, bool isHighlight = false)
     {
         if (string.IsNullOrEmpty(controlName))
@@ -501,7 +321,7 @@ public class ResourceManager : MonoBehaviour
     }
     #endregion
 
-    #region Resource Management
+    #region Regacy Resource Management 
     public bool SaveUserData()
     {
         try
@@ -533,9 +353,6 @@ public class ResourceManager : MonoBehaviour
             {
                 File.Move(temp, userDataPath);
             }
-#if UNITY_EDITOR
-            Debug.Log("UserData Save Success");
-#endif
             return true;
         }
         catch (Exception e)
@@ -567,58 +384,6 @@ public class ResourceManager : MonoBehaviour
             Debug.Log($"Loading UserData Failed : {e}");
             return null;
         }
-    }
-
-    private bool LoadContentManifest(out ContentManifest manifest)
-    {
-        manifest = null;
-
-        if (File.Exists(contentManifestPersistentPath) == false)
-        {
-            string resourcesManifestPath = Path.Combine(contentManifestPath, "ContentManifest");
-
-            TextAsset defaultAsset = Resources.Load<TextAsset>(resourcesManifestPath);
-
-            if (defaultAsset == null)
-            {
-                return false;
-            }
-
-            string directory = Path.GetDirectoryName(contentManifestPersistentPath);
-
-            if (string.IsNullOrEmpty(directory) == false &&
-                Directory.Exists(directory) == false)
-            {
-                Directory.CreateDirectory(directory);
-            }
-
-            File.WriteAllText(contentManifestPersistentPath, defaultAsset.text);
-        }
-
-        if (File.Exists(contentManifestPersistentPath) == false)
-        {
-            return false;
-        }
-
-        string json = File.ReadAllText(contentManifestPersistentPath);
-
-        if (string.IsNullOrEmpty(json) == true)
-        {
-            return false;
-        }
-
-        manifest = JsonUtility.FromJson<ContentManifest>(json);
-        return manifest != null;
-    }
-
-
-    /// <summary>
-    /// Addressable 애셋 로드
-    /// </summary>
-    /// <param name="id"></param>
-    public IEnumerator C_LoadSceneData(uint sceneId)
-    {
-        yield return null;
     }
 
     public void ChangeResource(string dictionaryName, string ResourceTarget)
@@ -709,26 +474,6 @@ public class ResourceManager : MonoBehaviour
         }
 #endif
     }
-    #endregion
-
-    #region Utility Methods
-    /// <summary>
-    /// 플랫폼 정보를 정규화하여 리턴합니다.
-    /// 어드레서블 데이터를 다운로드 할때 사용할 예정입니다.
-    /// </summary>
-    /// <returns></returns>
-    private static string GetPlatformFolder()
-    {
-        return Application.platform switch
-        {
-            RuntimePlatform.Android => "ANDROID",
-            RuntimePlatform.IPhonePlayer => "IOS",
-            RuntimePlatform.WindowsPlayer or RuntimePlatform.WindowsEditor => "WINDOWS",
-            RuntimePlatform.OSXPlayer or RuntimePlatform.OSXEditor => "OSX",
-            RuntimePlatform.WebGLPlayer => "WEB",
-            _ => Application.platform.ToString()
-        };
-    }
 
     public void ApplyOption(UIWidgetContainer widget)
     {
@@ -749,6 +494,1755 @@ public class ResourceManager : MonoBehaviour
             default:
                 break;
         }
+    }
+    #endregion
+
+    #region StreamContainer 
+    /// <summary>
+    /// 외부로 스트림을 노출시킬 스트림 컨테이너
+    /// - 스트림의 생성/바인딩/정리는 RM만 가능
+    /// - 외부는 Stream 사용
+    /// - Dispose는 RM이 Task 완료 시점에 강제
+    /// - Release를 통해 스트림 컨테이너를 조기 반환 가능
+    /// </summary>
+    public sealed class StreamContainer : IContainer
+    {
+        public bool Succeeded
+        {
+            get;
+            private set;
+        }
+
+        public Stream Stream
+        {
+            get;
+            private set;
+        }
+
+        /// <summary>
+        /// 빌린 경로
+        /// </summary>
+        internal string LeasedPath
+        {
+            get;
+            private set;
+        }
+
+        /// <summary>
+        /// 빌려간 쪽 태그
+        /// </summary>
+        internal string OwnerTag
+        {
+            get;
+            private set;
+        }
+
+        private int disposed;
+
+        private StreamContainer()
+        {
+            Succeeded = false;
+            Stream = null;
+            LeasedPath = null;
+            OwnerTag = null;
+            disposed = 0;
+        }
+
+        internal static StreamContainer Create()
+        {
+            return new StreamContainer();
+        }
+
+        internal void Bind(Stream stream, string path, string ownerTag)
+        {
+            Stream = stream;
+            LeasedPath = path;
+            OwnerTag = ownerTag;
+            Succeeded = (stream != null);
+        }
+
+        internal void Clear()
+        {
+            Succeeded = false;
+            Stream = null;
+            LeasedPath = null;
+            OwnerTag = null;
+        }
+
+        internal bool TryDispose()
+        {
+            return Interlocked.Exchange(ref disposed, 1) == 0;
+        }
+
+        /// <summary>
+        /// 외부 조기 반납
+        /// </summary>
+        public void Release()
+        {
+            ResourceManager.instance.Dispose(this);
+        }
+    }
+
+    private struct LeaseRecord
+    {
+        public string OwnerTag;
+        public long OpenedUtcTicks;
+    }
+
+    private readonly object streamLeaseLock = new object();
+    private readonly HashSet<StreamContainer> streamContainers = new HashSet<StreamContainer>();
+    private readonly Dictionary<string, LeaseRecord> leasedPaths = new Dictionary<string, LeaseRecord>();
+
+    private bool denyDuplicatePathLease = true;
+
+    private bool TryReservePath(string path, string ownerTag, out string reason)
+    {
+        reason = null;
+
+        if (!denyDuplicatePathLease)
+        {
+            return true;
+        }
+
+        if (string.IsNullOrEmpty(path))
+        {
+            reason = "Invalid path.";
+            return false;
+        }
+
+        LeaseRecord record;
+        if (leasedPaths.TryGetValue(path, out record))
+        {
+            string owner = record.OwnerTag;
+            if (string.IsNullOrEmpty(owner))
+            {
+                owner = "Unknown";
+            }
+
+            reason = $"Path already leased. owner={owner}";
+            return false;
+        }
+
+        LeaseRecord newRecord = new LeaseRecord();
+        newRecord.OwnerTag = string.IsNullOrEmpty(ownerTag) ? "Unknown" : ownerTag;
+        newRecord.OpenedUtcTicks = DateTime.UtcNow.Ticks;
+
+        leasedPaths[path] = newRecord;
+        return true;
+    }
+
+    private void ReleaseReservedPath(string path)
+    {
+        if (!denyDuplicatePathLease)
+        {
+            return;
+        }
+
+        if (string.IsNullOrEmpty(path))
+        {
+            return;
+        }
+
+        leasedPaths.Remove(path);
+    }
+
+    private StreamContainer LeaseRead(string path, string ownerTag, out string reason)
+    {
+        reason = null;
+
+        StreamContainer container = StreamContainer.Create();
+
+        if (string.IsNullOrEmpty(path))
+        {
+            reason = "Invalid path.";
+            return container;
+        }
+
+        if (File.Exists(path) == false)
+        {
+            reason = "File does not exist.";
+            return container;
+        }
+
+        lock (streamLeaseLock)
+        {
+            if (!TryReservePath(path, ownerTag, out reason))
+            {
+                return container;
+            }
+        }
+
+        try
+        {
+            FileStream fs = new FileStream(
+                path,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                256 * 1024,
+                FileOptions.Asynchronous | FileOptions.SequentialScan
+            );
+
+            container.Bind(fs, path, ownerTag);
+
+            lock (streamLeaseLock)
+            {
+                streamContainers.Add(container);
+            }
+
+            return container;
+        }
+        catch (Exception e)
+        {
+            lock (streamLeaseLock)
+            {
+                ReleaseReservedPath(path);
+            }
+
+            container.Clear();
+            reason = $"Open failed: {e.Message}";
+            return container;
+        }
+    }
+
+    /// <summary>
+    /// Taks완료 시점에 스트림 컨테이너 정리 바인딩
+    /// Task가 무한 루프를 도는 경우는 상위 로직에서 방지해야 함
+    /// </summary>
+    /// <param name="container"></param>
+    /// <param name="work"></param>
+    public void BindTask(StreamContainer container, Task work)
+    {
+        if (container == null)
+        {
+            return;
+        }
+
+        if (!container.Succeeded || work == null)
+        {
+            Dispose(container);
+            return;
+        }
+
+        work.ContinueWith(
+            OnWorkCompleted,
+            container,
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default
+        );
+    }
+
+    private static void OnWorkCompleted(Task t, object state)
+    {
+        StreamContainer container = state as StreamContainer;
+        if (container == null)
+        {
+            return;
+        }
+
+        ResourceManager.instance.Dispose(container);
+    }
+
+    private void Dispose(StreamContainer container)
+    {
+        if (container == null)
+        {
+            return;
+        }
+
+        if (!container.TryDispose())
+        {
+            return;
+        }
+
+        string leasedPath = container.LeasedPath;
+
+        lock (streamLeaseLock)
+        {
+            streamContainers.Remove(container);
+            ReleaseReservedPath(leasedPath);
+        }
+
+        Stream stream = container.Stream;
+
+        if (stream != null)
+        {
+            try
+            {
+                stream.Dispose();
+            }
+            catch
+            {
+            }
+        }
+
+        container.Clear();
+    }
+    #endregion
+
+    #region Resource Management IO
+    /// <summary>
+    /// 경로 스트림 대여
+    /// 실패 시 container.Succeeded=false, reason에 사유가 들어갑니다.
+    /// </summary>
+    public bool TryGetStreamContainer(string path, string ownerTag, out StreamContainer container, out string reason)
+    {
+        container = LeaseRead(path, ownerTag, out reason);
+        return container != null && container.Succeeded;
+    }
+
+    public bool IsPathLeased(string path, out string ownerTag)
+    {
+        ownerTag = null;
+
+        lock (streamLeaseLock)
+        {
+            LeaseRecord record;
+            if (leasedPaths.TryGetValue(path, out record))
+            {
+                ownerTag = record.OwnerTag;
+                return true;
+            }
+        }
+
+        return false;
+    }
+    
+    /// <summary>
+    /// 텍스트 애셋을 읽어서 반환
+    /// </summary>
+    /// <param name="path"></param>
+    /// <param name="ct"></param>
+    /// <returns></returns>
+    public async Task<(IOResult result, string data)> ReadAllTextsAsync(string path, CancellationToken ct = default)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return (IOResult.Fail(IOFailReason.InvalidPath), null);
+        }
+
+        try
+        {
+            ct.ThrowIfCancellationRequested();
+
+            if (!File.Exists(path))
+            {
+                return (IOResult.Fail(IOFailReason.NotFound), null);
+            }
+
+            string text = await File.ReadAllTextAsync(path, Encoding.UTF8, ct);
+
+            if (string.IsNullOrEmpty(text))
+            {
+                return (IOResult.Fail(IOFailReason.LoadFailed), null);
+            }
+
+            return (IOResult.Ok(), text);
+        }
+        catch (OperationCanceledException oce)
+        {
+            return (IOResult.Fail(IOFailReason.Canceled, oce), null);
+        }
+        catch (UnauthorizedAccessException uae)
+        {
+            return (IOResult.Fail(IOFailReason.AccessDenied, uae), null);
+        }
+        catch (FileNotFoundException fnf)
+        {
+            return (IOResult.Fail(IOFailReason.NotFound, fnf), null);
+        }
+        catch (DirectoryNotFoundException dnf)
+        {
+            return (IOResult.Fail(IOFailReason.NotFound, dnf), null);
+        }
+        catch (IOException ioe)
+        {
+            return (IOResult.Fail(IOFailReason.LoadFailed, ioe), null);
+        }
+        catch (Exception e)
+        {
+            return (IOResult.Fail(IOFailReason.Unknown, e), null);
+        }
+    }
+
+    /// <summary>
+    /// 파일을 직접 읽어서 호출자가 해석하도록 바이트 배열로 반환
+    /// </summary>
+    /// <param name="path"></param>
+    /// <returns></returns>
+    public async Task<(IOResult result, byte[] data)> ReadAllBytesAsync(string path, CancellationToken ct = default)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return (IOResult.Fail(IOFailReason.InvalidPath), null);
+        }
+
+        try
+        {
+            ct.ThrowIfCancellationRequested();
+
+            if (!File.Exists(path))
+            {
+                return (IOResult.Fail(IOFailReason.NotFound), null);
+            }
+
+            byte[] data = await File.ReadAllBytesAsync(path, ct);
+
+            return (IOResult.Ok(), data);
+        }
+        catch (OperationCanceledException oce)
+        {
+            return (IOResult.Fail(IOFailReason.Canceled, oce), null);
+        }
+        catch (UnauthorizedAccessException uae)
+        {
+            return (IOResult.Fail(IOFailReason.AccessDenied, uae), null);
+        }
+        catch (FileNotFoundException fnf)
+        {
+            return (IOResult.Fail(IOFailReason.NotFound, fnf), null);
+        }
+        catch (DirectoryNotFoundException dnf)
+        {
+            return (IOResult.Fail(IOFailReason.NotFound, dnf), null);
+        }
+        catch (IOException ioe)
+        {
+            return (IOResult.Fail(IOFailReason.Unknown, ioe), null);
+        }
+        catch (Exception e)
+        {
+            return (IOResult.Fail(IOFailReason.Unknown, e), null);
+        }
+    }
+    /// <summary>
+    /// CMS가 애셋을 담을 맵을 할당
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <returns></returns>
+    internal bool AllocateTypeMap<T>(AccessMode mode)
+    {
+        TypeMapContainer container = assetContainers[(int)mode];
+        /// 딕셔너리 유무 확인
+        lock (container.LockObj)
+        {   
+            if (container.Maps.ContainsKey(typeof(T)))
+            {
+                return false;
+            }
+            container.Maps[typeof(T)] = new Dictionary<uint, T>();
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// 애셋을 사용하기 위해 필요한 정보를 등록하는 함수
+    /// ResolveMap, DataSet, Catalog 등
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="staticKey"></param>
+    /// <returns></returns>
+    internal bool Register<T>(uint staticKey, T asset, AccessMode mode)
+    {
+        if (asset is null)
+        {
+            return false;
+        }
+
+        TypeMapContainer container = assetContainers[(int)mode];
+
+        lock (container.LockObj)
+        {
+            if (!container.Maps.ContainsKey(typeof(T)))
+            {
+                if (!AllocateTypeMap<T>(mode))
+                {
+                    return false;
+                }
+            }
+
+            if (!container.Maps.TryGetValue(typeof(T), out object boxed))
+            {
+                return false;
+            }
+            Dictionary<uint, T> map = (Dictionary<uint, T>)boxed;
+            map[staticKey] = asset;
+#if UNITY_EDITOR
+        RefreshDebugRegisteredAssets();
+#endif
+            return true;
+        }
+    }
+
+    internal void UnRegister<T>(uint staticKey, AccessMode mode)
+    {
+        TypeMapContainer container = assetContainers[(int)mode];
+        lock (container.LockObj)
+        {
+            if (!container.Maps.TryGetValue(typeof(T), out object boxed))
+            {
+                return;
+            }
+            Dictionary<uint, T> map = (Dictionary<uint, T>)boxed;
+            map.Remove(staticKey);
+        }
+#if UNITY_EDITOR
+            RefreshDebugRegisteredAssets();
+#endif
+    }
+
+    /// <summary>
+    /// 애플리케이션에 기본적으로 내장되는 Resources로 호출되는 애셋 호출기
+    /// </summary>
+    /// <returns></returns>
+    internal async Task<(IOResult result, T asset)> LoadDefaultAssetAsync<T>(string path, CancellationToken ct = default) 
+        where T : UnityEngine.Object
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return (IOResult.Fail(IOFailReason.InvalidPath), null);
+        }
+
+        ResourceRequest request;
+
+        try
+        {
+            request = Resources.LoadAsync<T>(path);
+        }
+        catch (Exception e)
+        {
+            return (IOResult.Fail(IOFailReason.LoadFailed, e), null);
+        }
+
+        while (request.isDone == false)
+        {
+            if (ct.IsCancellationRequested)
+            {
+                return (IOResult.Fail(IOFailReason.Canceled), null);
+            }
+
+            await Task.Yield();
+        }
+
+        T loaded = request.asset as T;
+        if (loaded == null)
+        {
+            return (IOResult.Fail(IOFailReason.NotFound), null);
+        }
+
+        return (IOResult.Ok(), loaded);
+    }
+
+    /// <summary>
+    /// 애셋을 리졸브맵과 어드레서블 시스템을 이용하여 비동기로 적재
+    /// 실제 Get으로 다른 시스템이 가져가 사용할 수 있도록 준비
+    /// </summary>
+    /// <param name="path"></param>
+    /// <returns></returns>
+    internal async Task<IOResult> LoadAssetAsync<T>(uint staticKey)
+    where T : UnityEngine.Object
+    {
+        string resolvedPath;
+        if (domainAddressResolver == null || domainAddressResolver.TryResolve(staticKey, out resolvedPath) == false)
+        {
+            return IOResult.Fail(IOFailReason.InvalidPath);
+        }
+
+        TypeMapContainer internalContainer = assetContainers[(int)AccessMode.Internal];
+        if (internalContainer == null)
+        {
+            return IOResult.Fail(IOFailReason.NotFound);
+        }
+
+        Task<IOResult> previousTask = null;
+        TaskCompletionSource<IOResult> tcs =
+            new TaskCompletionSource<IOResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task<IOResult> enqueuedTask = tcs.Task;
+
+        lock (internalContainer.LockObj)
+        {
+            TryGetAsset_Internal<Task<IOResult>>(staticKey, AccessMode.Internal, out previousTask);
+            Register<Task<IOResult>>(staticKey, enqueuedTask, AccessMode.Internal);
+        }
+
+        if (previousTask != null)
+        {
+            try
+            {
+                await previousTask;
+            }
+            catch
+            {
+            }
+        }
+
+        IOResult result = IOResult.Ok();
+        AsyncOperationHandle<T> typedHandle = default;
+        bool isOwner = false;
+
+        try
+        {
+            // 먼저 작업에서 애셋을 성공적으로 로드해서 공개처리되엇는가?
+            if (TryGetAsset_Internal<T>(staticKey, AccessMode.Public, out _))
+            {
+                result = IOResult.Ok();
+                return result;
+            }
+
+            // 아니라면 로드를 시작한다
+            typedHandle = Addressables.LoadAssetAsync<T>(resolvedPath);
+            isOwner = true;
+
+            await typedHandle.Task;
+
+            // 어드레서블 로드 실패
+            if (typedHandle.Status != AsyncOperationStatus.Succeeded)
+            {
+                result = IOResult.Fail(IOFailReason.LoadFailed);
+                return result;
+            }
+
+            // 로드된 애셋이 이상함
+            T loaded = typedHandle.Result;
+            if (loaded == null)
+            {
+                result = IOResult.Fail(IOFailReason.LoadFailed);
+                return result;
+            }
+
+            // 공개된건 없는 데 기존 핸들이 남아있음
+            if (TryGetAsset_Internal<AsyncOperationHandle>(staticKey, AccessMode.Internal, out var existingHandle))
+            {
+                // 기존 핸들을 해제하고
+                UnRegister<AsyncOperationHandle>(staticKey, AccessMode.Internal);
+
+                // 방출하기
+                if (existingHandle.IsValid())
+                {
+                    Addressables.Release(existingHandle);
+                }
+            }
+
+            // 재등록
+            Register<AsyncOperationHandle>(staticKey, typedHandle, AccessMode.Internal);
+
+            // 공개 등록 실패
+            if (!Register<T>(staticKey, loaded, AccessMode.Public))
+            {
+                UnRegister<AsyncOperationHandle>(staticKey, AccessMode.Internal);
+                Addressables.Release(typedHandle);
+                result = IOResult.Fail(IOFailReason.RegistrationFailed);
+                return result;
+            }
+
+            result = IOResult.Ok();
+            return result;
+        }
+        catch (Exception e)
+        {
+            result = IOResult.Fail(IOFailReason.Unknown, e);
+            return result;
+        }
+        finally
+        {
+            if (isOwner && typedHandle.IsValid() && typedHandle.Status != AsyncOperationStatus.Succeeded)
+            {
+                Addressables.Release(typedHandle);
+            }
+
+            tcs.TrySetResult(result);
+
+            lock (internalContainer.LockObj)
+            {
+                if (TryGetAsset_Internal<Task<IOResult>>(staticKey, AccessMode.Internal, out var currentTail))
+                {
+                    if (object.ReferenceEquals(currentTail, enqueuedTask))
+                    {
+                        UnRegister<Task<IOResult>>(staticKey, AccessMode.Internal);
+                    }
+                }
+            }
+        }
+    }
+
+    internal async Task<IOResult> UnloadAssetAsync<T>(uint staticKey)
+    where T : UnityEngine.Object
+    {
+        TypeMapContainer internalContainer = assetContainers[(int)AccessMode.Internal];
+        if (internalContainer == null)
+        {
+            return IOResult.Fail(IOFailReason.NotFound);
+        }
+
+        Task<IOResult> previousTask = null;
+
+        TaskCompletionSource<IOResult> tcs =
+            new TaskCompletionSource<IOResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Task<IOResult> enqueuedTask = tcs.Task;
+
+        lock (internalContainer.LockObj)
+        {
+            TryGetAsset_Internal<Task<IOResult>>(staticKey, AccessMode.Internal, out previousTask);
+            Register<Task<IOResult>>(staticKey, enqueuedTask, AccessMode.Internal);
+        }
+
+        if (previousTask != null)
+        {
+            try
+            {
+                await previousTask;
+            }
+            catch
+            {
+            }
+        }
+
+        IOResult result = IOResult.Ok();
+
+        try
+        {
+            UnRegister<T>(staticKey, AccessMode.Public);
+
+            AsyncOperationHandle handle = default;
+            bool hasHandle = false;
+
+            lock (internalContainer.LockObj)
+            {
+                hasHandle = TryGetAsset_Internal<AsyncOperationHandle>(staticKey, AccessMode.Internal, out handle);
+
+                if (hasHandle)
+                {
+                    UnRegister<AsyncOperationHandle>(staticKey, AccessMode.Internal);
+                }
+            }
+
+            if (hasHandle && handle.IsValid())
+            {
+                Addressables.Release(handle);
+            }
+
+            result = IOResult.Ok();
+            return result;
+        }
+        catch (Exception e)
+        {
+            result = IOResult.Fail(IOFailReason.Unknown, e);
+            return result;
+        }
+        finally
+        {
+            tcs.TrySetResult(result);
+
+            lock (internalContainer.LockObj)
+            {
+                if (TryGetAsset_Internal<Task<IOResult>>(staticKey, AccessMode.Internal, out var currentTail))
+                {
+                    if (object.ReferenceEquals(currentTail, enqueuedTask))
+                    {
+                        UnRegister<Task<IOResult>>(staticKey, AccessMode.Internal);
+                    }
+                }
+            }
+        }
+    }
+
+    internal async Task<IOResult> LoadAddressablesCatalogAsync(uint staticKey, string path)
+    {
+        if (staticKey == 0u)
+        {
+            return IOResult.Fail(IOFailReason.InvalidResponse);
+        }
+        
+        TypeMapContainer internalContainer = assetContainers[(int)AccessMode.Internal];
+        if (internalContainer == null)
+        {
+            return IOResult.Fail(IOFailReason.NotInitialized);
+        }
+
+        Task<IOResult> previousTask = null;
+
+        TaskCompletionSource<IOResult> tcs =
+            new TaskCompletionSource<IOResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Task<IOResult> enqueuedTask = tcs.Task;
+
+        lock (internalContainer.LockObj)
+        {
+            TryGetAsset_Internal<Task<IOResult>>(staticKey, AccessMode.Internal, out previousTask);
+            Register<Task<IOResult>>(staticKey, enqueuedTask, AccessMode.Internal);
+        }
+
+        if (previousTask != null)
+        {
+            try
+            {
+                await previousTask;
+            }
+            catch
+            {
+            }
+        }
+
+        IOResult result = IOResult.Ok();
+        AsyncOperationHandle<IResourceLocator> typedHandle = default;
+        bool isOwner = false;
+
+        try
+        {
+            IResourceLocator existingLocator = null;
+
+            if (TryGetAsset_Internal<IResourceLocator>(staticKey, AccessMode.Internal, out existingLocator))
+            {
+                if (existingLocator != null)
+                {
+                    result = IOResult.Ok();
+                    return result;
+                }
+            }
+
+            typedHandle = Addressables.LoadContentCatalogAsync(path, false);
+            isOwner = true;
+
+            await typedHandle.Task;
+
+            if (typedHandle.Status != AsyncOperationStatus.Succeeded)
+            {
+                result = IOResult.Fail(IOFailReason.LoadFailed);
+                return result;
+            }
+
+            IResourceLocator locator = typedHandle.Result;
+            if (locator == null)
+            {
+                result = IOResult.Fail(IOFailReason.LoadFailed);
+                return result;
+            }
+
+            AsyncOperationHandle existingHandle = default;
+
+            if (TryGetAsset_Internal<AsyncOperationHandle>(staticKey, AccessMode.Internal, out existingHandle))
+            {
+                UnRegister<AsyncOperationHandle>(staticKey, AccessMode.Internal);
+
+                if (existingHandle.IsValid())
+                {
+                    Addressables.Release(existingHandle);
+                }
+            }
+
+            if (TryGetAsset_Internal<IResourceLocator>(staticKey, AccessMode.Internal, out existingLocator))
+            {
+                UnRegister<IResourceLocator>(staticKey, AccessMode.Internal);
+            }
+
+            AsyncOperationHandle boxedHandle = typedHandle;
+
+            Register<AsyncOperationHandle>(staticKey, boxedHandle, AccessMode.Internal);
+            Register<IResourceLocator>(staticKey, locator, AccessMode.Internal);
+
+            result = IOResult.Ok();
+            return result;
+        }
+        catch (Exception e)
+        {
+            result = IOResult.Fail(IOFailReason.Unknown, e);
+            return result;
+        }
+        finally
+        {
+            if (isOwner && typedHandle.IsValid() && result.succeed == false)
+            {
+                Addressables.Release(typedHandle);
+            }
+
+            tcs.TrySetResult(result);
+
+            lock (internalContainer.LockObj)
+            {
+                if (TryGetAsset_Internal<Task<IOResult>>(staticKey, AccessMode.Internal, out var currentTail))
+                {
+                    if (object.ReferenceEquals(currentTail, enqueuedTask))
+                    {
+                        UnRegister<Task<IOResult>>(staticKey, AccessMode.Internal);
+                    }
+                }
+            }
+        }
+    }
+
+    internal void ForceGarbageCollecting()
+    {
+        GC.Collect();
+        Resources.UnloadUnusedAssets();
+    }
+
+    public IOResult TryGetFileInfo(string path, out FileInfo info)
+    {
+        info = null;
+
+        if (string.IsNullOrEmpty(path))
+        {
+            return IOResult.Fail(IOFailReason.InvalidPath);
+        }
+
+        try
+        {
+            if (!File.Exists(path))
+            {
+                return IOResult.Fail(IOFailReason.NotFound);
+            }
+
+            info = new FileInfo(path);
+            return IOResult.Ok();
+        }
+        catch (UnauthorizedAccessException uae)
+        {
+            return IOResult.Fail(IOFailReason.AccessDenied, uae);
+        }
+        catch (Exception e)
+        {
+            return IOResult.Fail(IOFailReason.Unknown, e);
+        }
+    }
+
+    public IOResult Exists(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return IOResult.Fail(IOFailReason.InvalidPath);
+        }
+
+        try
+        {
+            if (File.Exists(path))
+            {
+                return IOResult.Ok();
+            }
+
+            return IOResult.Fail(IOFailReason.NotFound);
+        }
+        catch (Exception e)
+        {
+            return IOResult.Fail(IOFailReason.Unknown, e);
+        }
+    }
+
+    internal async Task<IOResult> SaveTextAsync(string path, string text, CancellationToken ct = default)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return IOResult.Fail(IOFailReason.InvalidPath);
+        }
+
+        if (text == null)
+        {
+            return IOResult.Fail(IOFailReason.SaveFailed, new ArgumentNullException(nameof(text)));
+        }
+
+        byte[] bytes = Encoding.UTF8.GetBytes(text);
+        return await SaveAsync(path, bytes, ct);
+    }
+
+    internal async Task<IOResult> SaveAsync(string path, byte[] bytes, CancellationToken ct = default)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return IOResult.Fail(IOFailReason.InvalidPath);
+        }
+
+        if (bytes == null)
+        {
+            return IOResult.Fail(IOFailReason.SaveFailed, new ArgumentNullException(nameof(bytes)));
+        }
+
+        string tempPath = path + ".tmp";
+
+        // ensure dir
+        try
+        {
+            ct.ThrowIfCancellationRequested();
+
+            string dir = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+        }
+        catch (OperationCanceledException oce)
+        {
+            return IOResult.Fail(IOFailReason.Canceled, oce);
+        }
+        catch (Exception e)
+        {
+            return IOResult.Fail(IOFailReason.InvalidPath, e);
+        }
+
+        // temp cleanup
+        try
+        {
+            ct.ThrowIfCancellationRequested();
+            File.Delete(tempPath);
+        }
+        catch (OperationCanceledException oce)
+        {
+            return IOResult.Fail(IOFailReason.Canceled, oce);
+        }
+        catch (UnauthorizedAccessException uae)
+        {
+            return IOResult.Fail(IOFailReason.AccessDenied, uae);
+        }
+        catch (IOException ioe)
+        {
+            return IOResult.Fail(IOFailReason.AccessDenied, ioe);
+        }
+        catch (Exception e)
+        {
+            return IOResult.Fail(IOFailReason.InvalidPath, e);
+        }
+
+        // write temp
+        try
+        {
+            ct.ThrowIfCancellationRequested();
+
+            using (FileStream fs = new FileStream(
+                tempPath,
+                FileMode.CreateNew,
+                FileAccess.Write,
+                FileShare.None,
+                256 * 1024,
+                FileOptions.Asynchronous | FileOptions.SequentialScan
+            ))
+            {
+                await fs.WriteAsync(bytes, 0, bytes.Length, ct);
+                await fs.FlushAsync(ct);
+            }
+        }
+        catch (OperationCanceledException oce)
+        {
+            try
+            {
+                File.Delete(tempPath);
+            }
+            catch
+            {
+            }
+
+            return IOResult.Fail(IOFailReason.Canceled, oce);
+        }
+        catch (UnauthorizedAccessException uae)
+        {
+            try
+            {
+                File.Delete(tempPath);
+            }
+            catch
+            {
+            }
+
+            return IOResult.Fail(IOFailReason.AccessDenied, uae);
+        }
+        catch (Exception e)
+        {
+            try
+            {
+                File.Delete(tempPath);
+            }
+            catch
+            {
+            }
+
+            return IOResult.Fail(IOFailReason.SaveFailed, e);
+        }
+
+        // backUp
+        string back = path + ".bak";
+        bool isBackUped = false;
+
+        if (File.Exists(path))
+        {
+            try
+            {
+                ct.ThrowIfCancellationRequested();
+
+                try
+                {
+                    File.Delete(back);
+                }
+                catch
+                {
+                }
+
+                File.Move(path, back);
+                isBackUped = true;
+            }
+            catch (OperationCanceledException oce)
+            {
+                try
+                {
+                    File.Delete(tempPath);
+                }
+                catch
+                {
+                }
+
+                return IOResult.Fail(IOFailReason.Canceled, oce);
+            }
+            catch (UnauthorizedAccessException uae)
+            {
+                try
+                {
+                    File.Delete(tempPath);
+                }
+                catch
+                {
+                }
+
+                return IOResult.Fail(IOFailReason.AccessDenied, uae);
+            }
+            catch (Exception e)
+            {
+                try
+                {
+                    File.Delete(tempPath);
+                }
+                catch
+                {
+                }
+
+                return IOResult.Fail(IOFailReason.SaveFailed, e);
+            }
+        }
+
+        IOResult result;
+
+        // Commit
+        try
+        {
+            ct.ThrowIfCancellationRequested();
+
+            File.Move(tempPath, path);
+
+            try
+            {
+                if (isBackUped)
+                {
+                    File.Delete(back);
+                }
+            }
+            catch
+            {
+            }
+
+            result = IOResult.Ok();
+        }
+        catch (OperationCanceledException oce)
+        {
+            try
+            {
+                if (isBackUped)
+                {
+                    File.Delete(path);
+                    File.Move(back, path);
+                }
+            }
+            catch
+            {
+            }
+
+            result = IOResult.Fail(IOFailReason.Canceled, oce);
+        }
+        catch (UnauthorizedAccessException uae)
+        {
+            try
+            {
+                if (isBackUped)
+                {
+                    File.Delete(path);
+                    File.Move(back, path);
+                }
+            }
+            catch
+            {
+            }
+
+            result = IOResult.Fail(IOFailReason.AccessDenied, uae);
+        }
+        catch (Exception e)
+        {
+            try
+            {
+                if (isBackUped)
+                {
+                    File.Delete(path);
+                    File.Move(back, path);
+                }
+            }
+            catch
+            {
+            }
+
+            result = IOResult.Fail(IOFailReason.SaveFailed, e);
+        }
+        finally
+        {
+            try
+            {
+                File.Delete(tempPath);
+            }
+            catch
+            {
+            }
+        }
+
+        return result;
+    }
+
+    internal Task<IOResult> Delete(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return Task.FromResult(IOResult.Fail(IOFailReason.InvalidPath));
+        }
+
+        try
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+
+            return Task.FromResult(IOResult.Ok());
+        }
+        catch (OperationCanceledException oce)
+        {
+            return Task.FromResult(IOResult.Fail(IOFailReason.Canceled, oce));
+        }
+        catch (UnauthorizedAccessException uae)
+        {
+            return Task.FromResult(IOResult.Fail(IOFailReason.AccessDenied, uae));
+        }
+        catch (Exception e)
+        {
+            return Task.FromResult(IOResult.Fail(IOFailReason.Unknown, e));
+        }
+    }
+
+    /// <summary>
+    /// 문서 사이즈가 작은 경우, 버퍼로 바로 다운로드
+    /// 외부 시스템에서 직접 파싱하도록 바이트 배열로 반환
+    /// </summary>
+    /// <param name="uri"></param>
+    /// <param name="ct"></param>
+    /// <returns></returns>
+    public async Task<(IOResult result, byte[] data)> DownloadBufferAsync(string uri, CancellationToken ct = default)
+    {
+        byte[] data = null;
+
+        if (string.IsNullOrEmpty(uri))
+        {
+            return (IOResult.Fail(IOFailReason.InvalidUri), data);
+        }
+
+        long httpCode = 0;
+
+        try
+        {
+            using (UnityWebRequest req = UnityWebRequest.Get(uri))
+            {
+                req.downloadHandler = new DownloadHandlerBuffer();
+
+                UnityWebRequestAsyncOperation op = req.SendWebRequest();
+
+                while (!op.isDone)
+                {
+                    if (ct.IsCancellationRequested)
+                    {
+                        try
+                        {
+                            req.Abort();
+                        }
+                        catch
+                        {
+                        }
+
+                        ct.ThrowIfCancellationRequested();
+                    }
+
+                    await Task.Yield();
+                }
+
+                httpCode = req.responseCode;
+
+                bool httpOk = (httpCode >= 200) && (httpCode < 300);
+                if (req.result != UnityWebRequest.Result.Success || !httpOk)
+                {
+                    return (IOResult.Fail(IOFailReason.NetworkError, new Exception(req.error), httpCode), null);
+                }
+
+                data = req.downloadHandler.data;
+
+                if (data == null || data.Length == 0)
+                {
+                    return (IOResult.Fail(IOFailReason.NetworkError, new Exception("Empty response body."), httpCode), data);
+                }
+            }
+
+            IOResult ok = IOResult.Ok();
+            ok.httpResponseCode = httpCode;
+            return (ok, data);
+        }
+        catch (OperationCanceledException oce)
+        {
+            return (IOResult.Fail(IOFailReason.Canceled, oce, httpCode), null);
+        }
+        catch (Exception e)
+        {
+            return (IOResult.Fail(IOFailReason.NetworkError, e, httpCode), null);
+        }
+    }
+
+    /// <summary>
+    /// 버퍼를 쓰지 않고 파일에 직접 다운로드
+    /// </summary>
+    /// <param name="uri"></param>
+    /// <param name="path"></param>
+    /// <param name="ct"></param>
+    /// <returns></returns>
+    internal async Task<IOResult> DownloadFileAsync(string uri, string path, CancellationToken ct = default)
+    {
+        if (string.IsNullOrEmpty(uri))
+        {
+            return IOResult.Fail(IOFailReason.InvalidUri);
+        }
+
+        if (string.IsNullOrEmpty(path))
+        {
+            return IOResult.Fail(IOFailReason.InvalidPath);
+        }
+
+        string tempPath = path + ".tmp";
+
+        // ensure dir
+        try
+        {
+            ct.ThrowIfCancellationRequested();
+
+            string dir = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+        }
+        catch (Exception e)
+        {
+            return IOResult.Fail(IOFailReason.InvalidPath, e);
+        }
+
+        // temp cleanup
+        try
+        {
+            ct.ThrowIfCancellationRequested();
+            File.Delete(tempPath);
+        }
+        catch (OperationCanceledException oce)
+        {
+            return IOResult.Fail(IOFailReason.Canceled, oce);
+        }
+        catch (UnauthorizedAccessException uae)
+        {
+            return IOResult.Fail(IOFailReason.AccessDenied, uae);
+        }
+        catch (IOException ioe)
+        {
+            return IOResult.Fail(IOFailReason.AccessDenied, ioe);
+        }
+        catch (Exception e)
+        {
+            return IOResult.Fail(IOFailReason.InvalidPath, e);
+        }
+
+        long httpCode = 0;
+
+        // download
+        try
+        {
+            using (UnityWebRequest req = UnityWebRequest.Get(uri))
+            {
+                req.downloadHandler = new DownloadHandlerFile(tempPath);
+
+                UnityWebRequestAsyncOperation op = req.SendWebRequest();
+
+                while (!op.isDone)
+                {
+                    if (ct.IsCancellationRequested)
+                    {
+                        try
+                        {
+                            req.Abort();
+                        }
+                        catch
+                        {
+                        }
+
+                        ct.ThrowIfCancellationRequested();
+                    }
+
+                    await Task.Yield();
+                }
+
+                httpCode = req.responseCode;
+
+                bool httpOk = (httpCode >= 200) && (httpCode < 300);
+                if (req.result != UnityWebRequest.Result.Success || !httpOk)
+                {
+                    try
+                    {
+                        File.Delete(tempPath);
+                    }
+                    catch
+                    {
+                    }
+
+                    return IOResult.Fail(IOFailReason.NetworkError, new Exception(req.error), httpCode);
+                }
+            }
+        }
+        catch (OperationCanceledException oce)
+        {
+            try
+            {
+                File.Delete(tempPath);
+            }
+            catch
+            {
+            }
+
+            return IOResult.Fail(IOFailReason.Canceled, oce, httpCode);
+        }
+        catch (Exception e)
+        {
+            try
+            {
+                File.Delete(tempPath);
+            }
+            catch
+            {
+            }
+
+            return IOResult.Fail(IOFailReason.NetworkError, e, httpCode);
+        }
+
+        // backUp
+        string back = path + ".bak";
+        bool isBackUped = false;
+
+        if (File.Exists(path))
+        {
+            try
+            {
+                try
+                {
+                    File.Delete(back);
+                }
+                catch 
+                {
+                }
+
+                File.Move(path, back);
+                isBackUped = true;
+            }
+            // 백업 실패시 커밋 하지 않음
+            catch (UnauthorizedAccessException uae)
+            {
+                try
+                {
+                    File.Delete(tempPath);
+                }
+                catch
+                {
+                }
+
+                return IOResult.Fail(IOFailReason.AccessDenied, uae, httpCode);
+            }
+            catch (Exception e)
+            {
+                try
+                {
+                    File.Delete(tempPath);
+                }
+                catch
+                {
+                }
+
+                return IOResult.Fail(IOFailReason.SaveFailed, e, httpCode);
+            }
+        }
+
+        IOResult result;
+
+        // Commit
+        try
+        {
+            File.Move(tempPath, path);
+
+            try
+            {
+                if (isBackUped)
+                {
+                    File.Delete(back);
+                }
+            }
+            catch
+            {
+            }
+
+            result = IOResult.Ok();
+            result.httpResponseCode = httpCode;
+        }
+        catch (UnauthorizedAccessException uae)
+        {
+            try
+            {
+                if (isBackUped)
+                {
+                    File.Delete(path);
+                    File.Move(back, path);
+                }
+            }
+            catch
+            {
+            }
+
+            result = IOResult.Fail(IOFailReason.AccessDenied, uae, httpCode);
+        }
+        catch (Exception e)
+        {
+            try
+            {
+                if (isBackUped)
+                {
+                    File.Delete(path);
+                    File.Move(back, path);
+                }
+            }
+            catch
+            {
+            }
+
+            result = IOResult.Fail(IOFailReason.SaveFailed, e, httpCode);
+        }
+        finally
+        {
+            try
+            {
+                File.Delete(tempPath);
+            }
+            catch
+            {
+            }
+        }
+
+        return result;
+    }
+    #endregion
+
+    #region Content Access Methods
+    internal void UpsertContentEntry(ContentEntry entry)
+    {
+        if (entry == null)
+        {
+            return;
+        }
+
+        uint key = entry.header.staticKey;
+
+        if (key == 0u)
+        {
+            return;
+        }
+
+        lock (contentEntriesLock)
+        {
+            contentEntries[key] = entry;
+        }
+#if UNITY_EDITOR
+        RefreshDebugContentEntries();
+#endif
+    }
+
+    internal void RemoveContentEntry(uint staticKey)
+    {
+        lock (contentEntriesLock)
+        {
+            contentEntries.Remove(staticKey);
+        }
+#if UNITY_EDITOR
+        RefreshDebugContentEntries();
+#endif
+    }
+
+    internal bool TryGetContentEntry(uint staticKey, out ContentEntry entry)
+    {
+        lock (contentEntriesLock)
+        {
+            return contentEntries.TryGetValue(staticKey, out entry);
+        }
+    }
+
+    public bool TryGetSceneEntry(string sceneName, out SceneEntry entry)
+    {
+        lock (contentEntriesLock) 
+        {
+            foreach (KeyValuePair<uint, ContentEntry> kv in contentEntries)
+            {
+                if (kv.Value is SceneEntry sceneEntry)
+                {
+                    if (sceneEntry.header.id == sceneName)
+                    {
+                        entry = sceneEntry;
+                        return true;
+                    }
+                }
+            }
+        }
+        entry = null;
+        return false;
+    }   
+
+    /// <summary>
+    /// 게임 시스템이 로딩된 애셋을 가져가는 함수
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="staticKey">DomainKey</param>
+    /// <param name="asset">return To</param>
+    /// <returns>if (!= T || null => default/null) Else than T value</returns>
+    public bool TryGetAsset<T>(uint staticKey, out T asset)
+    {
+        return TryGetAsset_Internal<T>(staticKey, AccessMode.Public, out asset);
+    }
+
+    internal bool TryGetAsset_Internal<T>(uint staticKey, AccessMode mode, out T asset)
+    {
+        asset = default;
+
+        int index = (int)mode;
+
+        TypeMapContainer container = assetContainers[index];
+        if (container == null)
+        {
+            return false;
+        }
+
+        lock (container.LockObj)
+        {
+            object boxed;
+            if (!container.Maps.TryGetValue(typeof(T), out boxed))
+            {
+                return false;
+            }
+
+            Dictionary<uint, T> map = (Dictionary<uint, T>)boxed;
+            return map.TryGetValue(staticKey, out asset);
+        }
+    }
+    #endregion
+
+    #region DebugHelper
+#if UNITY_EDITOR
+    private void RefreshDebugContentEntries()
+    {
+        debugContentEntries.Clear();
+        if (contentEntries == null)
+        {
+            return;
+        }
+        lock (contentEntriesLock)
+        {
+            foreach (KeyValuePair<uint, ContentEntry> kv in contentEntries)
+            {
+                uint k = kv.Key;
+                ContentEntry v = kv.Value;
+                string ks = Formatter.ToDebugString(k);
+                string vs = Formatter.ToDebugString(v);
+                DebugKeyValuePair kvp = new DebugKeyValuePair(ks, vs);
+                debugContentEntries.Add(kvp);
+            }
+        }
+    }
+
+    private void RefreshDebugRegisteredAssets()
+    {
+        debugAssetMaps.Clear();
+
+        if (assetContainers == null)
+        {
+            return;
+        }
+
+        // 4개의 컨테이너
+        for (int i = 0; i < assetContainers.Length; i++)
+        {
+            TypeMapContainer container = assetContainers[i];
+            if (container == null)
+            {
+                continue;
+            }
+
+            lock (container.LockObj)
+            {
+                foreach (KeyValuePair<Type, object> typeEntry in container.Maps)
+                {
+                    Type assetType = typeEntry.Key;
+                    object boxedMap = typeEntry.Value;
+
+                    if (boxedMap == null)
+                    {
+                        continue;
+                    }
+
+                    IEnumerable enumerable = boxedMap as IEnumerable;
+                    if (enumerable == null)
+                    {
+                        continue;
+                    }
+
+                    foreach (object entry in enumerable)
+                    {
+                        if (entry == null)
+                        {
+                            continue;
+                        }
+
+                        Type entryType = entry.GetType();
+                        PropertyInfo keyProp = entryType.GetProperty("Key");
+                        PropertyInfo valProp = entryType.GetProperty("Value");
+
+                        object kObj = null;
+                        object vObj = null;
+
+                        if (keyProp != null)
+                        {
+                            kObj = keyProp.GetValue(entry);
+                        }
+
+                        if (valProp != null)
+                        {
+                            vObj = valProp.GetValue(entry);
+                        }
+
+                        string k = Formatter.ToDebugString(kObj);
+                        string v = Formatter.ToDebugString(vObj);
+
+                        DebugKeyValuePair kv = new DebugKeyValuePair(k, v);
+                        debugAssetMaps.Add(kv);
+                    }
+                }
+            }
+        }
+#endif
     }
     #endregion
 }

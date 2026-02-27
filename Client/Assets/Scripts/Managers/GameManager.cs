@@ -1,3 +1,5 @@
+using Assets.Scripts.Content;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
@@ -5,6 +7,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using static Types;
 
+using Random = UnityEngine.Random;
 /// <summary>
 /// 게임 매니저 싱글톤 클래스
 /// </summary>
@@ -39,21 +42,30 @@ public class GameManager : NetworkBehaviour
         }
     }
 
-    private void Start()
+    public void InitializeGame(Type caller)
     {
-        InitializeGame();
-    }
+        // 1. 허용되지 않은 호출자면 거부
+        if (caller == null || caller != typeof(BootStrap))
+        {
+            UnityEngine.Debug.LogError(
+                $"[Access Denied] {(caller == null ? "null" : caller.Name)}은 이 함수를 호출할 권한이 없습니다."
+            );
+            return;
+        }
 
-    private void InitializeGame()
-    {
         playerPrefab = ResourceManager.instance.GetGameObject("Player");
 
         ResetGame();
 
-        if (StageManager.instance.GetCurrentSceneName() != "TitleScene")
+        // 타이틀 씬 재진입 -> 매니저 객체를 유지한 채로 씬만 다시 로드
+        // 기대 효과 : TitleScene에 있는 Intro 스크립트가 게임 난이도에 따라 다른 배경과 BGM을 보여주는 기능이 정상 작동
+        ResourceManager.instance.TryGetSceneEntry("TitleScene", out SceneEntry entry);
+        if (entry == null)
         {
-            RequestChangeScene("TitleScene");
+            Debug.LogError("TitleScene entry not found in ContentManifest.");
+            return;
         }
+        StartCoroutine(C_RequestChangeScene(entry.header.staticKey));
     }
 
     public override void OnNetworkSpawn()
@@ -151,11 +163,16 @@ public class GameManager : NetworkBehaviour
         }
 
         currentState = state;
+        Debug.Log($"GameStateChanged : {state.ToString()}");
+
+        if (state != GameState.Loading)
+        {
+            UIManager.instance.Hide("Loading");
+        }
 
         switch (state)
         {
             case GameState.Ready:
-                UIManager.instance.Hide("Loading");
                 if (StageManager.instance.GetCurrentSceneName() == "TitleScene")
                 {
                     UIManager.instance.Show("Press Any Key");
@@ -341,31 +358,27 @@ public class GameManager : NetworkBehaviour
     }
     #endregion
 
-    public void RequestChangeScene(string sceneName)
+    public IEnumerator C_RequestChangeScene(uint sceneKey)
     {
-        if (string.IsNullOrEmpty(sceneName) == true)
-        {
-            return;
-        }
-
         // 싱글 플레이 모드
         if (gameMode == GameMode.Single)
         {
             ChangeGameState(GameState.Loading);
-            SceneLoadManager.LoadScene(sceneName);
-            return;
+            SceneLoadManager.LoadScene(sceneKey);
+            yield break;
         }
 
         // 멀티 플레이 모드
         if (IsServer == true)
         {
             ChangeGameState(GameState.Loading);
-            SceneLoadManager.LoadScene(sceneName);
+            SceneLoadManager.LoadScene(sceneKey);
         }
         else
         {
-            RequestChangeSceneServerRpc(sceneName);
+            RequestChangeSceneServerRpc(sceneKey);
         }
+        yield return null;
     }
 
 
@@ -435,15 +448,10 @@ public class GameManager : NetworkBehaviour
     }
 
     [Rpc(SendTo.Server)]
-    private void RequestChangeSceneServerRpc(string sceneName)
+    private void RequestChangeSceneServerRpc(uint sceneKey)
     {
-        if (string.IsNullOrEmpty(sceneName) == true)
-        {
-            return;
-        }
-
         ChangeGameState(GameState.Loading);
-        SceneLoadManager.LoadScene(sceneName);
+        SceneLoadManager.LoadScene(sceneKey);
     }
 #endregion
 }

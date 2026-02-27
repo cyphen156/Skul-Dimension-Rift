@@ -57,6 +57,8 @@ public class Intro : MonoBehaviour, IPlayable
             selectedBackground = defaultBackground;
         }
 
+        UIManager.instance.Hide("Loading");
+
         SoundManager.instance.PlayBGM(bgm);
 
         neoWiz.SetActive(true);
