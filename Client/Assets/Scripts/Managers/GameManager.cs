@@ -27,7 +27,7 @@ public class GameManager : NetworkBehaviour
 
     [Header("Players")]
     [SerializeField] private GameObject playerPrefab;
-    [SerializeField] private NetworkObject localPlayer;
+    [SerializeField] private PlayerController localPlayer;
 
     #region Unity Methods
     private void Awake()
@@ -67,7 +67,7 @@ public class GameManager : NetworkBehaviour
             Debug.LogError("TitleScene entry not found in ContentManifest.");
             return;
         }
-        StartCoroutine(C_RequestChangeStage(entry.header.staticKey));
+        StartCoroutine(C_RequestChangeStage(entry.header.staticKey, localPlayer));
     }
 
     public override void OnNetworkSpawn()
@@ -370,8 +370,16 @@ public class GameManager : NetworkBehaviour
     /// </summary>
     /// <param name="sceneKey"></param>
     /// <returns></returns>
-    public IEnumerator C_RequestChangeStage(uint sceneKey)
+    public IEnumerator C_RequestChangeStage(uint sceneKey, PlayerController player)
     {
+        if (!player.IsReady)
+        {
+            if (IsHost)
+            {
+                player.ToggleReady();
+                yield break;
+            }
+        }
         // 네트워킹이 불가능한 상태
         if (Application.internetReachability == NetworkReachability.NotReachable)
         {

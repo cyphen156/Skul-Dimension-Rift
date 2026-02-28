@@ -5,7 +5,7 @@ namespace Assets.Scripts.Item
 {
     public class ItemView : StageView, IInteractable
     {
-        public void Interact()
+        public void Interact(IInteractor interactor)
         {
         }
     }

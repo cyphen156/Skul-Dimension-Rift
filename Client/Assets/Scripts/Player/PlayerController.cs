@@ -7,8 +7,12 @@ using static State;
 /// <summary>
 /// 플레이어의 입력을 처리하는 클래스
 /// </summary>
-public class PlayerController : NetworkBehaviour
+public class PlayerController : NetworkBehaviour, IInteractor
 {
+    [Header("NetworkVariable")]
+    private NetworkVariable<bool> isReady = new NetworkVariable<bool>(false); // 다음 스테이지로 진입가능한 플레이어의 의사 토글
+    public bool IsReady { get { return isReady.Value; } }
+
     [SerializeField] private Vector2 velocity;
     [SerializeField] private InteractableDetector detector;
     [SerializeField] private GroundChecker groundChecker;
@@ -65,6 +69,8 @@ public class PlayerController : NetworkBehaviour
         {
             CameraManager.instance.SetPlayerFollow(transform);
         }
+
+        isReady.Value = false;
     }
 
     public override void OnNetworkDespawn()
@@ -226,7 +232,7 @@ public class PlayerController : NetworkBehaviour
             if (currentTarget != null)
             {
                 SetPromptInteracting(true);
-                currentTarget.Interact();
+                currentTarget.Interact(this);
             }
         }
 
@@ -359,5 +365,29 @@ public class PlayerController : NetworkBehaviour
         {
             widget.SetInteracting(flag);
         }
+    }
+
+    public void RequestToggleReady()
+    {
+        if (!IsOwner)
+        {
+            return;
+        }
+
+        // 호스트(서버)면 즉시 토글
+        if (IsServer)
+        {
+            isReady.Value = !isReady.Value;
+            return;
+        }
+
+        // 클라이언트면 서버에 요청
+        ToggleReadyServerRpc();
+    }
+
+    [Rpc(SendTo.Server)]
+    private void ToggleReadyServerRpc()
+    {
+        isReady.Value = !isReady.Value;
     }
 }
