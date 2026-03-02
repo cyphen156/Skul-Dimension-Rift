@@ -367,27 +367,13 @@ public class PlayerController : NetworkBehaviour, IInteractor
         }
     }
 
-    public void RequestToggleReady()
+    public void ToggleReady()
     {
-        if (!IsOwner)
+        if (!IsServer)
         {
             return;
         }
-
-        // 호스트(서버)면 즉시 토글
-        if (IsServer)
-        {
-            isReady.Value = !isReady.Value;
-            return;
-        }
-
-        // 클라이언트면 서버에 요청
-        ToggleReadyServerRpc();
-    }
-
-    [Rpc(SendTo.Server)]
-    private void ToggleReadyServerRpc()
-    {
+        
         isReady.Value = !isReady.Value;
     }
 }

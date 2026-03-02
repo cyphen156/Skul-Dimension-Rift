@@ -67,7 +67,7 @@ public class GameManager : NetworkBehaviour
             Debug.LogError("TitleScene entry not found in ContentManifest.");
             return;
         }
-        StartCoroutine(C_RequestChangeStage(entry.header.staticKey, localPlayer));
+        StartCoroutine(C_RequestChangeStage(entry.header.staticKey, localPlayer.OwnerClientId));
     }
 
     public override void OnNetworkSpawn()
@@ -359,53 +359,86 @@ public class GameManager : NetworkBehaviour
         ResourceManager.instance.SaveUserData();
     }
     #endregion
-    public void SetPlayerReady(ulong player)
+    #region Change Stage Methods
+    public void RequestChangeStage(uint sceneKey, PlayerController player)
     {
+        if (player == null)
+        {
+            return;
+        }
 
+        if (!IsServer)
+        {
+            RequestChangeStageServerRpc(sceneKey, player.OwnerClientId);
+            return;
+        }
+
+        StartCoroutine(C_RequestChangeStage(sceneKey, player.OwnerClientId));
     }
 
+    [Rpc(SendTo.Server)]
+    private void RequestChangeStageServerRpc(uint sceneKey, ulong callerClientId)
+    {
+        // 서버에서만 실행됨
+        StartCoroutine(C_RequestChangeStage(sceneKey, callerClientId));
+    }
     /// <summary>
     /// 씬 교체를 요청하는 함수
     /// 게임 상태 변화를 주관
     /// </summary>
     /// <param name="sceneKey"></param>
     /// <returns></returns>
-    public IEnumerator C_RequestChangeStage(uint sceneKey, PlayerController player)
+    public IEnumerator C_RequestChangeStage(uint sceneKey, ulong callerClientId)
     {
-        if (!player.IsReady)
+        if (!IsServer)
         {
-            if (IsHost)
+            yield break;
+        }
+
+        PlayerController caller;
+        if (!connectedPlayers.TryGetValue(callerClientId, out caller) || caller == null)
+        {
+            yield break;
+        }
+
+        caller.ToggleReady();
+
+        foreach (KeyValuePair<ulong, PlayerController> kv in connectedPlayers)
+        {
+            PlayerController pc = kv.Value;
+            if (pc == null || !pc.IsReady)
             {
-                player.ToggleReady();
                 yield break;
             }
         }
+
+        ChangeGameState(GameState.Loading);
+        yield return SceneLoadManager.instance.C_LoadScene(sceneKey);
+
         // 네트워킹이 불가능한 상태
         if (Application.internetReachability == NetworkReachability.NotReachable)
         {
-            ChangeGameState(GameState.Loading);
-
-            yield return SceneLoadManager.instance.C_LoadScene(sceneKey);
-
-            yield break;
         }
 
         // 네트워킹이 가능한 상태
         // 싱글 플레이 모드
         if (gameMode == GameMode.Single)
         {
-            yield break;
         }
 
         // 멀티 플레이 모드
         if (IsServer == true)
         {
-            ChangeGameState(GameState.Loading);
-            SceneLoadManager.instance.C_LoadScene(sceneKey);
         }
-        yield return null;
     }
 
+    [Rpc(SendTo.Everyone)]
+    public void BroadCastStageLoading(uint sceneKey)
+    {
+        ChangeGameState(GameState.Loading);
+
+    }
+    #endregion
 
     #region MultiPlay
     public void EnsureLocalPlayer(Vector3 spawnPosition)
