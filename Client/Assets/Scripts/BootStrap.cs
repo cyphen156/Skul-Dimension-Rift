@@ -95,7 +95,7 @@ public class BootStrap : MonoBehaviour
         // 4. GraphicManager 초기화
         PromoteOrCreate<GraphicManager>("GraphicManager");
         // 5. SceneLoadManager 초기화
-        PromoteOrCreate<SceneLoadManager>("SceneLoadManager");
+        PromoteOrCreate<ContentLoadManager>("SceneLoadManager");
         // 6. UIManager 초기화
         PromoteOrCreate<UIManager>("UIManager");
         // 7. SoundManager 초기화

@@ -9,9 +9,9 @@ using UnityEngine.SceneManagement;
 /// <summary>
 /// 씬을 로드하고 종속성 컨텐츠를 처리하는 매니저.
 /// </summary>
-public class SceneLoadManager : MonoBehaviour
+public class ContentLoadManager : MonoBehaviour
 {
-    public static SceneLoadManager instance;
+    public static ContentLoadManager instance;
 
     private uint currentSceneKey;
 

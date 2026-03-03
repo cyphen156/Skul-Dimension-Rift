@@ -17,9 +17,17 @@ public class GameManager : NetworkBehaviour
 
     [Header("NetworkSettings")]
     [SerializeField] private GameMode gameMode;
-    [SerializeField] private bool canMultiplay;
     [SerializeField] private bool isCoopMode;
     private Dictionary<ulong, PlayerController> connectedPlayers = new Dictionary<ulong, PlayerController>();
+
+    [Header("StageChangeTransaction")]
+    private bool isStageChanging;
+    private int stageTransitionId;
+    [SerializeField] private float loadPulseIntervalSec = 5.0f;
+    [SerializeField] private float loadPulseLifetimeSec = 60.0f;
+    private HashSet<ulong> waitingClients = new HashSet<ulong>();
+    private HashSet<ulong> ackedClients = new HashSet<ulong>();
+    private Dictionary<ulong, float> lastPulseTime = new Dictionary<ulong, float>();
 
     [Header("GameState")]
     [SerializeField] private GameDifficulty difficulty;
@@ -41,7 +49,6 @@ public class GameManager : NetworkBehaviour
         {
             Destroy(gameObject);
         }
-        canMultiplay = false;
     }
 
     public void InitializeGame(Type caller)
@@ -67,7 +74,7 @@ public class GameManager : NetworkBehaviour
             Debug.LogError("TitleScene entry not found in ContentManifest.");
             return;
         }
-        StartCoroutine(C_RequestChangeStage(entry.header.staticKey, localPlayer.OwnerClientId));
+        StartCoroutine(ContentLoadManager.instance.C_LoadScene(entry.header.staticKey));
     }
 
     public override void OnNetworkSpawn()
@@ -359,27 +366,25 @@ public class GameManager : NetworkBehaviour
         ResourceManager.instance.SaveUserData();
     }
     #endregion
-    
-    #region Change Stage Methods
-    public void RequestChangeStage(uint staticKey, PlayerController player)
-    {
-        if (player == null)
-        {
-            return;
-        }
 
+    #region Change Stage Methods
+    public void RequestChangeStage(uint staticKey)
+    {
         if (!IsServer)
         {
-            RequestChangeStageServerRpc(staticKey, player.OwnerClientId);
+            RequestChangeStageServerRpc(staticKey);
             return;
         }
 
-        StartCoroutine(C_RequestChangeStage(staticKey, player.OwnerClientId));
+        ulong callerClientId = NetworkManager.LocalClientId;
+        StartCoroutine(C_RequestChangeStage(staticKey, callerClientId));
     }
 
+
     [Rpc(SendTo.Server)]
-    private void RequestChangeStageServerRpc(uint staticKey, ulong callerClientId)
+    private void RequestChangeStageServerRpc(uint staticKey, RpcParams rpcParams = default)
     {
+        ulong callerClientId = rpcParams.Receive.SenderClientId;
         StartCoroutine(C_RequestChangeStage(staticKey, callerClientId));
     }
 
@@ -412,20 +417,219 @@ public class GameManager : NetworkBehaviour
                 yield break;
             }
         }
-     
+        StartCoroutine(C_ProcessStageChange(staticKey));
     }
 
+    private IEnumerator C_ProcessStageChange(uint staticKey)
+    {
+        if (!IsServer)
+        {
+            yield break;
+        }
 
+        if (isStageChanging)
+        {
+            yield break;
+        }
 
-    // 메모리에 올리라는 함수
+        isStageChanging = true;
+        stageTransitionId++;
+
+        ackedClients.Clear();
+        waitingClients.Clear();
+        lastPulseTime.Clear();
+
+        foreach (KeyValuePair<ulong, PlayerController> kv in connectedPlayers)
+        {
+            ulong clientId = kv.Key;
+
+            if (!waitingClients.Contains(clientId))
+            {
+                waitingClients.Add(clientId);
+            }
+
+            lastPulseTime[clientId] = Time.realtimeSinceStartup;
+        }
+
+        BoradCastChangeGameState(GameState.Loading);
+        BroadCastLoadContentRpc(staticKey, stageTransitionId);
+
+        while (waitingClients.Count > 0)
+        {
+            float now = Time.realtimeSinceStartup;
+
+            ulong[] snapshot = new ulong[waitingClients.Count];
+            waitingClients.CopyTo(snapshot);
+
+            for (int i = 0; i < snapshot.Length; i++)
+            {
+                ulong clientId = snapshot[i];
+
+                float lastTime;
+                if (!lastPulseTime.TryGetValue(clientId, out lastTime))
+                {
+                    lastTime = 0.0f;
+                }
+
+                if (now - lastTime > loadPulseLifetimeSec)
+                {
+                    Debug.LogWarning($"[StageChangeTimeout : ClientDisconnected] transitionId={stageTransitionId}, clientId={clientId}, delta={now - lastTime}");
+
+                    waitingClients.Remove(clientId);
+
+                    if (connectedPlayers.ContainsKey(clientId))
+                    {
+                        connectedPlayers.Remove(clientId);
+                    }
+
+                    if (lastPulseTime.ContainsKey(clientId))
+                    {
+                        lastPulseTime.Remove(clientId);
+                    }
+
+                    if (ackedClients.Contains(clientId))
+                    {
+                        ackedClients.Remove(clientId);
+                    }
+                }
+            }
+
+            yield return null;
+        }
+
+        BoradCastChangeGameState(Types.GameState.Playing);
+
+        isStageChanging = false;
+    }
+
     [Rpc(SendTo.Everyone)]
-    private void BroadCastLoadStageRpc(uint staticKey)
+    private void BroadCastLoadContentRpc(uint staticKey, int transitionId)
+    {
+        StartCoroutine(C_LoadContent(staticKey, transitionId));
+    }
+
+    private IEnumerator C_LoadContent(uint staticKey, int transitionId)
+    {
+        float now = Time.realtimeSinceStartup;
+        float nextPulseTime = now;
+
+        NotifyLoadPulseServerRpc(transitionId);
+
+        if (ContentLoadManager.instance == null)
+        {
+            yield break;
+        }
+
+        IEnumerator load = ContentLoadManager.instance.C_LoadScene(staticKey);
+        while (true)
+        {
+            bool moved = load.MoveNext();
+
+            now = Time.realtimeSinceStartup;
+
+            if (now >= nextPulseTime)
+            {
+                NotifyLoadPulseServerRpc(transitionId);
+                nextPulseTime = now + loadPulseIntervalSec;
+            }
+
+            if (!moved)
+            {
+                break;
+            }
+
+            yield return load.Current;
+        }
+
+        NotifyLoadCompleteServerRpc(transitionId);
+    }
+
+    public void NotifyLoadPulse(int transitionId)
+    {
+        if (!IsSpawned)
+        {
+            return;
+        }
+
+        NotifyLoadPulseServerRpc(transitionId);
+    }
+
+    [Rpc(SendTo.Server)]
+    private void NotifyLoadPulseServerRpc(int transitionId, RpcParams rpcParams = default)
     {
         if (!IsServer)
         {
             return;
         }
-        ChangeGameState(GameState.Loading);
+
+        if (!isStageChanging)
+        {
+            return;
+        }
+
+        if (transitionId != stageTransitionId)
+        {
+            return;
+        }
+
+        ulong senderClientId = rpcParams.Receive.SenderClientId;
+
+        if (!connectedPlayers.ContainsKey(senderClientId))
+        {
+            return;
+        }
+
+        if (!waitingClients.Contains(senderClientId))
+        {
+            return;
+        }
+
+        lastPulseTime[senderClientId] = Time.realtimeSinceStartup;
+    }
+
+    public void NotifyLoadComplete(int transitionId)
+    {
+        if (!IsSpawned)
+        {
+            return;
+        }
+
+        NotifyLoadCompleteServerRpc(transitionId);
+    }
+
+    [Rpc(SendTo.Server)]
+    private void NotifyLoadCompleteServerRpc(int transitionId, RpcParams rpcParams = default)
+    {
+        if (!IsServer)
+        {
+            return;
+        }
+
+        if (!isStageChanging)
+        {
+            return;
+        }
+
+        if (transitionId != stageTransitionId)
+        {
+            return;
+        }
+
+        ulong senderClientId = rpcParams.Receive.SenderClientId;
+
+        if (!connectedPlayers.ContainsKey(senderClientId))
+        {
+            return;
+        }
+
+        ackedClients.Add(senderClientId);
+
+        if (waitingClients.Contains(senderClientId))
+        {
+            waitingClients.Remove(senderClientId);
+        }
+
+        lastPulseTime[senderClientId] = Time.realtimeSinceStartup;
     }
     #endregion
 

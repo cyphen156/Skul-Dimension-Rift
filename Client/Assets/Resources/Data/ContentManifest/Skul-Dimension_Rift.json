@@ -41,7 +41,7 @@
           "category": "Data",
           "version": 1
         },
-        "ownerCatalogId": "Common"
+        "ownerStaticKey": "0x71000000"
       },
       {
         "header": {
@@ -51,7 +51,7 @@
           "category": "Data",
           "version": 1
         },
-        "ownerCatalogId": "Stage0"
+        "ownerStaticKey": "0x71010000"
       }
     ]
   }
