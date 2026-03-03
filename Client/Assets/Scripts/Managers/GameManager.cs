@@ -359,8 +359,9 @@ public class GameManager : NetworkBehaviour
         ResourceManager.instance.SaveUserData();
     }
     #endregion
+    
     #region Change Stage Methods
-    public void RequestChangeStage(uint sceneKey, PlayerController player)
+    public void RequestChangeStage(uint staticKey, PlayerController player)
     {
         if (player == null)
         {
@@ -369,26 +370,26 @@ public class GameManager : NetworkBehaviour
 
         if (!IsServer)
         {
-            RequestChangeStageServerRpc(sceneKey, player.OwnerClientId);
+            RequestChangeStageServerRpc(staticKey, player.OwnerClientId);
             return;
         }
 
-        StartCoroutine(C_RequestChangeStage(sceneKey, player.OwnerClientId));
+        StartCoroutine(C_RequestChangeStage(staticKey, player.OwnerClientId));
     }
 
     [Rpc(SendTo.Server)]
-    private void RequestChangeStageServerRpc(uint sceneKey, ulong callerClientId)
+    private void RequestChangeStageServerRpc(uint staticKey, ulong callerClientId)
     {
-        // 서버에서만 실행됨
-        StartCoroutine(C_RequestChangeStage(sceneKey, callerClientId));
+        StartCoroutine(C_RequestChangeStage(staticKey, callerClientId));
     }
+
     /// <summary>
     /// 씬 교체를 요청하는 함수
     /// 게임 상태 변화를 주관
     /// </summary>
-    /// <param name="sceneKey"></param>
+    /// <param name="staticKey"></param>
     /// <returns></returns>
-    public IEnumerator C_RequestChangeStage(uint sceneKey, ulong callerClientId)
+    private IEnumerator C_RequestChangeStage(uint staticKey, ulong callerClientId)
     {
         if (!IsServer)
         {
@@ -411,32 +412,20 @@ public class GameManager : NetworkBehaviour
                 yield break;
             }
         }
-
-        ChangeGameState(GameState.Loading);
-        yield return SceneLoadManager.instance.C_LoadScene(sceneKey);
-
-        // 네트워킹이 불가능한 상태
-        if (Application.internetReachability == NetworkReachability.NotReachable)
-        {
-        }
-
-        // 네트워킹이 가능한 상태
-        // 싱글 플레이 모드
-        if (gameMode == GameMode.Single)
-        {
-        }
-
-        // 멀티 플레이 모드
-        if (IsServer == true)
-        {
-        }
+     
     }
 
-    [Rpc(SendTo.Everyone)]
-    public void BroadCastStageLoading(uint sceneKey)
-    {
-        ChangeGameState(GameState.Loading);
 
+
+    // 메모리에 올리라는 함수
+    [Rpc(SendTo.Everyone)]
+    private void BroadCastLoadStageRpc(uint staticKey)
+    {
+        if (!IsServer)
+        {
+            return;
+        }
+        ChangeGameState(GameState.Loading);
     }
     #endregion
 
@@ -504,5 +493,40 @@ public class GameManager : NetworkBehaviour
     {
         SpawnPlayerInternal(OwnerClientId, spawnPosition);
     }
-#endregion
+
+    private void BoradCastChangeGameState(GameState state)
+    {
+        if (!IsServer)
+        {
+            return;
+        }
+
+        switch (state)
+        {
+            case GameState.Paused:
+                // 대기 상태는 전파하지 않음
+                return;
+            case GameState.Loading:
+            case GameState.Playing:
+            case GameState.Ready:
+            case GameState.Reset:
+                break;
+            default:
+                return;
+        }
+        BroadcastChangeGameStateRpc(state);
+    }
+
+    [Rpc(SendTo.Everyone)]
+    private void BroadcastChangeGameStateRpc(GameState state)
+    {
+        ChangeGameState(state);
+    }
+
+    [Rpc(SendTo.SpecifiedInParams)]
+    private void SendGameStateChangeRpc(GameState state, RpcParams rpcParams)
+    {
+        ChangeGameState(state);
+    }
+    #endregion
 }
