@@ -20,7 +20,7 @@ public class ContentLoadManager : MonoBehaviour
         Failed
     }
 
-    public delegate void ContentLoadSignalHandler(int transitionId, uint sceneStaticKey, ContentLoadSignal signal);
+    public delegate void ContentLoadSignalHandler(int transitionId, ContentLoadSignal signal);
     public event ContentLoadSignalHandler onContentLoadSignal;
 
     private uint currentSceneKey;
@@ -46,11 +46,13 @@ public class ContentLoadManager : MonoBehaviour
         SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
+    // 로컬 호출
     public IEnumerator C_LoadContent(uint sceneStaticKey)
     {
         yield return C_LoadContent_Internal(sceneStaticKey, -1, 0f);
     }
 
+    // 멀티 호출
     public IEnumerator C_LoadContent(uint sceneStaticKey, int transitionId, float purseInterval)
     {
         yield return C_LoadContent_Internal(sceneStaticKey, transitionId, purseInterval);
@@ -59,6 +61,12 @@ public class ContentLoadManager : MonoBehaviour
     private IEnumerator C_LoadContent_Internal(uint sceneStaticKey, int transitionId, float purseInterval)
     {
         ResourceManager rm = ResourceManager.instance;
+
+        bool pulseEnabled = false;
+        if (transitionId >= 0 && purseInterval > 0f)
+        {
+            pulseEnabled = true;
+        }
 
         if (rm == null)
         {
@@ -87,8 +95,13 @@ public class ContentLoadManager : MonoBehaviour
         CancellationTokenSource cts = new CancellationTokenSource();
         Task<IOResult> prepareTask = ContentManagementSystem.PrepareContentAsync(sceneStaticKey, cts.Token);
 
-        float nextPulseTime = Time.realtimeSinceStartup + purseInterval;
-        
+        float nextPulseTime = 0f;
+        if (pulseEnabled)
+        {
+            RaiseSignal(transitionId, sceneStaticKey, ContentLoadSignal.Alive);
+            nextPulseTime = Time.realtimeSinceStartup + purseInterval;
+        }
+
         while (!prepareTask.IsCompleted)
         {
             if (cts.IsCancellationRequested)
@@ -97,11 +110,14 @@ public class ContentLoadManager : MonoBehaviour
                 RaiseSignal(transitionId, sceneStaticKey, ContentLoadSignal.Failed);
                 yield break;
             }
-            
-            if (Time.realtimeSinceStartup >= nextPulseTime)
+
+            if (pulseEnabled)
             {
-                RaiseSignal(transitionId, sceneStaticKey, ContentLoadSignal.Alive);
-                nextPulseTime = Time.realtimeSinceStartup + purseInterval;
+                if (Time.realtimeSinceStartup >= nextPulseTime)
+                {
+                    RaiseSignal(transitionId, sceneStaticKey, ContentLoadSignal.Alive);
+                    nextPulseTime = Time.realtimeSinceStartup + purseInterval;
+                }
             }
 
             yield return null;
@@ -137,7 +153,10 @@ public class ContentLoadManager : MonoBehaviour
             yield break;
         }
 
-        nextPulseTime = Time.realtimeSinceStartup + purseInterval;
+        if (pulseEnabled)
+        {
+            nextPulseTime = Time.realtimeSinceStartup + purseInterval;
+        }
 
         while (!op.isDone)
         {
@@ -147,11 +166,14 @@ public class ContentLoadManager : MonoBehaviour
                 RaiseSignal(transitionId, sceneStaticKey, ContentLoadSignal.Failed);
                 yield break;
             }
-            
-            if (Time.realtimeSinceStartup >= nextPulseTime)
+
+            if (pulseEnabled)
             {
-                RaiseSignal(transitionId, sceneStaticKey, ContentLoadSignal.Alive);
-                nextPulseTime = Time.realtimeSinceStartup + purseInterval;
+                if (Time.realtimeSinceStartup >= nextPulseTime)
+                {
+                    RaiseSignal(transitionId, sceneStaticKey, ContentLoadSignal.Alive);
+                    nextPulseTime = Time.realtimeSinceStartup + purseInterval;
+                }
             }
 
             yield return null;
@@ -174,7 +196,7 @@ public class ContentLoadManager : MonoBehaviour
             return;
         }
 
-        handler(transitionId, sceneStaticKey, signal);
+        handler(transitionId, signal);
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)

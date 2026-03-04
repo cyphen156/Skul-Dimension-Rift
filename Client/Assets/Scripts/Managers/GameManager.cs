@@ -61,7 +61,7 @@ public class GameManager : NetworkBehaviour
         {
             if (ContentLoadManager.instance != null)
             {
-                ContentLoadManager.instance.onContentLoadSignal -= OnContentLoadSignal;
+                ContentLoadManager.instance.onContentLoadSignal -= OnContentLoadSignalChanged;
             }
         }
         base.OnDestroy();
@@ -93,7 +93,7 @@ public class GameManager : NetworkBehaviour
         
         if (ContentLoadManager.instance != null)
         {
-            ContentLoadManager.instance.onContentLoadSignal += OnContentLoadSignal;
+            ContentLoadManager.instance.onContentLoadSignal += OnContentLoadSignalChanged;
         }
 
         StartCoroutine(ContentLoadManager.instance.C_LoadContent(entry.header.staticKey));
@@ -529,7 +529,7 @@ public class GameManager : NetworkBehaviour
 
         StartCoroutine(ContentLoadManager.instance.C_LoadContent(staticKey, transitionId, loadPulseIntervalSec));
     }
-    private void OnContentLoadSignal(int transitionId, uint sceneStaticKey, ContentLoadSignal signal)
+    private void OnContentLoadSignalChanged(int transitionId, ContentLoadSignal signal)
     {
         if (subscribedTransitionId < 0)
         {
@@ -541,38 +541,15 @@ public class GameManager : NetworkBehaviour
             return;
         }
 
-        if (signal == ContentLoadSignal.Alive)
-        {
-            float now = Time.realtimeSinceStartup;
-
-            if (now < nextLocalPulseTime)
-            {
-                return;
-            }
-
-            nextLocalPulseTime = now + loadPulseIntervalSec;
-            NotifyStageLoadSignal(ContentLoadSignal.Alive, transitionId);
-            return;
-        }
-
-        if (signal == ContentLoadManager.ContentLoadSignal.Complete)
-        {
-            NotifyStageLoadSignal(ContentLoadSignal.Complete, transitionId);
-            return;
-        }
-
-        if (signal == ContentLoadSignal.Failed)
-        {
-            NotifyStageLoadSignal(ContentLoadSignal.Failed, transitionId);
-            return;
-        }
+        NotifyStageLoadSignal(signal, transitionId);
+        return;
     }
 
     public void NotifyStageLoadSignal(ContentLoadSignal signal, int transitionId)
     {
         if (!IsSpawned)
         {
-            OnStageLoadSignalReceived(0UL, signal, transitionId);
+            OnStageLoadSignalReceived(NetworkManager.Singleton.LocalClientId, signal, transitionId);
             return;
         }
 
@@ -703,9 +680,10 @@ public class GameManager : NetworkBehaviour
     }
 
     [Rpc(SendTo.Server)]
-    private void SpawnPlayerServerRpc(Vector3 spawnPosition)
+    private void SpawnPlayerServerRpc(Vector3 spawnPosition, RpcParams rpcParams = default)
     {
-        SpawnPlayerInternal(OwnerClientId, spawnPosition);
+        ulong callerClientId = rpcParams.Receive.SenderClientId;
+        SpawnPlayerInternal(callerClientId, spawnPosition);
     }
 
     private void BoradCastChangeGameState(GameState state)
