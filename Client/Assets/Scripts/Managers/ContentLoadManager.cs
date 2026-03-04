@@ -13,6 +13,16 @@ public class ContentLoadManager : MonoBehaviour
 {
     public static ContentLoadManager instance;
 
+    public enum ContentLoadSignal
+    {
+        Alive,
+        Complete,
+        Failed
+    }
+
+    public delegate void ContentLoadSignalHandler(int transitionId, uint sceneStaticKey, ContentLoadSignal signal);
+    public event ContentLoadSignalHandler onContentLoadSignal;
+
     private uint currentSceneKey;
 
     private void Awake()
@@ -36,19 +46,32 @@ public class ContentLoadManager : MonoBehaviour
         SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
-    public IEnumerator C_LoadScene(uint sceneStaticKey)
+    public IEnumerator C_LoadContent(uint sceneStaticKey)
+    {
+        yield return C_LoadContent_Internal(sceneStaticKey, -1, 0f);
+    }
+
+    public IEnumerator C_LoadContent(uint sceneStaticKey, int transitionId, float purseInterval)
+    {
+        yield return C_LoadContent_Internal(sceneStaticKey, transitionId, purseInterval);
+    }
+
+    private IEnumerator C_LoadContent_Internal(uint sceneStaticKey, int transitionId, float purseInterval)
     {
         ResourceManager rm = ResourceManager.instance;
 
         if (rm == null)
         {
             Debug.LogError("[SceneLoadManager] ResourceManager is null.");
+            RaiseSignal(transitionId, sceneStaticKey, ContentLoadSignal.Failed);
             yield break;
         }
 
-        if (!rm.TryGetContentEntry(sceneStaticKey, out ContentEntry e) || e == null)
+        ContentEntry e;
+        if (!rm.TryGetContentEntry(sceneStaticKey, out e) || e == null)
         {
             Debug.LogError($"[SceneLoadManager] ContentEntry not found. key={sceneStaticKey}");
+            RaiseSignal(transitionId, sceneStaticKey, ContentLoadSignal.Failed);
             yield break;
         }
 
@@ -57,20 +80,30 @@ public class ContentLoadManager : MonoBehaviour
         if (sceneEntry == null)
         {
             Debug.LogError($"[SceneLoadManager] Entry is not SceneEntry. key={sceneStaticKey}, type={e.GetType().Name}");
+            RaiseSignal(transitionId, sceneStaticKey, ContentLoadSignal.Failed);
             yield break;
         }
 
         CancellationTokenSource cts = new CancellationTokenSource();
         Task<IOResult> prepareTask = ContentManagementSystem.PrepareContentAsync(sceneStaticKey, cts.Token);
 
+        float nextPulseTime = Time.realtimeSinceStartup + purseInterval;
+        
         while (!prepareTask.IsCompleted)
         {
             if (cts.IsCancellationRequested)
             {
                 cts.Dispose();
+                RaiseSignal(transitionId, sceneStaticKey, ContentLoadSignal.Failed);
                 yield break;
             }
-            //UIManager.instance.RefreshUI("LoadingScreen", sceneStaticKey.ToString());
+            
+            if (Time.realtimeSinceStartup >= nextPulseTime)
+            {
+                RaiseSignal(transitionId, sceneStaticKey, ContentLoadSignal.Alive);
+                nextPulseTime = Time.realtimeSinceStartup + purseInterval;
+            }
+
             yield return null;
         }
 
@@ -78,6 +111,7 @@ public class ContentLoadManager : MonoBehaviour
         {
             Debug.LogException(prepareTask.Exception);
             cts.Dispose();
+            RaiseSignal(transitionId, sceneStaticKey, ContentLoadSignal.Failed);
             yield break;
         }
 
@@ -87,11 +121,9 @@ public class ContentLoadManager : MonoBehaviour
         {
             Debug.LogError($"[SceneLoadManager] Prepare failed. key={sceneStaticKey}, reason={(r == null ? "null" : r.failReason.ToString())}");
             cts.Dispose();
+            RaiseSignal(transitionId, sceneStaticKey, ContentLoadSignal.Failed);
             yield break;
         }
-
-        // 불필요한 자원 해제 요청
-
 
         currentSceneKey = sceneStaticKey;
 
@@ -101,19 +133,48 @@ public class ContentLoadManager : MonoBehaviour
         {
             Debug.LogError($"[SceneLoadManager] LoadSceneAsync failed. sceneName={sceneEntry.header.id}");
             cts.Dispose();
+            RaiseSignal(transitionId, sceneStaticKey, ContentLoadSignal.Failed);
             yield break;
         }
+
+        nextPulseTime = Time.realtimeSinceStartup + purseInterval;
 
         while (!op.isDone)
         {
             if (cts.IsCancellationRequested)
             {
                 cts.Dispose();
+                RaiseSignal(transitionId, sceneStaticKey, ContentLoadSignal.Failed);
                 yield break;
             }
+            
+            if (Time.realtimeSinceStartup >= nextPulseTime)
+            {
+                RaiseSignal(transitionId, sceneStaticKey, ContentLoadSignal.Alive);
+                nextPulseTime = Time.realtimeSinceStartup + purseInterval;
+            }
+
             yield return null;
         }
+
         cts.Dispose();
+        RaiseSignal(transitionId, sceneStaticKey, ContentLoadSignal.Complete);
+    }
+
+    private void RaiseSignal(int transitionId, uint sceneStaticKey, ContentLoadSignal signal)
+    {
+        if (transitionId < 0)
+        {
+            return;
+        }
+
+        ContentLoadSignalHandler handler = onContentLoadSignal;
+        if (handler == null)
+        {
+            return;
+        }
+
+        handler(transitionId, sceneStaticKey, signal);
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
