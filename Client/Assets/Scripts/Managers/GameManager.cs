@@ -78,27 +78,16 @@ public class GameManager : NetworkBehaviour
             return;
         }
 
-        playerPrefab = ResourceManager.instance.GetGameObject("Player");
-
-        ResetGame();
-
-        // 타이틀 씬 재진입 -> 매니저 객체를 유지한 채로 씬만 다시 로드
-        // 기대 효과 : TitleScene에 있는 Intro 스크립트가 게임 난이도에 따라 다른 배경과 BGM을 보여주는 기능이 정상 작동
-        ResourceManager.instance.TryGetSceneEntry("TitleScene", out SceneEntry entry);
-        if (entry == null)
-        {
-            Debug.LogError("TitleScene entry not found in ContentManifest.");
-            return;
-        }
-        
         if (ContentLoadManager.instance != null)
         {
             ContentLoadManager.instance.onContentLoadSignal += OnContentLoadSignalChanged;
         }
+       
+        playerPrefab = ResourceManager.instance.GetGameObject("Player");
 
-        StartCoroutine(ContentLoadManager.instance.C_LoadContent(entry.header.staticKey));
+        ResetGame();
     }
-
+    
     public override void OnNetworkSpawn()
     {
         if (isCoopMode)

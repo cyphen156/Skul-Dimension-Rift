@@ -90,6 +90,31 @@ public class BootStrap : MonoBehaviour
             yield return null;
         }
 
+        if (applyGameIdentityTask.IsFaulted || applyGameIdentityTask.IsCanceled)
+        {
+            string message = null;
+            string reason = applyGameIdentityTask.IsFaulted ? applyGameIdentityTask.Exception?.GetBaseException().Message : "Canceled";
+
+            message = $"필수 구성 요소 로딩 중 오류가 발생했습니다.\n앱을 종료합니다.\n 사유 : {reason}.";
+
+            Notifier.NotifyError(
+                "CriticalError",
+                message,
+                NotifyChannel.Native,
+                () =>
+                {
+#if UNITY_EDITOR
+                    UnityEditor.EditorApplication.isPlaying = false;
+#else
+                Application.Quit();
+#endif
+                }
+            );
+
+            yield break;
+        }
+        // 여기 부터는 게임 아이덴티티 적용이 성공적으로 완료된 이후의 초기화 과정
+
         // 3. PoolManager 초기화
         PromoteOrCreate<PoolManager>("PoolManager");
         // 4. GraphicManager 초기화
@@ -111,46 +136,58 @@ public class BootStrap : MonoBehaviour
 
         GameManager.instance.InitializeGame(this.GetType());
 
-        if (applyGameIdentityTask.IsFaulted || !applyGameIdentityTask.Result.succeed)
+        // Manifest의 staticKey를 이용하여 콘텐츠 업데이트 가능 여부 확인
+
+
+
+        //
+        //        CancellationTokenSource cts = new CancellationTokenSource();
+        //        Task<ContentSyncContext> syncTask = ContentManagementSystem.SyncContentAsync(
+        //            ResourceManager.ManifestStaticKey, cts.Token);
+
+        //        while (!syncTask.IsCompleted)
+        //        {
+        //            yield return null;
+        //        }
+
+        //        string message = null;
+        //        string reason = syncTask.IsFaulted ? syncTask.Exception?.GetBaseException().Message : syncTask.Result.failReason.ToString();    
+
+        //        if (syncTask.IsFaulted)
+        //        {
+        //            message = $"필수 구성 요소 업데이트 중 오류가 발생했습니다.\n앱을 종료합니다.\n 사유 : {reason}.";
+
+        //            Notifier.NotifyError(
+        //                "CriticalError",
+        //                message,
+        //                NotifyChannel.Native,
+        //                () =>
+        //                {
+        //#if UNITY_EDITOR
+        //                    UnityEditor.EditorApplication.isPlaying = false;
+        //#else
+        //            Application.Quit();
+        //#endif
+        //                }
+        //            );
+
+        //            yield break;
+        //        }
+        //    }
+
+        ResourceManager.instance.TryGetSceneEntry("TitleScene", out SceneEntry entry);
+        if (entry == null)
         {
-            // 유저에게 업데이트를 수행할 것을 요구해야함
-            CancellationTokenSource cts = new CancellationTokenSource();
-            Task<ContentSyncContext> syncTask = ContentManagementSystem.SyncContentAsync(
-                ResourceManager.ManifestStaticKey, cts.Token);
-
-            while (!syncTask.IsCompleted)
-            {
-                yield return null;
-            }
-
-            string message = null;
-            string reason = syncTask.IsFaulted ? syncTask.Exception?.GetBaseException().Message : syncTask.Result.failReason.ToString();    
-
-            if (syncTask.IsFaulted)
-            {
-                message = $"필수 구성 요소 업데이트 중 오류가 발생했습니다.\n앱을 종료합니다.\n 사유 : {reason}.";
-         
-                Notifier.NotifyError(
-                    "CriticalError",
-                    message,
-                    NotifyChannel.Native,
-                    () =>
-                    {
-    #if UNITY_EDITOR
-                        UnityEditor.EditorApplication.isPlaying = false;
-    #else
-                Application.Quit();
-    #endif
-                    }
-                );
-
-                yield break;
-            }
+            Debug.LogError("TitleScene entry not found in ContentManifest.");
+            yield break;
         }
+        StartCoroutine(ContentLoadManager.instance.C_LoadContent(entry.header.staticKey));
+
 #if UNITY_EDITOR
         Debug.Log("[BootStrap] All Managers Initialized.");
 #endif
     }
+
    private T PromoteOrCreate<T>(string goName) where T : Component
     {
         T existing = FindFirstObjectByType<T>(FindObjectsInactive.Include);

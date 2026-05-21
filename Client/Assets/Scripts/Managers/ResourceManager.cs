@@ -219,19 +219,9 @@ public class ResourceManager : MonoBehaviour
         handle.WaitForCompletion();
     }
 
-    internal static bool InitializeManifestStaticKey(uint staticKey)
+    internal static void SetManifestStaticKey(uint staticKey)
     {
-        if (staticKey == default)
-        {
-            return false;
-        }
-
-        if (ManifestStaticKey != default)
-        {
-            return false;
-        }
         ManifestStaticKey = staticKey;
-        return true;
     }
 
     #endregion

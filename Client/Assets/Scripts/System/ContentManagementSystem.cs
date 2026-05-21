@@ -29,35 +29,69 @@ public static class ContentManagementSystem
         // 1. 허용되지 않은 호출자면 거부
         if (caller == null || caller != typeof(BootStrap))
         {
-            UnityEngine.Debug.LogError(
-                $"[Access Denied] {(caller == null ? "null" : caller.Name)}은 이 함수를 호출할 권한이 없습니다."
+            string callerName = caller == null ? "null" : caller.Name;
+
+            throw new UnauthorizedAccessException(
+                $"[GameIdentity.DefaultManifest.AccessDenied] 호출 권한이 없습니다. caller={callerName}"
             );
-            return IOResult.Fail(IOFailReason.AccessDenied);
         }
 
         if (string.IsNullOrEmpty(path))
         {
-            return IOResult.Fail(IOFailReason.InvalidPath);
+            throw new ArgumentException(
+                "[GameIdentity.DefaultManifest.InvalidPath] 기본 Manifest Resources 경로가 비어 있습니다.",
+                nameof(path)
+            );
         }
 
         ResourceManager rm = ResourceManager.instance;
         if (rm == null)
         {
-            return IOResult.Fail(IOFailReason.LoadFailed);
+            throw new InvalidOperationException(
+                "[GameIdentity.DefaultManifest.NotInitialized] ResourceManager.instance가 초기화되지 않았습니다."
+            );
         }
 
-        // defaultContentManifest적재
+        // defaultContentManifest 적재
         (IOResult result, TextAsset asset) loaded =
-                    await rm.LoadDefaultAssetAsync<TextAsset>(path, ct);
+            await rm.LoadDefaultAssetAsync<TextAsset>(path, ct);
 
-        if (loaded.result == null || loaded.result.succeed == false)
+        if (loaded.result == null)
         {
-            return loaded.result ?? IOResult.Fail(IOFailReason.LoadFailed);
+            throw new InvalidOperationException(
+                $"[GameIdentity.DefaultManifest.NullResult] 기본 Manifest 로드 결과가 null입니다. path={path}"
+            );
         }
 
-        if (loaded.asset == null || string.IsNullOrEmpty(loaded.asset.text))
+        if (loaded.result.failReason == IOFailReason.Canceled)
         {
-            return IOResult.Fail(IOFailReason.LoadFailed);
+            throw new OperationCanceledException(
+                $"[GameIdentity.DefaultManifest.Canceled] 기본 Manifest 로드가 취소되었습니다. path={path}",
+                loaded.result.exception,
+                ct
+            );
+        }
+
+        if (loaded.result.succeed == false)
+        {
+            throw new IOException(
+                $"[GameIdentity.DefaultManifest.LoadFailed] 기본 Manifest 로드에 실패했습니다. path={path}, reason={loaded.result.failReason}",
+                loaded.result.exception
+            );
+        }
+
+        if (loaded.asset == null)
+        {
+            throw new InvalidDataException(
+                $"[GameIdentity.DefaultManifest.NullAsset] 기본 Manifest TextAsset이 null입니다. path={path}"
+            );
+        }
+
+        if (string.IsNullOrEmpty(loaded.asset.text))
+        {
+            throw new InvalidDataException(
+                $"[GameIdentity.DefaultManifest.EmptyText] 기본 Manifest 내용이 비어 있습니다. path={path}"
+            );
         }
 
         ContentRecord defaultManifestRecord;
@@ -67,24 +101,42 @@ public static class ContentManagementSystem
             defaultManifestRecord =
                 JsonSerializer.Deserialize<ContentRecord>(loaded.asset.text, ContentJsonOptions.Options);
         }
+        catch (JsonException e)
+        {
+            throw new JsonException(
+                $"[GameIdentity.DefaultManifest.JsonParseFailed] 기본 Manifest JSON 파싱에 실패했습니다. path={path}",
+                e
+            );
+        }
         catch (Exception e)
         {
-            return IOResult.Fail(IOFailReason.LoadFailed, e);
+            throw new InvalidDataException(
+                $"[GameIdentity.DefaultManifest.DeserializeFailed] 기본 Manifest 역직렬화 중 예외가 발생했습니다. path={path}",
+                e
+            );
         }
 
         if (defaultManifestRecord == null)
         {
-            return IOResult.Fail(IOFailReason.LoadFailed);
+            throw new InvalidDataException(
+                $"[GameIdentity.DefaultManifest.NullRecord] 기본 Manifest ContentRecord가 null입니다. path={path}"
+            );
         }
 
         if (!ContentRecordCodec.TryDecode(defaultManifestRecord, out var body))
         {
-            return IOResult.Fail(IOFailReason.LoadFailed);
+            throw new InvalidDataException(
+                $"[GameIdentity.DefaultManifest.DecodeFailed] 기본 Manifest ContentRecord 디코딩에 실패했습니다. path={path}, id={defaultManifestRecord.header.id}, schema={defaultManifestRecord.header.schema}"
+            );
         }
 
         if (body is not ContentManifest manifest)
         {
-            return IOResult.Fail(IOFailReason.DecodeFailed);
+            string bodyType = body == null ? "null" : body.GetType().Name;
+
+            throw new InvalidDataException(
+                $"[GameIdentity.DefaultManifest.InvalidBodyType] 기본 Manifest 본문 타입이 ContentManifest가 아닙니다. path={path}, bodyType={bodyType}"
+            );
         }
 
         string localManifestPath = Path.Combine(
@@ -92,75 +144,58 @@ public static class ContentManagementSystem
             defaultManifestRecord.header.category.ToString(),
             defaultManifestRecord.header.schema,
             defaultManifestRecord.header.id + ".json"
-        );
+        ); 
+        
+        ContentManifestEntry manifestEntry = new ContentManifestEntry();
+        manifestEntry.header = defaultManifestRecord.header;
 
         // 이 과정은 실패할 수도 있지만 허용함 다음 게임 실행 또는 파일 최신화 검증과정에서 다시하면 됨
         IOResult existsResult = rm.Exists(localManifestPath);
 
         if (!existsResult.succeed)
         {
-            if (existsResult.failReason != IOFailReason.NotFound)
-            {
-                return existsResult;
-            }
-
             byte[] jsonBytes = Encoding.UTF8.GetBytes(loaded.asset.text);
-            IOResult saveResult = await rm.SaveAsync(localManifestPath, jsonBytes, ct);
-
-            if (!saveResult.succeed)
-            {
-                return saveResult;
-            }
+            await rm.SaveAsync(localManifestPath, jsonBytes, ct);
         }
 
         // 로컬 Manifest기준으로 다시 읽어옴 (PersistancePath)
+        // 여기서 manifest가 최신인지 여부는 검증하지 않음, 단지 내가 현재 가지고있는 Manifest에 의해 게임이 정상적으로 구동될 수 있는지 여부만 검증함
         (IOResult readResult, string localJson) read = await rm.ReadAllTextsAsync(localManifestPath, ct);
-        if (!read.readResult.succeed)
+
+        // 로컬 Manifest가 존재하는 경우 Resources에서 읽어온 Manifest보다 우선순위를 가짐
+        // 이 과정중의 실패는 Default로 폴백되지만 로드되고 난 이후에는 폴백하지 않고 그대로 검증함
+        if (read.readResult.succeed)
         {
-            return read.readResult;
+            ContentRecord localRecord = null;
+            try
+            {
+                localRecord = JsonSerializer.Deserialize<ContentRecord>(read.localJson, ContentJsonOptions.Options);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[CMS] Local Manifest parse failed. Use default Manifest. reason={e.Message}");
+            }
+            if (localRecord != null &&
+                    ContentRecordCodec.TryDecode(localRecord, out var localBody) &&
+                    localBody is ContentManifest localManifest)
+            {
+                manifest = localManifest;
+                manifestEntry.header = localRecord.header;
+            }
         }
 
-        ContentRecord localRecord;
-        try
-        {
-            localRecord = JsonSerializer.Deserialize<ContentRecord>(read.localJson, ContentJsonOptions.Options);
-        }
-        catch (Exception e)
-        {
-            return IOResult.Fail(IOFailReason.LoadFailed, e);
-        }
-
-        if (localRecord == null)
-        {
-            return IOResult.Fail(IOFailReason.LoadFailed);
-        }
-
-        if (!ContentRecordCodec.TryDecode(localRecord, out var localBody))
-        {
-            return IOResult.Fail(IOFailReason.DecodeFailed);
-        }
-
-        if (localBody is not ContentManifest localManifest)
-        {
-            return IOResult.Fail(IOFailReason.DecodeFailed);
-        }
-
-        manifest = localManifest;
 
         // AssetMap에 Manifest 등록
         if (!rm.Register(manifest.staticKey, manifest, AccessMode.Public))
         {
-            return IOResult.Fail(IOFailReason.RegistrationFailed);
+            throw new InvalidOperationException(
+                $"[GameIdentity.DefaultManifest.RegisterFailed] 기본 Manifest 등록에 실패했습니다. staticKey={manifest.staticKey}"
+            );
         }
-
-        if (!ResourceManager.InitializeManifestStaticKey(manifest.staticKey))
-        {
-            return IOResult.Fail(IOFailReason.RegistrationFailed);
-        }
+        
+        ResourceManager.SetManifestStaticKey(manifest.staticKey);
 
         // 엔트리 등록
-        ContentManifestEntry manifestEntry = new ContentManifestEntry();
-        manifestEntry.header = localRecord.header;
         rm.UpsertContentEntry(manifestEntry);
 
         if (manifest.contentCatalogs != null)
@@ -394,8 +429,11 @@ public static class ContentManagementSystem
 
         var downloaded = await rm.DownloadBufferAsync(remoteMetaUri, ct);
         IOResult ioResult = downloaded.result;
-        
-        ctx.httpResponseCode = ioResult.httpResponseCode;
+
+        if (ioResult != null)
+        {
+            ctx.httpResponseCode = ioResult.httpResponseCode;
+        }
 
         byte[] buffer = downloaded.data;
 
@@ -528,6 +566,36 @@ public static class ContentManagementSystem
         return r;
     }
 
+    private static async Task<IOResult> UpdateAddressablesCatalogAsync(AddressablesCatalogEntry entry, CancellationToken ct = default)
+    {
+        if (entry == null)
+        {
+            return IOResult.Fail(IOFailReason.InvalidResponse);
+        }
+
+        if (string.IsNullOrEmpty(entry.dataUri))
+        {
+            return IOResult.Fail(IOFailReason.InvalidResponse);
+        }
+
+        ResourceManager rm = ResourceManager.instance;
+
+        if (rm == null)
+        {
+            return IOResult.Fail(IOFailReason.LoadFailed);
+        }
+
+        string localPath = ContentPath.GetContentLocalPath(entry);
+
+        IOResult ir = await rm.DownloadFileAsync(entry.dataUri, localPath, ct);
+
+        if (ir == null || !ir.succeed)
+        {
+            return ir ?? IOResult.Fail(IOFailReason.NetworkError);
+        }
+
+        return IOResult.Ok();
+    }
     private static async Task<IOResult> UpdateBundleAsync(ContentBundleEntry bundle, CancellationToken ct = default)
     {
         if (bundle == null)
@@ -597,157 +665,77 @@ public static class ContentManagementSystem
     /// <returns></returns>
     public static async Task<ContentSyncContext> SyncContentAsync(uint staticKey, CancellationToken ct = default)
     {
-        // 1. 로컬 데이터 세팅
-        ResourceManager rm = ResourceManager.instance;
+        (ContentSyncContext ctx, ContentEntry entry) checkedContent =
+            await CheckContentAsync(staticKey, ct);
 
-        ContentSyncContext ctx = new ContentSyncContext();
-        ctx.Bind(staticKey, string.Empty, string.Empty, ContentCategory.None);
+        ContentSyncContext ctx = checkedContent.ctx;
+        ContentEntry entry = checkedContent.entry;
 
-        if (rm == null)
+        if (ctx.verifyResult == VerifyResult.UpToDate)
         {
-            ctx.syncResult = SyncResult.Failed;
-            ctx.failReason = SyncFailReason.NotInitialized;
+            ctx.syncResult = SyncResult.UpToDate;
             return ctx;
         }
 
-        // 헤더에는 최소 식별정보가 들어있음 -> 엔트리 맵이 필요함
-        // 여기서 실패한다는 것은 엔트리구성정보가 잘못되어 있다는 것을 의미하니 동기화 실패로 폴백
-        if (!rm.TryGetContentEntry(staticKey, out ContentEntry entry))
+        if (ctx.verifyResult == VerifyResult.Failed)
+        {
+            ctx.syncResult = SyncResult.Failed;
+            return ctx;
+        }
+
+        if (entry == null)
         {
             ctx.syncResult = SyncResult.Failed;
             ctx.failReason = SyncFailReason.NotFound;
             return ctx;
         }
 
-        ContentHeader header = entry.header;
-        ctx.Bind(staticKey, header.id, header.schema, header.category);
-
-        if (string.IsNullOrEmpty(header.id) || string.IsNullOrEmpty(header.schema))
-        {
-            ctx.syncResult = SyncResult.Failed;
-            ctx.failReason = SyncFailReason.InvalidPath;
-            return ctx;
-        }
-
-        // 번들일 경우 대리 호출
         switch (entry)
         {
             case ContentBundleEntry bundleEntry:
-                return await SyncBundleAsync(bundleEntry, ctx, ct);
-            case AddressablesCatalogEntry addrEntry:
-                return await SyncAddressableCatalogAsync(addrEntry, ctx, ct);
-            default:
-                break;
-        }
-
-
-        // 헤더에서 추출한 데이터를 통해 애셋의 로컬경로에 메타가 있는지를 확인함
-        // 메타는 있어도 되고 없어도 됨
-        // 단, 메타가 없다면 본문이 최신이 아니라는것을 의미한다고 고정함
-        string localMetaPath = Path.Combine(
-            Application.persistentDataPath,
-            ContentCategory.Meta.ToString(),
-            header.schema,
-            header.id + ".meta.json"
-        );
-
-        ContentMeta localMeta = null;
-
-        IOResult existsResult = rm.Exists(localMetaPath);
-
-        if (existsResult.succeed)
-        {
-            var (readResult, metaJson) = await rm.ReadAllTextsAsync(localMetaPath, ct);
-
-            if (readResult != null && readResult.succeed && !string.IsNullOrEmpty(metaJson))
-            {
-                try
                 {
-                    ContentRecord localMetaRecord =
-                        JsonSerializer.Deserialize<ContentRecord>(metaJson, ContentRecordCodec.Options);
+                    IOResult ir = await UpdateBundleAsync(bundleEntry, ct);
 
-                    if (localMetaRecord != null)
-                    {
-                        ContentRecordCodec.TryDecode<ContentMeta>(localMetaRecord, out localMeta);
-                    }
-                }
-                catch
-                {
-                    localMeta = null;
-                }
-            }
-        }
-
-        // 메타가 없는게 아니라 알수 없는 이유로 읽어오는데 실패했을 경우
-        // 동기화를 진행했을 때 게임이 아닌 다른 외부 이유라고 가정함
-        if (!existsResult.succeed && existsResult.failReason == IOFailReason.Unknown)
-        {
-            ctx.syncResult = SyncResult.Failed;
-            ctx.failReason = SyncFailReason.Unknown;
-            return ctx;
-        }
-
-        await VerifyContentMetaAsync(localMeta, ctx, ct);
-
-        // 검증 결과 메타가 최신인데 본문이 없다는 것정도는 체크를 해줘야함
-        if (ctx.verifyResult == VerifyResult.UpToDate)
-        {
-            string payloadPath = ContentPath.GetContentLocalPath(entry);
-
-            IOResult payloadIR = rm.Exists(payloadPath);
-
-            if (!payloadIR.succeed)
-            {
-                ctx.verifyResult = VerifyResult.Outdated;
-
-                switch (payloadIR.failReason)
-                {
-                    case IOFailReason.NotFound:
-                        ctx.failReason = SyncFailReason.NotFound;
-                        break;
-                    case IOFailReason.InvalidPath:
-                        ctx.failReason = SyncFailReason.InvalidPath;
-                        break;
-                    case IOFailReason.AccessDenied:
-                        ctx.failReason = SyncFailReason.AccessDenied;
-                        break;
-                    default:
-                        ctx.failReason = SyncFailReason.InvalidResponse;
-                        break;
-                }
-            }
-        }
-
-        switch (ctx.verifyResult)
-        {
-            case VerifyResult.UpToDate:
-                {
-                    ctx.syncResult = SyncResult.UpToDate;
-                    break;
-                }
-            case VerifyResult.Outdated:
-                {
-                    // 본문 업데이트
-                    IOResult ir = await UpdateContentAsync(entry, ctx, ct);
-
-                    if (!ir.succeed)
+                    if (ir == null || !ir.succeed)
                     {
                         ctx.syncResult = SyncResult.Failed;
-                        break;
+                        return ctx;
                     }
 
                     ctx.syncResult = SyncResult.Updated;
-                    break;
+                    return ctx;
                 }
-            case VerifyResult.Failed:
-                ctx.syncResult = SyncResult.Failed;
-                break;
+
+            case AddressablesCatalogEntry addressablesCatalog:
+                {
+                    IOResult ir = await UpdateAddressablesCatalogAsync(addressablesCatalog, ct);
+
+                    if (ir == null || !ir.succeed)
+                    {
+                        ctx.syncResult = SyncResult.Failed;
+                        return ctx;
+                    }
+
+                    ctx.syncResult = SyncResult.Updated;
+                    return ctx;
+                }
+
             default:
-                ctx.syncResult = SyncResult.Failed;
-                break;
+                {
+                    IOResult ir = await UpdateContentAsync(entry, ctx, ct);
+
+                    if (ir == null || !ir.succeed)
+                    {
+                        ctx.syncResult = SyncResult.Failed;
+                        return ctx;
+                    }
+
+                    ctx.syncResult = SyncResult.Updated;
+                    return ctx;
+                }
         }
-        return ctx;
     }
+
     private static async Task<ContentSyncContext> SyncAddressableCatalogAsync(AddressablesCatalogEntry addrEntry, ContentSyncContext ctx, CancellationToken ct = default)
     {
         ResourceManager rm = ResourceManager.instance;
@@ -911,6 +899,171 @@ public static class ContentManagementSystem
             break;
         }
         return ctx;
+    }
+
+    public static async Task<(ContentSyncContext ctx, ContentEntry entry)> CheckContentAsync(uint staticKey, CancellationToken ct = default)
+    {
+        ResourceManager rm = ResourceManager.instance;
+
+        ContentSyncContext ctx = new ContentSyncContext();
+        ContentEntry entry = null;
+
+        ctx.Bind(staticKey, string.Empty, string.Empty, ContentCategory.None);
+
+        if (rm == null)
+        {
+            ctx.verifyResult = VerifyResult.Failed;
+            ctx.failReason = SyncFailReason.NotInitialized;
+            return (ctx, entry);
+        }
+
+        if (!rm.TryGetContentEntry(staticKey, out entry) || entry == null)
+        {
+            ctx.verifyResult = VerifyResult.Failed;
+            ctx.failReason = SyncFailReason.NotFound;
+            return (ctx, entry);
+        }
+
+        ContentHeader header = entry.header;
+        ctx.Bind(staticKey, header.id, header.schema, header.category);
+
+        if (string.IsNullOrEmpty(header.id) || string.IsNullOrEmpty(header.schema))
+        {
+            ctx.verifyResult = VerifyResult.Failed;
+            ctx.failReason = SyncFailReason.InvalidPath;
+            return (ctx, entry);
+        }
+
+        switch (entry)
+        {
+            case ContentBundleEntry bundleEntry:
+                {
+                    string payloadPath = ContentPath.GetContentLocalPath(bundleEntry);
+                    IOResult bundleIR = rm.TryGetFileInfo(payloadPath, out FileInfo info);
+
+                    if (!bundleIR.succeed)
+                    {
+                        if (bundleIR.failReason == IOFailReason.NotFound)
+                        {
+                            ctx.verifyResult = VerifyResult.Outdated;
+                            return (ctx, entry);
+                        }
+
+                        ctx.verifyResult = VerifyResult.Failed;
+                        ctx.failReason = SyncFailReason.InvalidResponse;
+                        return (ctx, entry);
+                    }
+
+                    if (info == null)
+                    {
+                        ctx.verifyResult = VerifyResult.Failed;
+                        ctx.failReason = SyncFailReason.InvalidResponse;
+                        return (ctx, entry);
+                    }
+
+                    if (bundleEntry.sizeBytes > 0 && info.Length != bundleEntry.sizeBytes)
+                    {
+                        ctx.verifyResult = VerifyResult.Outdated;
+                        return (ctx, entry);
+                    }
+
+                    ctx.verifyResult = VerifyResult.UpToDate;
+                    return (ctx, entry);
+                }
+
+            case AddressablesCatalogEntry addrEntry:
+                {
+                    string payloadPath = ContentPath.GetContentLocalPath(addrEntry);
+                    IOResult existsIR = rm.Exists(payloadPath);
+
+                    if (existsIR.succeed)
+                    {
+                        ctx.verifyResult = VerifyResult.UpToDate;
+                        return (ctx, entry);
+                    }
+
+                    if (existsIR.failReason == IOFailReason.NotFound)
+                    {
+                        ctx.verifyResult = VerifyResult.Outdated;
+                        return (ctx, entry);
+                    }
+
+                    ctx.verifyResult = VerifyResult.Failed;
+                    ctx.failReason = SyncFailReason.InvalidResponse;
+                    return (ctx, entry);
+                }
+
+            default:
+                break;
+        }
+
+        string localMetaPath = Path.Combine(
+            Application.persistentDataPath,
+            ContentCategory.Meta.ToString(),
+            header.schema,
+            header.id + ".meta.json"
+        );
+
+        ContentMeta localMeta = null;
+
+        IOResult existsResult = rm.Exists(localMetaPath);
+
+        if (existsResult.succeed)
+        {
+            (IOResult readResult, string metaJson) read = await rm.ReadAllTextsAsync(localMetaPath, ct);
+
+            if (read.readResult != null && read.readResult.succeed && !string.IsNullOrEmpty(read.metaJson))
+            {
+                try
+                {
+                    ContentRecord localMetaRecord =
+                        JsonSerializer.Deserialize<ContentRecord>(read.metaJson, ContentRecordCodec.Options);
+
+                    if (localMetaRecord != null)
+                    {
+                        ContentRecordCodec.TryDecode<ContentMeta>(localMetaRecord, out localMeta);
+                    }
+                }
+                catch
+                {
+                    localMeta = null;
+                }
+            }
+        }
+
+        await VerifyContentMetaAsync(localMeta, ctx, ct);
+
+        if (ctx.verifyResult == VerifyResult.UpToDate)
+        {
+            string payloadPath = ContentPath.GetContentLocalPath(entry);
+            IOResult payloadIR = rm.Exists(payloadPath);
+
+            if (!payloadIR.succeed)
+            {
+                ctx.verifyResult = VerifyResult.Outdated;
+
+                switch (payloadIR.failReason)
+                {
+                    case IOFailReason.NotFound:
+                        ctx.failReason = SyncFailReason.NotFound;
+                        break;
+
+                    case IOFailReason.InvalidPath:
+                        ctx.failReason = SyncFailReason.InvalidPath;
+                        break;
+
+                    case IOFailReason.AccessDenied:
+                        ctx.failReason = SyncFailReason.AccessDenied;
+                        break;
+
+                    default:
+                        ctx.failReason = SyncFailReason.InvalidResponse;
+                        break;
+                }
+            }
+        }
+
+        return (ctx, entry);
     }
 
     /// <summary>
